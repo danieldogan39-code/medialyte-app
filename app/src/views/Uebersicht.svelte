@@ -1,5 +1,7 @@
 <script lang="ts">
   import Zahl from "../components/Zahl.svelte";
+  import Radar from "../components/Radar.svelte";
+  import { agent } from "../lib/agent.svelte";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Schalter from "../components/Schalter.svelte";
@@ -38,6 +40,11 @@
   }
   const anzahlAn = $derived(daten.agenten.filter((a) => a.aktiv).length);
   const ART: Record<string, string> = { lauf: "Lauf starten", bauen: "Jetzt bauen", abbrechen: "Lauf abbrechen", entscheidung: "Board", demo_loeschen: "Demo löschen", brief_senden: "Brief verschicken", brief_vorschau: "Brief-Vorschau", bewertung: "Bewertung", neubau: "Neu generieren", neubau_zurueck: "Wunsch zurückgezogen", regel_verwerfen: "Regel verworfen", regel_zurueck: "Regel wiederhergestellt", kunde: "Kunden-Website", kunde_agent_zurueck: "Änderung zurücknehmen", suchgebiete: "Suchgebiete", analyse: "KI-Analyse" };
+  const bis = (iso?: string) => {
+    if (!iso) return ""; const ms = Date.parse(iso) - Date.now(); if (!(ms > 0)) return "läuft gleich";
+    const t = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4);
+    return t ? `in ${t} ${t === 1 ? "Tag" : "Tagen"}${h ? ` ${h} Std.` : ""}` : h ? `in ${h} Std. ${m} Min.` : `in ${m} Min.`;
+  };
   const gruss = () => { const h = new Date().getHours(); return h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend"; };
 </script>
 
@@ -53,6 +60,17 @@
     <a class="kpi card" href="#/akquise"><small>Briefe verschickt</small><b class="num">{zahl(summe(null, ["verschickt", "interesse", "kunde"]))}</b><span class="muted">insgesamt</span></a>
   {/if}
 </div>
+
+{#if auth.darf("akquise") && (agent.c.gebiete ?? []).length}
+  <section class="card held">
+    <div class="held__k">
+      <span class="live"><i></i>Live</span>
+      <h2>Suchradar</h2>
+      <p class="muted">Der Agent durchkämmt deine Suchgebiete reihum nach Betrieben ohne gute Website.{#if agent.c.naechster_lauf}{" "}Nächster Lauf: {bis(agent.c.naechster_lauf)}{/if}</p>
+    </div>
+    <Radar gebiete={agent.c.gebiete} index={agent.c.gebiet_index ?? 0} gross />
+  </section>
+{/if}
 
 <div class="grid">
   {#if auth.darf("anfragen")}
@@ -130,6 +148,13 @@
 {/if}
 
 <style>
+  .held { padding: 22px 24px 26px; margin-bottom: 16px; display: grid; gap: 6px; overflow: hidden; position: relative;
+    background: radial-gradient(120% 90% at 30% 40%, rgba(111, 168, 240, .08), transparent 60%), var(--panel); }
+  .held__k { display: grid; gap: 4px; max-width: 60ch; }
+  .held__k h2 { font-size: 1.35rem; letter-spacing: -.01em; }
+  .live { display: inline-flex; align-items: center; gap: 7px; justify-self: start; height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(76, 195, 138, .12); color: #7FD9AE; font-size: .76rem; font-weight: 600; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(76, 195, 138, .6); animation: live 1.8s ease-out infinite; }
+  @keyframes live { 70% { box-shadow: 0 0 0 7px rgba(76, 195, 138, 0); } 100% { box-shadow: 0 0 0 0 rgba(76, 195, 138, 0); } }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .kpi { display: grid; gap: 2px; padding: 18px 20px; transition: border-color .15s ease; }
   .kpi small { color: var(--steel); font-size: .84rem; }

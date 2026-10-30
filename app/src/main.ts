@@ -43,3 +43,15 @@ if (cap?.isNativePlatform?.()) {
     App.minimizeApp();
   });
 }
+
+// Lichtkegel auf Karten: folgt dem Zeiger (nur Geräte mit Maus; ein Schreibzugriff pro Bild)
+if (matchMedia("(hover: hover)").matches && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  let karte: HTMLElement | null = null, x = 0, y = 0, geplant = false;
+  addEventListener("pointermove", (e) => {
+    const k = (e.target as HTMLElement)?.closest?.(".card") as HTMLElement | null;
+    if (karte && karte !== k) { karte.style.removeProperty("--mx"); karte.style.removeProperty("--my"); }
+    karte = k; if (!k) return; x = e.clientX; y = e.clientY;
+    if (geplant) return; geplant = true;
+    requestAnimationFrame(() => { geplant = false; if (!karte) return; const r = karte.getBoundingClientRect(); karte.style.setProperty("--mx", `${x - r.left}px`); karte.style.setProperty("--my", `${y - r.top}px`); });
+  }, { passive: true });
+}

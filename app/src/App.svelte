@@ -4,8 +4,11 @@
   import Zweifaktor from "./views/Zweifaktor.svelte";
   import Willkommen from "./views/Willkommen.svelte";
   import Shell from "./views/Shell.svelte";
+  import Intro from "./components/Intro.svelte";
 </script>
 
+<div class="aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<Intro bereit={auth.bereit} />
 {#if !auth.bereit}
   <div class="splash" aria-busy="true"><img src="./mono.svg" alt="" width="44" height="33"></div>
 {:else if !auth.session}

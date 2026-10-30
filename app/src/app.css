@@ -35,7 +35,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { background: var(--bg); color: var(--text-2); font-family: var(--font); font-size: 14.5px; line-height: 1.5;
+body { background: var(--bg); isolation: isolate; color: var(--text-2); font-family: var(--font); font-size: 14.5px; line-height: 1.5;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-feature-settings: "kern", "liga", "tnum" 0; }
 #app { min-height: 100%; }
 h1, h2, h3, h4 { margin: 0; color: var(--text); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
@@ -78,7 +78,18 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
 @media (pointer: coarse) { .input { font-size: 16px; } }
 
 /* Flächen */
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.card { background-color: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  /* leichter Glanz oben und ein Lichtkegel, der dem Zeiger folgt (nur am Computer, siehe main.ts) */
+  background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgba(160, 196, 255, .07), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, .028), rgba(255, 255, 255, 0) 42%); }
+/* Hintergrund: zwei weiche Lichtfelder in Markenfarben, die ganz langsam treiben (nur transform) */
+.aura { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.aura i { position: absolute; width: 70vmax; height: 70vmax; border-radius: 50%; will-change: transform; }
+.aura i:nth-child(1) { left: -20vmax; top: -30vmax; background: radial-gradient(circle, rgba(111, 168, 240, .10), rgba(111, 168, 240, 0) 62%); animation: treiben1 38s ease-in-out infinite alternate; }
+.aura i:nth-child(2) { right: -25vmax; bottom: -35vmax; background: radial-gradient(circle, rgba(242, 74, 74, .075), rgba(242, 74, 74, 0) 60%); animation: treiben2 46s ease-in-out infinite alternate; }
+.aura i:nth-child(3) { left: 35%; top: 30%; width: 50vmax; height: 50vmax; background: radial-gradient(circle, rgba(167, 139, 250, .05), rgba(167, 139, 250, 0) 60%); animation: treiben1 54s ease-in-out infinite alternate-reverse; }
+@keyframes treiben1 { to { transform: translate(18vmax, 14vmax) scale(1.15); } }
+@keyframes treiben2 { to { transform: translate(-16vmax, -12vmax) scale(1.1); } }
 .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-size: .78rem; font-weight: 500;
   white-space: nowrap; background: rgba(139, 152, 173, .14); color: var(--text-2); }
 .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .9; }
