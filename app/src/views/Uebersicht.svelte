@@ -36,7 +36,7 @@
     await daten.schalten("agent", a.schluessel, an);
   }
   const anzahlAn = $derived(daten.agenten.filter((a) => a.aktiv).length);
-  const ART: Record<string, string> = { lauf: "Lauf starten", bauen: "Jetzt bauen", abbrechen: "Lauf abbrechen", entscheidung: "Board", demo_loeschen: "Demo löschen", brief_senden: "Brief verschicken", brief_vorschau: "Brief-Vorschau" };
+  const ART: Record<string, string> = { lauf: "Lauf starten", bauen: "Jetzt bauen", abbrechen: "Lauf abbrechen", entscheidung: "Board", demo_loeschen: "Demo löschen", brief_senden: "Brief verschicken", brief_vorschau: "Brief-Vorschau", bewertung: "Bewertung", neubau: "Neu generieren", neubau_zurueck: "Wunsch zurückgezogen", regel_verwerfen: "Regel verworfen", regel_zurueck: "Regel wiederhergestellt" };
   const gruss = () => { const h = new Date().getHours(); return h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend"; };
 </script>
 

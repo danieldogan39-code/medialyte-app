@@ -2,6 +2,8 @@
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Board from "../components/Board.svelte";
+  import Demos from "../components/Demos.svelte";
+  import Gedaechtnis from "../components/Gedaechtnis.svelte";
   import LaufSteuerung from "../components/LaufSteuerung.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
@@ -52,13 +54,19 @@
 
     <div class="tabs" role="tablist">
       <a role="tab" aria-selected={tab === "board"} href="#/akquise/{slug}">Board</a>
+      <a role="tab" aria-selected={tab === "demos"} href="#/akquise/{slug}/demos">Demos</a>
       <a role="tab" aria-selected={tab === "betriebe"} href="#/akquise/{slug}/betriebe">Liste <span class="num muted">{zahl(anzahl())}</span></a>
+      <a role="tab" aria-selected={tab === "gedaechtnis"} href="#/akquise/{slug}/gedaechtnis">Gedächtnis</a>
       <a role="tab" aria-selected={tab === "laeufe"} href="#/akquise/{slug}/laeufe">Läufe</a>
       <a role="tab" aria-selected={tab === "suche"} href="#/akquise/{slug}/suche">Suche & Einstellungen</a>
     </div>
 
     {#if tab === "board"}
       <Board {kat} />
+    {:else if tab === "demos"}
+      <Demos {kat} />
+    {:else if tab === "gedaechtnis"}
+      <Gedaechtnis {kat} />
     {:else if tab === "betriebe"}
       <div class="bar">
         <div class="chips">
