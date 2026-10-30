@@ -1,0 +1,55 @@
+# Baut das Programm für Mac (Apple Silicon und Intel) und Windows und legt es als Download in „Releases“ ab.
+# Start: Actions → „Programme bauen“ → Run workflow (oder automatisch bei einer neuen Version in app/src-tauri/tauri.conf.json).
+name: Programme bauen (Mac, Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["app/src-tauri/tauri.conf.json"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-build
+  cancel-in-progress: false
+
+jobs:
+  bauen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --target universal-apple-darwin
+          - os: windows-latest
+            args: ""
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: app/src-tauri -> target
+      - run: npm ci
+        working-directory: app
+      - uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          tagName: app-v__VERSION__
+          releaseName: Medialyte __VERSION__
+          releaseBody: |
+            Mac: die .dmg-Datei laden, öffnen, Medialyte in „Programme“ ziehen. Beim ersten Start: Rechtsklick auf Medialyte → Öffnen (das Programm ist noch nicht bei Apple beglaubigt).
+            Windows: die …setup.exe laden und ausführen. Erscheint „Der Computer wurde durch Windows geschützt“: Weitere Informationen → Trotzdem ausführen.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

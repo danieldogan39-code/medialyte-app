@@ -1,0 +1,8 @@
+{
+  "appId": "de.medialyte.app",
+  "appName": "Medialyte",
+  "webDir": "www",
+  "android": { "backgroundColor": "#0A1220", "allowMixedContent": false },
+  "plugins": { "SystemBars": { "style": "DARK", "insetsHandling": "css" } },
+  "loggingBehavior": "production"
+}

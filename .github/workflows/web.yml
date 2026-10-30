@@ -1,0 +1,41 @@
+# Baut die App und stellt sie unter app.medialyte.de bereit (IONOS-Webspace, Ordner /medialyte-app).
+# Dieselben Dateien stecken später im Mac-/Windows-Programm und in der Android-App.
+name: App bauen und veröffentlichen (Web)
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Bauen und prüfen
+        working-directory: app
+        run: |
+          npm ci
+          npm run check
+          npm run build
+          cp ../deploy/web/.htaccess dist/.htaccess
+      - name: Hochladen (nur wenn der IONOS-Zugang hinterlegt ist)
+        env:
+          HOST: ${{ secrets.IONOS_SFTP_HOST }}
+          USER: ${{ secrets.IONOS_SFTP_USER }}
+          PASS: ${{ secrets.IONOS_SFTP_PASS }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$PASS" ]; then echo "::warning::IONOS-Secrets fehlen – nur gebaut, nicht hochgeladen."; exit 0; fi
+          sudo apt-get install -y -qq lftp >/dev/null
+          lftp -u "$USER","$PASS" "sftp://$HOST" -e "set sftp:auto-confirm yes; set net:max-retries 3; mirror --reverse --delete --verbose=1 app/dist /medialyte-app; bye"

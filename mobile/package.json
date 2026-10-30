@@ -1,0 +1,12 @@
+{
+  "name": "medialyte-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Medialyte als Android-App (Capacitor, gleiche Oberfläche wie app/)",
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3"
+  }
+}
