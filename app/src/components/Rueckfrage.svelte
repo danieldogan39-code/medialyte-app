@@ -2,9 +2,11 @@
   import { rueckfrage } from "../lib/frage.svelte";
   let dlg: HTMLDialogElement | undefined = $state();
   let okBtn: HTMLButtonElement | undefined = $state();
+  let eingabe = $state("");
+  const frei = $derived(!rueckfrage.offen?.tippen || eingabe.trim().toLowerCase() === rueckfrage.offen.tippen.toLowerCase());
   $effect(() => {
     if (!dlg) return;
-    if (rueckfrage.offen && !dlg.open) { dlg.showModal(); okBtn?.focus(); }
+    if (rueckfrage.offen && !dlg.open) { eingabe = ""; dlg.showModal(); if (!rueckfrage.offen.tippen) okBtn?.focus(); }
     if (!rueckfrage.offen && dlg.open) dlg.close();
   });
 </script>
@@ -15,9 +17,14 @@
     <div class="rf__b">
       <h2 id="rf-t">{rueckfrage.offen.titel}</h2>
       <p>{rueckfrage.offen.text}</p>
+      {#if rueckfrage.offen.tippen}
+        <label class="field"><span>Zur Sicherheit „{rueckfrage.offen.tippen}“ eintippen</span>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input class="input" bind:value={eingabe} autocomplete="off" autofocus onkeydown={(e) => { if (e.key === "Enter" && frei) rueckfrage.offen?.antwort(true); }}></label>
+      {/if}
       <div class="rf__a">
         <button class="btn btn--quiet" type="button" onclick={() => rueckfrage.offen?.antwort(false)}>Abbrechen</button>
-        <button bind:this={okBtn} class="btn {rueckfrage.offen.gefahr ? 'btn--gefahr' : 'btn--primary'}" type="button" onclick={() => rueckfrage.offen?.antwort(true)}>{rueckfrage.offen.ok}</button>
+        <button bind:this={okBtn} class="btn {rueckfrage.offen.gefahr ? 'btn--gefahr' : 'btn--primary'}" type="button" disabled={!frei} onclick={() => rueckfrage.offen?.antwort(true)}>{rueckfrage.offen.ok}</button>
       </div>
     </div>
   {/if}

@@ -63,18 +63,27 @@ jobs:
           version: 2.122.0
 
       - name: Schlüssel für die Website-Verbindung festlegen
+        env:
+          AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
         run: |
           # Wird aus dem vorhandenen Secret abgeleitet: niemand muss ihn sehen oder abtippen
           key=$(printf 'medialyte-anfrage:%s' "$SUPABASE_ACCESS_TOKEN" | sha256sum | cut -d' ' -f1)
           echo "::add-mask::$key"
           echo "WEBHOOK_SECRET=$key" >> "$GITHUB_ENV"
           supabase secrets set --project-ref "$PROJECT_REF" WEBHOOK_SECRET="$key" APP_URL="$APP_URL" >/dev/null
+          if [ -n "$AGENT_GITHUB_TOKEN" ]; then
+            supabase secrets set --project-ref "$PROJECT_REF" AGENT_GITHUB_TOKEN="$AGENT_GITHUB_TOKEN" >/dev/null
+            echo "Agent-Schlüssel gesetzt."
+          else
+            echo "::warning::Secret AGENT_GITHUB_TOKEN fehlt – die App kann dem Agenten noch keine Befehle schicken."
+          fi
           echo "Schlüssel gesetzt."
 
       - name: Cloud-Funktionen veröffentlichen
         run: |
           supabase functions deploy anfrage --project-ref "$PROJECT_REF" --no-verify-jwt
           supabase functions deploy team --project-ref "$PROJECT_REF"
+          supabase functions deploy befehl --project-ref "$PROJECT_REF"
 
       - name: Buchungsformular von medialyte.de verbinden und bisherige Anfragen übernehmen
         env:

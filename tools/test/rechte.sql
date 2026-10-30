@@ -60,7 +60,7 @@ do $$ declare n int; begin
   insert into public.befehle (art, ziel) values ('brief_senden', 'x');
   update public.mitglieder set rolle = 'inhaber' where user_id = auth.uid(); get diagnostics n = row_count;
   if n <> 0 then raise exception 'Marketing konnte sich zum Inhaber machen'; end if;
-  begin insert into public.befehle (art, status) values ('wochenlauf', 'erledigt'); raise exception 'Befehl mit falschem Status';
+  begin insert into public.befehle (art, status) values ('lauf', 'erledigt'); raise exception 'Befehl mit falschem Status';
   exception when insufficient_privilege then null; end;
   raise notice 'OK Marketing bearbeitet Anfragen, kann sich keine Rechte geben';
 end $$;
@@ -127,5 +127,16 @@ do $$ declare n int; begin
   update public.mitglieder set name = 'Daniel' where user_id = auth.uid(); get diagnostics n = row_count;
   if n <> 1 then raise exception 'Inhaber kann sich nicht ändern'; end if;
   raise notice 'OK Inhaber ändert sich selbst';
+end $$;
+reset role;
+
+-- 10) Befehle: nur bekannte Arten
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ begin
+  insert into public.befehle (art, ziel) values ('entscheidung', 'P1');
+  begin insert into public.befehle (art) values ('rm -rf'); raise exception 'unbekannter Befehl angenommen';
+  exception when raise_exception then if sqlerrm not like 'Unbekannter Befehl%' then raise; end if; end;
+  raise notice 'OK nur bekannte Befehle';
 end $$;
 reset role;

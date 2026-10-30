@@ -7,6 +7,8 @@
   import { sb, fehler } from "../lib/supabase";
   import { datum } from "../lib/format";
   import { BETRIEB_STATUS } from "../lib/status";
+  import { befehl } from "../lib/befehl";
+  import { frage } from "../lib/frage.svelte";
 
   let { id }: { id: string } = $props();
   let b = $state<any>(null), fehlt = $state(false);
@@ -28,6 +30,28 @@
   const demo = $derived((b?.demos ?? []).find((d: any) => !d.geloescht) ?? (b?.demos ?? [])[0]);
   const brief = $derived((b?.briefe ?? [])[0]);
   const kat = $derived(daten.kat(b?.kategorie));
+  const pdfDa = $derived(!!brief?.daten?.pdf_hash);
+  const sendetGerade = $derived(!!demo && daten.offen("brief_senden", demo.slug).length > 0);
+  const vorschauGerade = $derived(!!demo && daten.offen("brief_vorschau", demo.slug).length > 0);
+  const loeschtGerade = $derived(!!b && daten.offen("demo_loeschen", b.place_id).length > 0);
+  let pdfUrl = $state("");
+
+  async function briefAnsehen() {
+    const { data, error } = await sb.storage.from("briefe").createSignedUrl(brief.pdf, 600);
+    if (error || !data) { daten.melden(fehler(error)); return; }
+    pdfUrl = data.signedUrl;
+  }
+  async function briefSenden() {
+    if (!(await frage(`Brief an ${b.name} verschicken?`, "Der Agent prüft vorher bei Google, ob der Betrieb noch keine Website hat, setzt das Versanddatum und ein frisches Bild der Demo ein und gibt den Brief bei LetterXpress in Druck und Versand. Das kostet Porto.", "Brief verschicken"))) return;
+    await befehl("brief_senden", { slug: demo.slug, place_id: b.place_id, name: b.name }, demo.slug, "Brief geht an den Agenten …");
+  }
+  async function vorschau() {
+    await befehl("brief_vorschau", { slug: demo.slug, place_id: b.place_id, name: b.name }, demo.slug, "Vorschau wird erstellt …");
+  }
+  async function demoLoeschen() {
+    if (!(await frage("Demo endgültig löschen?", `Die Demo von ${b.name} geht sofort offline – auch Links aus verschickten Briefen. Bauinfos und ältere Versionen werden entfernt, der Betrieb landet unter „Aussortiert“. Bewertungen und Gelerntes bleiben.`, "Endgültig löschen", true, "löschen"))) return;
+    await befehl("demo_loeschen", { place_id: b.place_id, slug: demo.slug, name: b.name, branche: b.branche, ort: b.ort, punkte: b.punkte }, b.place_id, "Demo wird gelöscht …");
+  }
 </script>
 
 {#if b}
@@ -58,7 +82,11 @@
       </section>
 
       <section class="card box">
-        <div class="box__h"><h3>Demo-Website</h3>{#if demo?.url && !demo.geloescht}<a class="btn btn--s" href={demo.url} target="_blank" rel="noopener"><Icon name="external" size={15} />Öffnen</a>{/if}</div>
+        <div class="box__h"><h3>Demo-Website</h3>
+          <div class="acts">
+            {#if demo?.url && !demo.geloescht}<a class="btn btn--s" href={demo.url} target="_blank" rel="noopener"><Icon name="external" size={15} />Öffnen</a>{/if}
+            {#if demo && !demo.geloescht && auth.darf("akquise", true)}<button class="btn btn--s btn--quiet del" onclick={demoLoeschen} disabled={loeschtGerade}><Icon name="trash" size={15} />{loeschtGerade ? "Wird gelöscht …" : "Löschen"}</button>{/if}
+          </div></div>
         {#if demo}
           <dl class="dl">
             <div><dt>Adresse</dt><dd class="brk">{demo.url ?? "–"}</dd></div>
@@ -71,7 +99,15 @@
       </section>
 
       <section class="card box">
-        <div class="box__h"><h3>Brief</h3></div>
+        <div class="box__h"><h3>Brief</h3>
+          <div class="acts">
+            {#if brief && pdfDa}<button class="btn btn--s" onclick={briefAnsehen}><Icon name="eye" size={15} />Ansehen</button>{/if}
+            {#if demo && !demo.geloescht && auth.darf("briefe", true)}
+              {#if brief?.verschickt}<span class="pill pill--lila">verschickt am {datum(brief.verschickt)}</span>
+              {:else if pdfDa}<button class="btn btn--s btn--primary" onclick={briefSenden} disabled={sendetGerade}><Icon name="letter" size={15} />{sendetGerade ? "Wird verschickt …" : "Brief verschicken"}</button>
+              {:else}<button class="btn btn--s" onclick={vorschau} disabled={vorschauGerade}>{vorschauGerade ? "Vorschau wird erstellt …" : "Vorschau erstellen lassen"}</button>{/if}
+            {/if}
+          </div></div>
         {#if brief}
           <dl class="dl">
             <div><dt>Status</dt><dd>{brief.status}{brief.test ? " (Test)" : ""}</dd></div>
@@ -80,6 +116,10 @@
             {#if brief.grund}<div><dt>Hinweis</dt><dd>{brief.grund}</dd></div>{/if}
           </dl>
         {:else}<p class="muted pad">Noch kein Brief.</p>{/if}
+        {#if pdfUrl}
+          <div class="pdf"><iframe src={pdfUrl} title="Brief als PDF"></iframe></div>
+          <div class="pdf__a"><a class="btn btn--s" href={pdfUrl} target="_blank" rel="noopener"><Icon name="external" size={15} />PDF öffnen</a><button class="btn btn--s btn--quiet" onclick={() => (pdfUrl = "")}>Schließen</button></div>
+        {/if}
       </section>
     </div>
     <Verlauf bezug="betrieb" {id} schreiben={auth.darf("akquise", true)} />
@@ -95,6 +135,11 @@
   .box { padding: 4px 0 8px; }
   .box__h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 6px; }
   .st { width: auto; min-height: 34px; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+  .del { color: #FF8080; }
+  .pdf { margin: 4px 20px 10px; border-radius: var(--radius-s); overflow: hidden; border: 1px solid var(--line); height: min(80vh, 900px); background: #fff; }
+  .pdf iframe { width: 100%; height: 100%; border: 0; }
+  .pdf__a { display: flex; gap: 8px; padding: 0 20px 14px; }
   .dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 20px; margin: 0; padding: 10px 20px 14px; }
   .dl div { display: grid; gap: 2px; min-width: 0; }
   .dl dt { font-size: .78rem; color: var(--steel); }

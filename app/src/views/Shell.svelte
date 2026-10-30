@@ -55,7 +55,7 @@
   <main class="main">
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
-    {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "betriebe"} />
+    {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "board"} />
     {:else if t[0] === "akquise"}<Akquise />
     {:else if t[0] === "team"}<Team />
     {:else if t[0] === "kunden"}<Bald titel="Kunden" text="Kunden aus Anfragen, Akquise und Rechnungen an einem Ort – kommt mit dem Zusammenführen der Rechnungs-App (Etappe 4)." />

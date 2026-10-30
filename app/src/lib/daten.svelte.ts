@@ -11,8 +11,11 @@ class Daten {
   team = $state<Mitglied[]>([]);
   agenten = $state<Agent[]>([]);
   neueAnfragen = $state(0);
+  befehle = $state<any[]>([]);      // offene/laufende Aufträge an den Agenten
+  laufend = $state<Record<string, any>>({});   // laufender Lauf je Kategorie (Live-Stand)
   toast = $state("");
   #kanal: ReturnType<typeof sb.channel> | null = null;
+  #kanal2: ReturnType<typeof sb.channel> | null = null;
   #t = 0;
 
   async laden() {
@@ -25,6 +28,13 @@ class Daten {
     this.agenten = (a.data as Agent[]) ?? [];
     this.team = (t.data as Mitglied[]) ?? [];
     await this.zaehlen();
+    await this.agentStand();
+    if (!this.#kanal2 && auth.darf("akquise")) {
+      this.#kanal2 = sb.channel("agent-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "befehle" }, () => this.agentStand())
+        .on("postgres_changes", { event: "*", schema: "public", table: "laeufe" }, () => { this.agentStand(); dispatchEvent(new CustomEvent("ml:laeufe")); })
+        .subscribe();
+    }
     if (!this.#kanal && auth.darf("anfragen")) {
       this.#kanal = sb.channel("anfragen-live")
         .on("postgres_changes", { event: "*", schema: "public", table: "anfragen" }, (p) => {
@@ -34,6 +44,22 @@ class Daten {
         })
         .subscribe();
     }
+  }
+  /** Offene Befehle und laufende Läufe (für Anzeige und Sperren) */
+  async agentStand() {
+    if (!auth.darf("akquise")) return;
+    const seit = new Date(Date.now() - 6 * 3600e3).toISOString();
+    const [b, l] = await Promise.all([
+      sb.from("befehle").select("id,art,ziel,daten,status,ergebnis,erstellt,erledigt").gte("erstellt", seit).order("erstellt", { ascending: false }).limit(30),
+      sb.from("laeufe").select("id,kategorie,art,start,status,live").eq("status", "laeuft").gte("start", new Date(Date.now() - 8 * 3600e3).toISOString()),
+    ]);
+    this.befehle = b.data ?? [];
+    const lf: Record<string, any> = {};
+    for (const x of l.data ?? []) lf[x.kategorie ?? "gastronomie"] = x;
+    this.laufend = lf;
+  }
+  offen(art?: string, ziel?: string) {
+    return this.befehle.filter((b) => (b.status === "offen" || b.status === "laeuft") && (!art || b.art === art) && (!ziel || b.ziel === ziel));
   }
   async zaehlen() {
     if (!auth.darf("anfragen")) return;

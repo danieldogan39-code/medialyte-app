@@ -36,6 +36,7 @@
     await daten.schalten("agent", a.schluessel, an);
   }
   const anzahlAn = $derived(daten.agenten.filter((a) => a.aktiv).length);
+  const ART: Record<string, string> = { lauf: "Lauf starten", bauen: "Jetzt bauen", abbrechen: "Lauf abbrechen", entscheidung: "Board", demo_loeschen: "Demo löschen", brief_senden: "Brief verschicken", brief_vorschau: "Brief-Vorschau" };
   const gruss = () => { const h = new Date().getHours(); return h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend"; };
 </script>
 
@@ -92,6 +93,16 @@
       </div>
     {/each}
   </div>
+{/if}
+
+{#if daten.befehle.length}
+  <div class="box__h sec"><h2>Aufträge an den Agenten</h2><span class="muted small">letzte 6 Stunden</span></div>
+  <div class="card"><ul class="list">
+    {#each daten.befehle.slice(0, 8) as b (b.id)}
+      <li><div class="row"><span><b>{ART[b.art] ?? b.art}{b.daten?.name ? ` · ${b.daten.name}` : ""}</b><small class="muted">{b.ergebnis ?? (b.status === "offen" ? "wird übergeben" : b.status === "laeuft" ? "Agent arbeitet daran" : "")}</small></span>
+        <span class="r"><span class="pill pill--{b.status === 'erledigt' ? 'gruen' : b.status === 'fehler' ? 'rot' : 'gelb'}">{({ offen: "offen", laeuft: "läuft", erledigt: "erledigt", fehler: "Fehler" } as any)[b.status]}</span></span></div></li>
+    {/each}
+  </ul></div>
 {/if}
 
 {#if auth.darf("akquise")}
