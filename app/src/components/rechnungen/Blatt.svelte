@@ -2,14 +2,15 @@
   // Fenster für Formulare und Details der Rechnungen (Escape oder Klick daneben schließt)
   import type { Snippet } from "svelte";
   import Icon from "../Icon.svelte";
+  import { modalAuf, modalSanft, modalZu } from "../../lib/bewegung";
   let { titel, zu, breit = false, children, fuss }: { titel: string; zu: () => void; breit?: boolean; children: Snippet; fuss?: Snippet } = $props();
   let dlg: HTMLDialogElement | undefined = $state();
-  $effect(() => { dlg?.showModal(); });
+  $effect(() => { if (!dlg) return; modalAuf(dlg); return modalSanft(dlg); });
 </script>
 
-<dialog bind:this={dlg} class="bl" class:breit onclose={zu} onclick={(e) => { if (e.target === dlg) dlg?.close(); }} aria-label={titel}>
+<dialog bind:this={dlg} class="bl" class:breit onclose={zu} aria-label={titel}>
   <div class="bl__in">
-    <header><h2>{titel}</h2><button class="btn btn--quiet btn--icon" onclick={() => dlg?.close()} aria-label="Schließen"><Icon name="x" /></button></header>
+    <header><h2>{titel}</h2><button class="btn btn--quiet btn--icon" onclick={() => modalZu(dlg)} aria-label="Schließen"><Icon name="x" /></button></header>
     <div class="bl__b">{@render children()}</div>
     {#if fuss}<footer>{@render fuss()}</footer>{/if}
   </div>
@@ -19,9 +20,6 @@
   .bl { padding: 0; border: 0; background: transparent; color: var(--text); width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); }
   .bl.breit { width: min(960px, calc(100vw - 24px)); }
   .bl::backdrop { background: rgba(4, 8, 16, .66); }
-  .bl[open] { animation: auf .2s var(--ease); }
-  @keyframes auf { from { opacity: 0; transform: translateY(8px) scale(.99); } }
-  @media (prefers-reduced-motion: reduce) { .bl[open] { animation: none; } }
   .bl__in { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: calc(100dvh - 32px); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px 22px; border-bottom: 1px solid var(--line); }
   header h2 { font-size: 1.15rem; }

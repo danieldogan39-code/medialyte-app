@@ -40,6 +40,12 @@ jobs:
           cd app && npm ci --no-audit --no-fund && npm run build && cd ..
           cd mobile && npm ci --no-audit --no-fund
           rm -rf www && cp -r ../app/dist www
+          # Benachrichtigungen: Firebase-Konfiguration (mobile/android/app/google-services.json, kein Geheimnis – steckt in jeder APK)
+          if jq -e '.client[0].client_info.android_client_info.package_name == "de.medialyte.app"' android/app/google-services.json > /dev/null 2>&1; then
+            echo '{"an":true}' > www/fcm.json; echo "Firebase-Konfiguration eingebunden."
+          else
+            echo "::warning::google-services.json fehlt – App ohne Benachrichtigungen."
+          fi
           npx cap sync android
       - name: Signierschlüssel holen
         run: |

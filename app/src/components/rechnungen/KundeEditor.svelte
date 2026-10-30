@@ -9,10 +9,11 @@
   import { eur, fmtDate, isOn } from "../../lib/rechnungen/kern";
   import { oeffneRechnung } from "../../lib/rechnungen/oeffnen";
 
-  let { zu, c = null, gespeichert }: { zu: () => void; c?: any; gespeichert?: (k: any) => void } = $props();
+  // vorlage: Angaben für einen neuen Kunden (z. B. aus dem Impressum der Website), kundeSlug: gleich mit der Website verknüpfen
+  let { zu, c = null, gespeichert, vorlage = {}, kundeSlug = null }: { zu: () => void; c?: any; gespeichert?: (k: any) => void; vorlage?: Record<string, string>; kundeSlug?: string | null } = $props();
   const neu = !c;
   const K = ["number", "name", "contact", "email", "street", "zip", "city", "country", "vat_id", "website"] as const;
-  let f = $state<Record<string, string>>(Object.fromEntries(K.map((k) => [k, k === "number" ? (c?.number ?? (neu ? R.nextCustomerNumber() : "")) : k === "country" ? (c?.country ?? "Deutschland") : (c?.[k] ?? "")])));
+  let f = $state<Record<string, string>>(Object.fromEntries(K.map((k) => [k, k === "number" ? (c?.number ?? (neu ? R.nextCustomerNumber() : "")) : k === "country" ? (c?.country ?? "Deutschland") : (c?.[k] ?? vorlage[k] ?? "")])));
   let start = $state(String(c?.invoice_start ?? 1));
   let feld: HTMLInputElement | undefined = $state();
   $effect(() => { if (neu) setTimeout(() => feld?.focus(), 200); });
@@ -26,6 +27,7 @@
     const d: Record<string, any> = Object.fromEntries(K.map((k) => [k, f[k].trim() || null]));
     if (proKunde) d.invoice_start = Math.max(1, parseInt(start, 10) || 1);
     if (!d.name) throw new Error("Bitte einen Namen eintragen.");
+    if (neu && kundeSlug) d.kunde_slug = kundeSlug;
     const r = neu ? await R.write("customers", "insert", d) : await R.write("customers", "update", d, [["id", c.id]]);
     if (r.error) throw r.error;
     zu(); await R.loadAll().catch(() => {}); gespeichert?.(r.data); daten.melden("Kunde gespeichert");

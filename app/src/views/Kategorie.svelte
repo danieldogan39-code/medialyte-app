@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { gleiter } from "../lib/bewegung";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Board from "../components/Board.svelte";
@@ -55,7 +56,7 @@
     <Head titel={kat.name} text={kat.beschreibung ?? ""} zurueck="#/akquise" />
     <LaufSteuerung {kat} />
 
-    <div class="tabs" role="tablist">
+    <div class="tabs" role="tablist" use:gleiter={{ linie: true, farbe: "var(--c)" }}>
       <a role="tab" aria-selected={tab === "ueberblick"} href="#/akquise/{slug}">Überblick</a>
       <a role="tab" aria-selected={tab === "board"} href="#/akquise/{slug}/board">Board</a>
       <a role="tab" aria-selected={tab === "demos"} href="#/akquise/{slug}/demos">Demos</a>

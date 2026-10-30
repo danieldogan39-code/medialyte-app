@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "134300670605",
+    "project_id": "medialyte-85b1c",
+    "storage_bucket": "medialyte-85b1c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:134300670605:android:0897e7f8f30f73f21ca0c4",
+        "android_client_info": {
+          "package_name": "de.medialyte.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVjUvjyif_RMHPcGELLqZ5h02Fw8aAtH8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

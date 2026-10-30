@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { gleiter } from "../lib/bewegung";
   // Design-Gedächtnis: was der Agent aus deinen Bewertungen gelernt hat – je Stilwelt und als Handwerk für alle
   import { auth } from "../lib/auth.svelte";
   import { daten, type Kategorie } from "../lib/daten.svelte";
@@ -57,7 +58,7 @@
     <div class="card"><small>Stand</small><b class="sm">{g.stand ? vor(g.stand) : "–"}</b></div>
     {#if warten}<div class="card wart"><small>Warten aufs Lernen</small><b class="num">{warten}</b></div>{/if}
   </div>
-  <div class="seg" role="tablist">
+  <div class="seg" role="tablist" use:gleiter={{ farbe: "var(--panel-2)" }}>
     <button role="tab" aria-selected={reiter === "welten"} onclick={() => (reiter = "welten")}>Stilwelten</button>
     <button role="tab" aria-selected={reiter === "handwerk"} onclick={() => (reiter = "handwerk")}>Handwerk für alle</button>
   </div>

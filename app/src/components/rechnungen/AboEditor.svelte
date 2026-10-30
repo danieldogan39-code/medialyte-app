@@ -13,11 +13,11 @@
   import { HISTORY_START, INTERVALS, STEP_M, addMonthsISO, firstOfNextMonth, fmtDate, positionsOf, todayISO, type Posten } from "../../lib/rechnungen/kern";
   import { oeffneKunde } from "../../lib/rechnungen/oeffnen";
 
-  let { zu, r = null }: { zu: () => void; r?: any } = $props();
+  let { zu, r = null, kunde = "" }: { zu: () => void; r?: any; kunde?: string } = $props();
   const neu = !r;
   const v = r ?? { items: [{ quantity: 1, unit: "Monat", vat: 19 }], interval: "monthly", next_date: firstOfNextMonth(), auto_send: true, active: true };
   let id = $state<string | undefined>(v.id);
-  let f = $state({ customer_id: v.customer_id ?? "", title: v.title ?? "", interval: v.interval, next_date: v.next_date, auto_send: !!v.auto_send, active: !!v.active });
+  let f = $state({ customer_id: v.customer_id ?? kunde, title: v.title ?? "", interval: v.interval, next_date: v.next_date, auto_send: !!v.auto_send, active: !!v.active });
   let posten = $state<Posten[]>([]);
   let laeuft = $state("");
   const darf = $derived(auth.darf("rechnungen", true));

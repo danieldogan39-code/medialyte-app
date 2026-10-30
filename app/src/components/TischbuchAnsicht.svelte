@@ -3,6 +3,7 @@
   // mit erfundenen Daten oder „Agent ausprobieren“ (der echte Website-Agent arbeitet an einer Demo, online geht nichts).
   // Die Ansicht liegt bei der App (gleiche Adresse) und bekommt Restaurant und Lese-Zugang per Nachricht, nur von hier.
   import Icon from "./Icon.svelte";
+  import { modalAuf, modalSanft, modalZu } from "../lib/bewegung";
   import { sb } from "../lib/supabase";
   import { daten } from "../lib/daten.svelte";
   import { hinweise, personen, tischbuch, wartet, dauer, type Lage } from "../lib/kunden";
@@ -31,15 +32,16 @@
     src = "about:blank"; fehlerText = "";
     const { data } = await sb.functions.invoke("zaehler", { body: { aktion: "agent_demo", slug: d.slug, name: d.name } });
     if (!data?.ok) { fehlerText = "Der Dienst ist gerade nicht erreichbar. Bitte gleich nochmal."; return; }
-    lokal = data.lokal; src = "tischbuch-ansicht/?l=" + encodeURIComponent(lokal);
+    lokal = data.lokal; src = "tischbuch-ansicht/index.html?l=" + encodeURIComponent(lokal);
   }
   $effect(() => {
-    dlg?.showModal();
+    if (dlg) modalAuf(dlg);
+    const sanft = dlg ? modalSanft(dlg) : () => {};
     let t = 0;
     (async () => {
-      if (art === "beispiel") { src = "tischbuch-beispiel/"; return; }
+      if (art === "beispiel") { src = "tischbuch-beispiel/index.html"; return; }
       if (!(await zugangHolen())) return;
-      if (art === "ansicht") { lokal = slug; src = "tischbuch-ansicht/?l=" + encodeURIComponent(slug); lageLaden(); t = setInterval(lageLaden, 30000) as unknown as number; }
+      if (art === "ansicht") { lokal = slug; src = "tischbuch-ansicht/index.html?l=" + encodeURIComponent(slug); lageLaden(); t = setInterval(lageLaden, 30000) as unknown as number; }
       else {
         const { data } = await sb.from("demos").select("slug,url,betriebe(name,ort)").is("geloescht", null).limit(400);
         demos = ((data ?? []) as any[]).filter((x) => /^[a-z0-9-]{3,75}$/.test(x.slug)).map((x) => ({ slug: x.slug, url: x.url, name: x.betriebe?.name ?? x.slug, ort: x.betriebe?.ort }))
@@ -52,23 +54,23 @@
     const nachricht = (e: MessageEvent) => {
       if (e.origin !== location.origin || !frame || e.source !== frame.contentWindow || e.data?.typ !== "tb-bereit" || !zugang) return;
       frame.contentWindow!.postMessage({ typ: "tb-zugang", slug: lokal, name: art === "demo" ? demos.find((d) => d.slug === demoSlug)?.name ?? lokal : name || lokal,
-        farbe: "", telefon: lage?.lokal?.telefon ?? "", dienst: zugang.url, schluessel: zugang.schluessel, demo: art === "demo" }, location.origin);
+        farbe: "", telefon: lage?.lokal?.telefon ?? "", dienst: zugang.url, schluessel: zugang.schluessel, demo: art === "demo" }, location.origin === "null" ? "*" : location.origin);
     };
     addEventListener("message", nachricht);
-    return () => { clearInterval(t); removeEventListener("message", nachricht); };
+    return () => { clearInterval(t); removeEventListener("message", nachricht); sanft(); };
   });
   function neuLaden() { const s = src; src = "about:blank"; setTimeout(() => (src = s), 50); lageLaden(); }
   const l = $derived(lage?.lokal);
   const zeitText = (ms?: number) => (ms ? new Date(ms).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }) : "");
 </script>
 
-<dialog bind:this={dlg} class="tb" onclose={onclose} onclick={(e) => { if (e.target === dlg) dlg?.close(); }}>
+<dialog bind:this={dlg} class="tb" onclose={onclose}>
   <div class="tb__in">
     <div class="tb__seite">
       <div class="kopf">
         <span class="art art--{art}">{art === "beispiel" ? "Beispiel" : art === "demo" ? "Agent-Demo" : "Nur ansehen"}</span>
         <h3>{art === "demo" ? "Website-Agent" : "Tischbuch"} <b>{art === "beispiel" ? "Lokal am Eck" : art === "demo" ? demos.find((d) => d.slug === demoSlug)?.name ?? "" : (l?.name || name)}</b></h3>
-        <button class="btn btn--quiet btn--icon" onclick={() => dlg?.close()} aria-label="Schließen"><Icon name="x" /></button>
+        <button class="btn btn--quiet btn--icon" onclick={() => modalZu(dlg)} aria-label="Schließen"><Icon name="x" /></button>
       </div>
       <p class="muted klein">
         {#if art === "beispiel"}So sieht das Tischbuch für deine Kunden aus. Alle Daten sind erfunden, nichts wird gesendet. Probier Bestätigen und Ablehnen, unten den Reiter „Website“ mit dem Agenten.

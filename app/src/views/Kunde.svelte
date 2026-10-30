@@ -7,6 +7,8 @@
   import { befehl } from "../lib/befehl";
   import { frage } from "../lib/frage.svelte";
   import TischbuchAnsicht from "../components/TischbuchAnsicht.svelte";
+  import KundeAkte from "../components/KundeAkte.svelte";
+  import { R } from "../lib/rechnungen/daten.svelte";
   import { datum, datumKurz, vor } from "../lib/format";
   import { IMPRESSUM, STAND, datenschutzVorlage, demoLesen, domainPruefen, domainVorschlag, fotoHochladen, hinweise, personen, standMit, tischbuch,
     type DemoInfo, type Impressum, type Kunde, type Lage } from "../lib/kunden";
@@ -130,6 +132,13 @@
     try { if (navigator.share && matchMedia("(pointer: coarse)").matches) { await navigator.share({ text }); return; } } catch { return; }
     kopieren(text, "Nachricht mit dem Tischbuch-Link");
   }
+  // Rechnungen dieses Kunden (gleicher Kunde im Rechnungsteil, verknüpft über den Slug)
+  const rk = $derived(R.customers.find((x) => x.kunde_slug === slug) ?? null);
+  const vorlage = $derived.by(() => {
+    const i = (k?.eingaben?.impressum ?? imp ?? {}) as Partial<Impressum>, po = String(i.plz_ort ?? "").match(/^\s*(\d{4,5})\s+(.+)$/);
+    return { name: String(i.firma || name), contact: String(i.vertreten ?? ""), email: String(i.email ?? ""), street: String(i.strasse ?? ""),
+      zip: po?.[1] ?? "", city: po?.[2] ?? String(i.plz_ort ?? ""), website: k?.stand?.domain || domainPruefen(domain) ? "www." + (k?.stand?.domain || domainPruefen(domain)) : "" };
+  });
   const kommend = $derived((tb?.anfragen ?? []).filter((a) => a.datum >= (tb?.heute ?? "") && a.status !== "abgelehnt")
     .sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit)).slice(0, 12));
 </script>
@@ -168,6 +177,8 @@
       </div>
     {/if}
   </section>
+
+  {#if auth.darf("rechnungen")}<KundeAkte c={rk} {slug} {vorlage} />{/if}
 
   {@const rechts = !!((k?.betreuung?.aenderungen ?? []).length || k?.betreuung?.kandidat || tb)}
   <div class="cols" class:eins={!rechts}>

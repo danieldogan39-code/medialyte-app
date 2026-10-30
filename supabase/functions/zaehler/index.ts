@@ -38,14 +38,16 @@ Deno.serve(async (req) => {
     const vapid = (z as any).vapid ?? null;
     if (e.aktion === "push_info") {
       const r = await fetch(`${basis}/abo`, { headers: h });
-      return json(200, { ok: true, vapid, geraete: r.ok ? (await r.json()).geraete ?? 0 : null });
+      const j = r.ok ? await r.json() : null;
+      return json(200, { ok: true, vapid, fcm: j ? !!j.fcm : null, geraete: j ? j.geraete ?? 0 : null });
     }
     if (e.aktion === "push_an") {
-      const r = await fetch(`${basis}/abo`, { method: "POST", headers: h, body: JSON.stringify({ abo: e.abo, geraet: String(e.geraet ?? "").slice(0, 60) }) });
+      const ziel = typeof e.fcm === "string" ? { fcm: e.fcm } : { abo: e.abo };
+      const r = await fetch(`${basis}/abo`, { method: "POST", headers: h, body: JSON.stringify({ ...ziel, geraet: String(e.geraet ?? "").slice(0, 60) }) });
       return json(r.ok ? 200 : 502, { ok: r.ok });
     }
     if (e.aktion === "push_aus") {
-      const r = await fetch(`${basis}/abo`, { method: "DELETE", headers: h, body: JSON.stringify({ abo: { endpoint: e.endpoint } }) });
+      const r = await fetch(`${basis}/abo`, { method: "DELETE", headers: h, body: JSON.stringify(typeof e.fcm === "string" ? { fcm: e.fcm } : { abo: { endpoint: e.endpoint } }) });
       return json(r.ok ? 200 : 502, { ok: r.ok });
     }
     if (e.aktion === "push_test") {

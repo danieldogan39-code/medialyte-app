@@ -1,13 +1,14 @@
 <script lang="ts">
   import { rueckfrage } from "../lib/frage.svelte";
+  import { modalAuf, modalZu } from "../lib/bewegung";
   let dlg: HTMLDialogElement | undefined = $state();
   let okBtn: HTMLButtonElement | undefined = $state();
   let eingabe = $state("");
   const frei = $derived(!rueckfrage.offen?.tippen || eingabe.trim().toLowerCase() === rueckfrage.offen.tippen.toLowerCase());
   $effect(() => {
     if (!dlg) return;
-    if (rueckfrage.offen && !dlg.open) { eingabe = ""; dlg.showModal(); if (!rueckfrage.offen.tippen) okBtn?.focus(); }
-    if (!rueckfrage.offen && dlg.open) dlg.close();
+    if (rueckfrage.offen && !dlg.open) { eingabe = ""; modalAuf(dlg, "voll"); if (!rueckfrage.offen.tippen) okBtn?.focus(); }
+    if (!rueckfrage.offen && dlg.open) modalZu(dlg, "voll");
   });
 </script>
 
@@ -34,8 +35,6 @@
   .rf { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line-2); border-radius: 16px; background: var(--panel); color: var(--text-2);
     box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .7); }
   .rf::backdrop { background: rgba(4, 8, 16, .6); }
-  .rf[open] { animation: rf-in .18s var(--ease); }
-  @keyframes rf-in { from { opacity: 0; transform: translateY(6px) scale(.98); } }
   .rf__b { padding: 24px; display: grid; gap: 12px; }
   .rf__b h2 { font-size: 1.15rem; }
   .rf__b p { line-height: 1.55; }

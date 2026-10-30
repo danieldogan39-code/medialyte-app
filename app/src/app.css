@@ -27,6 +27,9 @@
   --radius-s: 8px;
   --font: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease: cubic-bezier(.23, 1, .32, 1);
+  --ease-ios: cubic-bezier(.32, .72, 0, 1);
+  /* Federkurven, beim Start durch echte Federn ersetzt (main.ts) */
+  --feder: var(--ease-ios); --feder-weich: var(--ease-ios); --feder-schnell: var(--ease);
   --side: 240px;
   color-scheme: dark;
 }
@@ -50,8 +53,8 @@ a, button, summary, label { -webkit-tap-highlight-color: transparent; }
 /* Knöpfe */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 16px; border-radius: 999px;
   border: 1px solid var(--line-2); background: rgba(255, 255, 255, .04); color: var(--text); font-weight: 500; font-size: .93rem; line-height: 1;
-  white-space: nowrap; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, transform .12s var(--ease); }
-.btn:active { transform: scale(.97); }
+  white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease, transform .4s var(--feder-schnell); }
+.btn:active:not(:disabled) { transform: scale(.96); transition-duration: .2s, .2s, .2s, .2s, .08s; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .btn--primary { background: var(--coral); border-color: #F65656; color: #fff; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .3); }
 .btn--quiet { border-color: transparent; background: transparent; color: var(--text-2); }
@@ -103,5 +106,20 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
 .toast__a { border: 0; border-radius: 999px; padding: 6px 12px; background: var(--bg); color: var(--text); font-weight: 600; cursor: pointer; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 100; padding: 10px 16px; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; border-radius: 999px;
   background: var(--text); color: var(--bg); font-weight: 500; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); }
+
+/* Bewegung wie in iOS: Drücken federt, Reiter gleiten, Farben blenden weich */
+:where(a.card, button.card, .zeile, .chip, .jk, .gh, .mehr, .neu.card) { transition: transform .45s var(--feder-schnell), background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease; }
+:where(a.card, button.card, .zeile, .jk, .neu.card):active { transform: scale(.985); transition-duration: .1s, .2s, .2s, .2s, .2s; }
+:where(.chip):active { transform: scale(.95); transition-duration: .08s; }
+[role="tab"] { transition: color .3s ease, background-color .3s ease; }
+.mit-gleiter { position: relative; isolation: isolate; }
+.mit-gleiter > .gleiter { position: absolute; top: 0; left: 0; z-index: -1; border-radius: 999px; background: var(--text); pointer-events: none; opacity: 0;
+  transition: transform .55s var(--feder), width .55s var(--feder), height .55s var(--feder), opacity .2s ease; will-change: transform; }
+.mit-gleiter [role="tab"][aria-selected="true"] { background: transparent !important; }
+.gleiter-linie > .gleiter { border-radius: 2px; z-index: 1; }
+.gleiter-linie [role="tab"][aria-selected="true"] { border-bottom-color: transparent !important; }
+.chip { transition: background-color .25s ease, color .25s ease, border-color .25s ease, transform .45s var(--feder-schnell); }
+.input { transition: border-color .2s ease, box-shadow .25s ease, background-color .2s ease; }
+details > summary { transition: color .2s ease; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }

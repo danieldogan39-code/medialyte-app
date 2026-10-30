@@ -3,6 +3,9 @@
   import type { Snippet } from "svelte";
   import { R } from "../../lib/rechnungen/daten.svelte";
   import { rechnungenAnsicht as A } from "../../lib/rechnungen/ansicht.svelte";
+  import { slide } from "svelte/transition";
+  import { federKurve, ruhig } from "../../lib/bewegung";
+  const auf = federKurve(0.5, 0);
   let { art, docs, gefiltert, zeile, zusammenfassung, neu }: {
     art: "inv" | "quo"; docs: any[]; gefiltert: boolean; zeile: Snippet<[any]>;
     zusammenfassung: (l: any[]) => { attention: boolean; line: string; right: { betrag?: string; text: string; ton: string } }; neu: (kunde: string) => void;
@@ -27,7 +30,7 @@
       <svg class="pf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
     </button>
     {#if modus !== "closed"}
-      <div class="gb">
+      <div class="gb" transition:slide={{ duration: ruhig() ? 0 : auf.ms, easing: auf.easing }}>
         {#each zeige as d (d.id)}{@render zeile(d)}{/each}
         {#if zeige.length < g.list.length}<button class="mehr" onclick={() => (A.gruppen[key] = "all")}>Alle {g.list.length} anzeigen</button>{/if}
         {#if g.c}<button class="mehr neu" onclick={() => neu(g.k)}>+ {art === "inv" ? "Rechnung" : "Angebot"} für {name}</button>{/if}
@@ -45,7 +48,7 @@
   .hm small { font-size: .8rem; }
   .hs b { color: var(--text); font-weight: 600; }
   .hs { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
-  .pf { width: 18px; height: 18px; color: var(--steel); transition: transform .2s var(--ease); }
+  .pf { width: 18px; height: 18px; color: var(--steel); transition: transform .5s var(--feder); }
   .auf .pf { transform: rotate(180deg); }
   .gb { display: grid; gap: 2px; padding: 0 8px 8px; border-top: 1px solid var(--line); padding-top: 6px; }
   .mehr { justify-self: start; border: 0; background: none; color: var(--text-2); cursor: pointer; font: inherit; font-size: .86rem; padding: 8px 10px; border-radius: 8px; }

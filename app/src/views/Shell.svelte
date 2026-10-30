@@ -19,6 +19,15 @@
   import DemoWeiter from "./DemoWeiter.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
   import { appUpdate } from "../lib/appupdate.svelte";
+  import Ebenen from "../components/rechnungen/Ebenen.svelte";
+  import RechnungsKunde from "./RechnungsKunde.svelte";
+  import { R } from "../lib/rechnungen/daten.svelte";
+  import { fly, fade } from "svelte/transition";
+  import { federKurve, gleiter, ruhig } from "../lib/bewegung";
+  // Seitenwechsel: neue Seite gleitet sanft herein (Unterreiter derselben Seite bleiben stehen)
+  const rein = federKurve(0.5, 0), toastRein = federKurve(0.45, 0.18);
+  // Rechnungsdaten im Hintergrund (für Rechnungen und das Kundenmenü), auch ohne Internet
+  $effect(() => { if (auth.darf("rechnungen")) { R.meldung = (t) => daten.melden(t); R.starten(); } });
   $effect(() => { setTimeout(() => appUpdate.pruefen(), 4000); });
 
   let offen = $state(false);   // Navigation auf dem Handy
@@ -35,6 +44,7 @@
   });
 
   const t = $derived(router.teile);
+  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t.slice(0, 3).join("/"));
   const aktiv = (p: string) => (p === "/" ? router.pfad === "/" : router.pfad.startsWith(p));
 </script>
 
@@ -46,19 +56,12 @@
 
   <nav class="side" class:is-open={offen} aria-label="Hauptnavigation">
     <a class="brand side__brand" href="#/"><img src="./mono.svg" alt="" width="26" height="20"><img src="./wordmark.svg" alt="Medialyte" class="brand__wm" width="104" height="20"></a>
-    <div class="nav">
+    <div class="nav" use:gleiter={{ sel: "a.on" }}>
       <a href="#/" class:on={aktiv("/")}><Icon name="home" />Übersicht</a>
       {#if auth.darf("anfragen")}<a href="#/anfragen" class:on={aktiv("/anfragen")}><Icon name="inbox" />Anfragen{#if daten.neueAnfragen}<span class="badge num">{daten.neueAnfragen}</span>{/if}</a>{/if}
-      {#if auth.darf("akquise")}
-        <a href="#/akquise" class:on={aktiv("/akquise") && t.length === 1}><Icon name="layers" />Akquise</a>
-        <div class="sub">
-          {#each daten.kategorien as k (k.slug)}
-            <a href="#/akquise/{k.slug}" class:on={t[1] === k.slug} style="--c:{k.farbe}"><i class="dot"></i>{k.name}</a>
-          {/each}
-        </div>
-      {/if}
+      {#if auth.darf("akquise")}<a href="#/akquise" class:on={aktiv("/akquise")}><Icon name="layers" />Akquise</a>{/if}
       {#if auth.darf("akquise")}<a href="#/nachfassen" class:on={aktiv("/nachfassen")}><Icon name="phone" />Nachfassen{#if daten.nachfassHeute}<span class="badge badge--b num">{daten.nachfassHeute}</span>{/if}</a>{/if}
-      {#if auth.darf("kunden")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden{#if daten.tischbuchWartet}<span class="badge num" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/if}</a>{/if}
+      {#if auth.darf("kunden") || auth.darf("rechnungen")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden{#if daten.tischbuchWartet}<span class="badge num" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/if}</a>{/if}
       {#if auth.darf("rechnungen")}<a href="#/rechnungen" class:on={aktiv("/rechnungen")}><Icon name="receipt" />Rechnungen</a>{/if}
       {#if auth.darf("akquise")}<a href="#/kosten" class:on={aktiv("/kosten")}><Icon name="scale" />Kosten</a>{/if}
       {#if auth.darf("team")}<a href="#/team" class:on={aktiv("/team")}><Icon name="shield" />Team & Rechte</a>{/if}
@@ -70,10 +73,12 @@
       <button class="btn btn--quiet btn--icon" title="Abmelden" aria-label="Abmelden" onclick={() => auth.abmelden()}><Icon name="logout" size={17} /></button>
     </div>
   </nav>
-  {#if offen}<button class="scrim" aria-label="Menü schließen" onclick={() => (offen = false)}></button>{/if}
+  <button class="scrim" class:is-open={offen} aria-label="Menü schließen" tabindex={offen ? 0 : -1} aria-hidden={!offen} onclick={() => (offen = false)}></button>
 
   <main class="main">
     {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} verfügbar. Einfach herunterladen und über die alte installieren – deine Daten bleiben erhalten.</span><a class="btn btn--s btn--primary" href={appUpdate.neu.url} target="_blank" rel="noopener">Herunterladen</a><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
+    {#key seite}
+    <div class="seite" in:fly={{ y: ruhig() ? 0 : 14, duration: ruhig() ? 0 : rein.ms, easing: rein.easing, opacity: 0 }}>
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
     {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}<DemoWeiter slug={t[2]} />
@@ -83,14 +88,18 @@
     {:else if t[0] === "akquise"}<Akquise />
     {:else if t[0] === "nachfassen"}<Nachfassen slug={t[1]} />
     {:else if t[0] === "team"}<Team />
+    {:else if t[0] === "kunden" && t[1] === "r" && t[2]}<RechnungsKunde id={t[2]} />
     {:else if t[0] === "kunden" && t[1]}<Kunde slug={t[1]} />
     {:else if t[0] === "kunden"}<Kunden />
     {:else if t[0] === "rechnungen" && auth.darf("rechnungen")}<Rechnungen />
     {:else}<Uebersicht />{/if}
+    </div>
+    {/key}
   </main>
 </div>
 
-{#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} role="status"><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
+{#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} role="status" in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
+<Ebenen />
 <Rueckfrage />
 
 <style>
@@ -105,14 +114,12 @@
   .side__brand { padding: 0 8px; }
   .nav { display: grid; gap: 2px; align-content: start; flex: 1; }
   .nav a { display: flex; align-items: center; gap: 11px; min-height: 38px; padding: 0 10px; border-radius: var(--radius-s); color: var(--text-2); font-weight: 500;
-    transition: background-color .12s ease, color .12s ease; }
+    transition: background-color .2s ease, color .2s ease; }
   .nav a :global(svg) { color: var(--steel); flex: none; }
-  .nav a.on { background: rgba(255, 255, 255, .07); color: var(--text); }
+  .nav a.on { background: transparent; color: var(--text); }
+  .nav :global(.gleiter) { background: rgba(255, 255, 255, .07) !important; border-radius: var(--radius-s) !important; }
   .nav a.on :global(svg) { color: var(--text); }
   @media (hover: hover) { .nav a:hover { background: var(--hover); color: var(--text); } }
-  .sub { display: grid; gap: 1px; margin: 2px 0 8px 19px; padding-left: 12px; border-left: 1px solid var(--line); }
-  .sub a { min-height: 32px; font-size: .9rem; font-weight: 400; gap: 10px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
   .badge--b { background: var(--info) !important; color: #06101F !important; }
   .badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--coral); color: #fff; font-size: .75rem; font-weight: 600; display: grid; place-items: center; }
   .me { display: flex; align-items: center; gap: 10px; padding: 10px 6px 0 8px; border-top: 1px solid var(--line); }
@@ -127,10 +134,11 @@
     .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start; }
     .top { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 30; height: calc(56px + env(safe-area-inset-top));
       padding: env(safe-area-inset-top) 12px 0 8px; background: rgba(10, 18, 32, .96); border-bottom: 1px solid var(--line); }
-    .side { position: fixed; inset: 0 auto 0 0; z-index: 50; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .28s var(--ease);
+    .side { position: fixed; inset: 0 auto 0 0; z-index: 50; width: min(300px, 86vw); transform: translateX(-102%); transition: transform .5s var(--feder-weich), box-shadow .5s ease;
       padding-top: calc(22px + env(safe-area-inset-top)); padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
     .side.is-open { transform: none; box-shadow: 20px 0 60px -20px rgba(0, 0, 0, .7); }
-    .scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .45); border: 0; }
+    .scrim { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, .45); border: 0; opacity: 0; pointer-events: none; transition: opacity .35s ease; }
+    .scrim.is-open { opacity: 1; pointer-events: auto; }
     .main { padding: 22px 16px calc(48px + env(safe-area-inset-bottom)); }
   }
 </style>

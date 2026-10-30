@@ -675,7 +675,7 @@ main.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
       document.title = "Tischbuch · " + NAME;
       $("#app").hidden = false; los();
     });
-    if (window.parent !== window) window.parent.postMessage({ typ: "tb-bereit" }, location.origin);
+    if (window.parent !== window) window.parent.postMessage({ typ: "tb-bereit" }, location.origin === "null" ? "*" : location.origin);
   } else los();
   setInterval(function () { if (!document.hidden) { laden(); agLaden(); } }, 60000);
   if (BEISPIEL) addEventListener("tb-beispiel", function () { laden(); agLaden(); });  // Beispiel: Antwort des Agenten sofort zeigen

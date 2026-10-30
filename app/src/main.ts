@@ -5,6 +5,13 @@ import { auth } from "./lib/auth.svelte";
 import { swStarten } from "./lib/push";
 import { B } from "./lib/rechnungen/blatt.svelte";
 import { R } from "./lib/rechnungen/daten.svelte";
+import { federCss } from "./lib/bewegung";
+import { modalZu } from "./lib/bewegung";
+
+// Federkurven als CSS-Variablen (für Übergänge in den Stilen)
+document.documentElement.style.setProperty("--feder", federCss(0.5, 0.08));
+document.documentElement.style.setProperty("--feder-weich", federCss(0.6, 0));
+document.documentElement.style.setProperty("--feder-schnell", federCss(0.32, 0.1));
 
 auth.init();
 mount(App, { target: document.getElementById("app")! });
@@ -29,9 +36,9 @@ if (cap?.isNativePlatform?.()) {
   const App = cap.Plugins?.App;
   App?.addListener("backButton", () => {
     const offen = [...document.querySelectorAll("dialog[open]")] as HTMLDialogElement[];
+    if (offen.length) { modalZu(offen[offen.length - 1]); return; }
     if (B.liste.length) return B.zu(B.liste[B.liste.length - 1].id);
     if (R.pdf) { URL.revokeObjectURL(R.pdf.url); R.pdf = null; return; }
-    if (offen.length) return offen[offen.length - 1].close();
     if (location.hash && location.hash !== "#/" && history.length > 1) return history.back();
     App.minimizeApp();
   });

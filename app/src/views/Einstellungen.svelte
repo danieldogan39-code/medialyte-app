@@ -37,7 +37,7 @@
         <Schalter an={push} label="Benachrichtigungen" disabled={arbeitet || !kannPush()} onchange={umschalten} />
       </div>
       {#if !kannPush()}
-        <p class="hinweis">{istProgramm ? "Im Programm und in der Android-App kommen Benachrichtigungen noch nicht an. Öffne dafür app.medialyte.de im Browser (am Handy in Chrome, dann „Zum Startbildschirm hinzufügen“) und schalte sie dort ein." : "Dieser Browser kann keine Benachrichtigungen empfangen."}</p>
+        <p class="hinweis">{istProgramm ? "Am Mac und unter Windows kommen Benachrichtigungen über die Android-App oder den Browser. Schalte sie in der Android-App ein – dort sind es echte App-Nachrichten." : "Dieser Browser kann keine Benachrichtigungen empfangen."}</p>
       {/if}
       {#if geraete != null}<small class="muted">Angemeldete Geräte insgesamt: {geraete}</small>{/if}
       {#if push}<button class="btn btn--s" onclick={() => pushTest().then(() => daten.melden("Probe ist unterwegs.")).catch(() => daten.melden("Probe ließ sich nicht senden."))}>Probe senden</button>{/if}

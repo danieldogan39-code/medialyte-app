@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { gleiter } from "../lib/bewegung";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Verlauf from "../components/Verlauf.svelte";
@@ -39,7 +40,7 @@
 <div class="wrap" class:has-detail={!!id}>
   <div class="listen">
     <Head titel="Anfragen" text="Terminbuchungen und Rückrufwünsche von medialyte.de – neue erscheinen sofort." />
-    <div class="seg" role="tablist">
+    <div class="seg" role="tablist" use:gleiter={{ farbe: "var(--panel-2)" }}>
       {#each [["offen", "Offen"], ["alle", "Alle"], ["gewonnen", "Gewonnen"], ["zu", "Verloren & Spam"]] as [k, n]}
         <button role="tab" aria-selected={sicht === k} onclick={() => (sicht = k as any)}>{n}</button>
       {/each}

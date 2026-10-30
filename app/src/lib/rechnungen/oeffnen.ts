@@ -11,5 +11,5 @@ export const oeffneRechnung = (inv: any) => (inv?.status === "draft" ? B.auf(Rec
 export const neueRechnung = (kunde = "") => B.auf(RechnungEditor, { inv: null, kunde });
 export const oeffneAngebot = (q: any) => (q?.status === "draft" ? B.auf(AngebotEditor, { q }) : B.auf(AngebotDetail, { q }));
 export const neuesAngebot = (kunde = "") => B.auf(AngebotEditor, { q: null, kunde });
-export const oeffneKunde = (c: any, gespeichert?: (k: any) => void) => B.auf(KundeEditor, { c, gespeichert });
-export const oeffneAbo = (r: any) => B.auf(AboEditor, { r });
+export const oeffneKunde = (c: any, gespeichert?: (k: any) => void, extra: { vorlage?: Record<string, string>; kundeSlug?: string | null } = {}) => B.auf(KundeEditor, { c, gespeichert, ...extra });
+export const oeffneAbo = (r: any, kunde = "") => B.auf(AboEditor, { r, kunde });

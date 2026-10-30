@@ -9,6 +9,10 @@
   import WuVorlage from "../components/rechnungen/WuVorlage.svelte";
   import Einstellungen from "../components/rechnungen/Einstellungen.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
+  import { gleiter, federKurve, ruhig } from "../lib/bewegung";
+  import { fly } from "svelte/transition";
+  const tabRein = federKurve(0.45, 0);
+
   import { B, versuche } from "../lib/rechnungen/blatt.svelte";
   import { rechnungenAnsicht as A } from "../lib/rechnungen/ansicht.svelte";
   import { invStatus, quoteStatus, isWU } from "../lib/rechnungen/status";
@@ -18,9 +22,9 @@
   import { daten } from "../lib/daten.svelte";
   import { frage } from "../lib/frage.svelte";
 
-  $effect(() => { R.meldung = (t) => daten.melden(t); R.starten(); });
+  $effect(() => { R.starten(); if (A.tab === "customers") A.tab = "invoices"; });
   const darf = $derived(auth.darf("rechnungen", true));
-  const TABS = [["invoices", "Rechnungen", "receipt"], ["quotes", "Angebote", "note"], ["customers", "Kunden", "users"], ["recurring", "Abos", "refresh"], ["settings", "Einstellungen", "settings"]] as const;
+  const TABS = [["invoices", "Rechnungen", "receipt"], ["quotes", "Angebote", "note"], ["recurring", "Abos", "refresh"], ["settings", "Einstellungen", "settings"]] as const;
   let laedt = $state(false);
   const neuLaden = () => { if (laedt) return; laedt = true; versuche(() => R.loadAll()).finally(() => (laedt = false)); };
 
@@ -87,13 +91,9 @@
     if (error) throw error; oeffneAngebot(data);
   });
 
-  // PDF-Ansicht als oberstes Fenster (über offenen Blättern)
-  let pdfDlg: HTMLDialogElement | undefined = $state();
-  $effect(() => { if (pdfDlg && !pdfDlg.open) pdfDlg.showModal(); });
-  const pdfZu = () => { if (R.pdf) URL.revokeObjectURL(R.pdf.url); R.pdf = null; };
 
-  const fab = () => ({ invoices: () => neueRechnung(), quotes: () => neuesAngebot(), customers: () => oeffneKunde(null), recurring: () => oeffneAbo(null) } as Record<string, () => void>)[A.tab]?.();
-  const FAB: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", customers: "Kunde", recurring: "Abo" };
+  const fab = () => ({ invoices: () => neueRechnung(), quotes: () => neuesAngebot(), recurring: () => oeffneAbo(null) } as Record<string, () => void>)[A.tab]?.();
+  const FAB: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", recurring: "Abo" };
 </script>
 
 {#snippet reZeile(i: any)}
@@ -110,7 +110,7 @@
 {/snippet}
 
 <div class="kopf">
-  <div class="tabs" role="tablist">
+  <div class="tabs" role="tablist" use:gleiter>
     {#each TABS as [k, t, ic]}<button role="tab" aria-label={t} aria-selected={A.tab === k} onclick={() => { A.tab = k; scrollTo(0, 0); }}><Icon name={ic} size={16} /><span>{t}</span></button>{/each}
   </div>
   <span class="sp"></span>
@@ -119,6 +119,7 @@
 </div>
 {#if R.offline || R.outbox.length}<div class="banner">Ohne Internet arbeitest du ganz normal weiter: Alles wird auf dem Gerät gespeichert und automatisch übertragen, sobald du wieder online bist.</div>{/if}
 
+{#key A.tab}<div in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : tabRein.ms, easing: tabRein.easing, opacity: 0 }}>
 {#if !R.loaded}<p class="muted">Lade …</p>
 {:else if A.tab === "invoices"}
   <div class="seite-h"><h1>{greeting(R.settings.account_holder || auth.ich?.name || "")}</h1>
@@ -145,7 +146,7 @@
   {:else}<div class="card empty"><b>{R.invoices.length ? "Nichts gefunden" : "Noch keine Rechnungen"}</b><p>{R.invoices.length ? "Ändere den Filter oder die Suche." : "Leg mit dem Plus-Knopf deine erste Rechnung an."}</p></div>{/if}
 
 {:else if A.tab === "quotes"}
-  <div class="seg" role="tablist"><button role="tab" aria-selected={A.qview !== "update"} onclick={() => (A.qview = "standard")}>Angebote</button><button role="tab" aria-selected={A.qview === "update"} onclick={() => (A.qview = "update")}>Website-Update</button></div>
+  <div class="seg" role="tablist" use:gleiter><button role="tab" aria-selected={A.qview !== "update"} onclick={() => (A.qview = "standard")}>Angebote</button><button role="tab" aria-selected={A.qview === "update"} onclick={() => (A.qview = "update")}>Website-Update</button></div>
   {#if A.qview === "update"}
     <div class="seite-h"><h1>Website-Update</h1><p class="muted">Eine komplett neue Website zum Festpreis – für Kunden, die schon länger bei dir sind. Zweiseitig: Anschreiben mit Begründung, dann das Angebot.</p></div>
     <div class="card wu">
@@ -176,18 +177,6 @@
     {:else}<div class="card empty"><b>{angebote.length ? "Nichts gefunden" : "Noch keine Angebote"}</b><p>{angebote.length ? "Ändere den Filter oder die Suche." : "Leg mit dem Plus-Knopf dein erstes Angebot an."}</p></div>{/if}
   {/if}
 
-{:else if A.tab === "customers"}
-  <div class="seite-h"><h1>Kunden</h1><p class="muted">{R.customers.length} {R.customers.length === 1 ? "Kunde" : "Kunden"}</p></div>
-  {#if R.customers.length}
-    <div class="liste">
-      {#each R.customers as c (c.id)}
-        {@const offen = R.invoices.filter((i) => i.customer_id === c.id && ["open", "overdue"].includes(invStatus(i).key)).reduce((a, i) => a + +i.gross, 0)}
-        <button class="zeile" onclick={() => oeffneKunde(c)}><span class="h"><b>{c.name}</b><small class="muted">{[c.number && "Nr. " + c.number, c.contact, c.email || "keine E-Mail", c.city].filter(Boolean).join(" · ")}</small></span>
-          <span class="r">{#if offen}<b class="num">{eur(offen)}</b><span class="pill pill--plain pill--gelb">offen</span>{/if}</span></button>
-      {/each}
-    </div>
-  {:else}<div class="card empty"><b>Noch keine Kunden</b><p>Leg deinen ersten Kunden an.</p></div>{/if}
-
 {:else if A.tab === "recurring"}
   <div class="seite-h"><h1>Abos</h1><p class="muted">Wiederkehrende Rechnungen, die sich selbst schreiben</p></div>
   <div class="note">Abos erzeugen am Stichtag automatisch eine Rechnung und schicken sie, wenn gewünscht, direkt an den Kunden. Der Server prüft das jeden Morgen.</div>
@@ -204,18 +193,11 @@
 {:else}
   <Einstellungen />
 {/if}
+</div>{/key}
 
 {#if darf && FAB[A.tab] && !(A.tab === "quotes" && A.qview === "update")}<button class="btn btn--primary fab" onclick={fab}><Icon name="plus" size={18} />{FAB[A.tab]}</button>{/if}
 
-{#each B.liste as b (b.id)}{@const K = b.komp}<K {...b.props} zu={() => B.zu(b.id)} />{/each}
 
-{#if R.pdf}
-  <dialog class="pdf" bind:this={pdfDlg} aria-label={R.pdf.name} onclose={pdfZu}>
-    <div class="pdf__k"><b>{R.pdf.name}</b><span class="sp"></span><a class="btn btn--s" href={R.pdf.url} download={R.pdf.name}>Speichern</a>
-      <button class="btn btn--quiet btn--icon" onclick={() => pdfDlg?.close()} aria-label="Schließen"><Icon name="x" /></button></div>
-    <iframe src={R.pdf.url} title={R.pdf.name}></iframe>
-  </dialog>
-{/if}
 
 <style>
   .kopf { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
@@ -278,8 +260,4 @@
   .note { padding: 10px 14px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .1); color: #A9C9F5; font-size: .9rem; margin-bottom: 12px; }
   .fab { position: fixed; right: max(24px, calc((100vw - var(--side, 0px)) / 2 - 560px)); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 5; min-height: 52px; padding: 0 22px; font-size: 1rem;
     box-shadow: 0 16px 36px -14px rgba(242, 74, 74, .7); }
-  .pdf::backdrop { background: rgba(4, 8, 16, .6); }
-  .pdf { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: rgba(4, 8, 16, .9); z-index: 50; display: grid; grid-template-rows: auto 1fr; }
-  .pdf__k { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--panel); color: var(--text); }
-  .pdf iframe { width: 100%; height: 100%; border: 0; background: #fff; }
 </style>
