@@ -11,9 +11,11 @@ class Daten {
   team = $state<Mitglied[]>([]);
   agenten = $state<Agent[]>([]);
   neueAnfragen = $state(0);
+  nachfassHeute = $state(0);      // wird von der Nachfass-Seite gesetzt
   befehle = $state<any[]>([]);      // offene/laufende Aufträge an den Agenten
   laufend = $state<Record<string, any>>({});   // laufender Lauf je Kategorie (Live-Stand)
   toast = $state("");
+  toastAktion = $state<{ label: string; fn: () => void } | null>(null);
   #kanal: ReturnType<typeof sb.channel> | null = null;
   #kanal2: ReturnType<typeof sb.channel> | null = null;
   #t = 0;
@@ -81,9 +83,9 @@ class Daten {
   }
   kat(slug?: string | null) { return this.kategorien.find((k) => k.slug === slug); }
   name(uid?: string | null) { return this.team.find((m) => m.user_id === uid)?.name ?? ""; }
-  melden(text: string) {
-    this.toast = text; clearTimeout(this.#t);
-    this.#t = setTimeout(() => (this.toast = ""), 3200) as unknown as number;
+  melden(text: string, aktion?: { label: string; fn: () => void }) {
+    this.toast = text; this.toastAktion = aktion ?? null; clearTimeout(this.#t);
+    this.#t = setTimeout(() => { this.toast = ""; this.toastAktion = null; }, aktion ? 10000 : 3200) as unknown as number;
   }
 }
 export const daten = new Daten();

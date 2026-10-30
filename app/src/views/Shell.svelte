@@ -10,6 +10,7 @@
   import Betrieb from "./Betrieb.svelte";
   import Anfragen from "./Anfragen.svelte";
   import Team from "./Team.svelte";
+  import Nachfassen from "./Nachfassen.svelte";
   import Bald from "./Bald.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
 
@@ -40,6 +41,7 @@
           {/each}
         </div>
       {/if}
+      {#if auth.darf("akquise")}<a href="#/nachfassen" class:on={aktiv("/nachfassen")}><Icon name="phone" />Nachfassen{#if daten.nachfassHeute}<span class="badge badge--b num">{daten.nachfassHeute}</span>{/if}</a>{/if}
       {#if auth.darf("kunden")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden</a>{/if}
       {#if auth.darf("rechnungen")}<a href="#/rechnungen" class:on={aktiv("/rechnungen")}><Icon name="receipt" />Rechnungen</a>{/if}
       {#if auth.darf("team")}<a href="#/team" class:on={aktiv("/team")}><Icon name="shield" />Team & Rechte</a>{/if}
@@ -57,6 +59,7 @@
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
     {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "board"} />
     {:else if t[0] === "akquise"}<Akquise />
+    {:else if t[0] === "nachfassen"}<Nachfassen slug={t[1]} />
     {:else if t[0] === "team"}<Team />
     {:else if t[0] === "kunden"}<Bald titel="Kunden" text="Kunden aus Anfragen, Akquise und Rechnungen an einem Ort – kommt mit dem Zusammenführen der Rechnungs-App (Etappe 4)." />
     {:else if t[0] === "rechnungen"}<Bald titel="Rechnungen & Angebote" text="Die Rechnungs-App zieht in Etappe 4 komplett hierher. Bis dahin öffnest du sie wie gewohnt." link />
@@ -64,7 +67,7 @@
   </main>
 </div>
 
-{#if daten.toast}<div class="toast" role="status">{daten.toast}</div>{/if}
+{#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} role="status"><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
 <Rueckfrage />
 
 <style>
@@ -85,6 +88,7 @@
   .sub { display: grid; gap: 1px; margin: 2px 0 8px 19px; padding-left: 12px; border-left: 1px solid var(--line); }
   .sub a { min-height: 32px; font-size: .9rem; font-weight: 400; gap: 10px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+  .badge--b { background: var(--info) !important; color: #06101F !important; }
   .badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--coral); color: #fff; font-size: .75rem; font-weight: 600; display: grid; place-items: center; }
   .me { display: flex; align-items: center; gap: 10px; padding: 10px 6px 0 8px; border-top: 1px solid var(--line); }
   .me__av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-2); color: var(--text); font-weight: 600; flex: none; }

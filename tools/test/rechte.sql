@@ -140,3 +140,15 @@ do $$ begin
   raise notice 'OK nur bekannte Befehle';
 end $$;
 reset role;
+
+-- 11) Geheimnisse: für niemanden in der App lesbar, auch nicht für den Inhaber
+insert into public.geheim (name, wert) values ('test', '{"x": 1}') on conflict do nothing;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ begin
+  begin perform 1 from public.geheim; raise exception 'Geheimnis lesbar';
+  exception when insufficient_privilege then raise notice 'OK Geheimnisse nicht lesbar'; end;
+  insert into public.nachfass (slug, status) values ('test-demo', 'rueckruf');
+  raise notice 'OK Nachfassen schreibbar';
+end $$;
+reset role;

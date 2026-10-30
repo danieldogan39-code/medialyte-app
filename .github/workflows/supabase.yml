@@ -84,6 +84,7 @@ jobs:
           supabase functions deploy anfrage --project-ref "$PROJECT_REF" --no-verify-jwt
           supabase functions deploy team --project-ref "$PROJECT_REF"
           supabase functions deploy befehl --project-ref "$PROJECT_REF"
+          supabase functions deploy zaehler --project-ref "$PROJECT_REF"
 
       - name: Buchungsformular von medialyte.de verbinden und bisherige Anfragen übernehmen
         env:
