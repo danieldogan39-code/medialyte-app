@@ -9,6 +9,10 @@
   let rechte = $state<any[]>([]), einladen = $state(false), name = $state(""), email = $state(""), rolle = $state("marketing");
   let link = $state(""), linkFuer = $state(""), laeuft = $state(false);
   const darf = $derived(auth.darf("team", true));
+  const binInhaber = $derived(auth.ich?.rolle === "inhaber");
+  // Einen Inhaber kann niemand außer ihm selbst ändern; zum Inhaber machen kann nur ein Inhaber
+  const aenderbar = (m: any) => darf && m.user_id !== auth.ich?.user_id && m.rolle !== "inhaber";
+  const rollen = $derived(Object.entries(ROLLEN).filter(([k]) => k !== "inhaber" || binInhaber));
 
   async function laden() { rechte = (await sb.from("rechte").select("*")).data ?? []; await daten.laden(); }
   $effect(() => { laden(); });
@@ -38,7 +42,12 @@
     if (m.aktiv && !confirm(`Zugang von ${m.name} sperren?`)) return;
     if (await team({ aktion: m.aktiv ? "sperren" : "entsperren", user_id: m.user_id })) { daten.melden(m.aktiv ? "Gesperrt" : "Entsperrt"); laden(); }
   }
+  async function loeschen(m: any) {
+    if (!confirm(`${m.name} endgültig löschen? Das Konto wird entfernt, ${m.name} kann sich nicht mehr anmelden. Notizen und Verlauf bleiben erhalten.`)) return;
+    if (await team({ aktion: "loeschen", user_id: m.user_id })) { daten.melden(`${m.name} gelöscht`); laden(); }
+  }
   async function rolleAendern(m: any, r: string) {
+    if (r === "inhaber" && !confirm(`${m.name} zum Inhaber machen? Danach kann nur ${m.name} selbst diesen Zugang ändern.`)) { laden(); return; }
     const { error } = await sb.from("mitglieder").update({ rolle: r }).eq("user_id", m.user_id);
     if (error) daten.melden(fehler(error)); else { daten.melden("Rolle geändert"); laden(); }
   }
@@ -58,7 +67,7 @@
   <form class="card inv" onsubmit={einladenSenden}>
     <label class="field"><span>Vorname</span><input class="input" bind:value={name} required></label>
     <label class="field"><span>E-Mail</span><input class="input" type="email" bind:value={email} required></label>
-    <label class="field"><span>Rolle</span><select class="input" bind:value={rolle}>{#each Object.entries(ROLLEN) as [k, v]}<option value={k}>{v}</option>{/each}</select></label>
+    <label class="field"><span>Rolle</span><select class="input" bind:value={rolle}>{#each rollen as [k, v]}<option value={k}>{v}</option>{/each}</select></label>
     <div class="inv__a"><button class="btn btn--quiet" type="button" onclick={() => (einladen = false)}>Abbrechen</button><button class="btn btn--primary" type="submit" disabled={laeuft}>Einladungslink erzeugen</button></div>
   </form>
 {/if}
@@ -80,15 +89,16 @@
   <tbody>
     {#each daten.team as m (m.user_id)}
       <tr class="nohover">
-        <td><b>{m.name}</b>{#if m.user_id === auth.ich?.user_id} <small class="muted">(du)</small>{/if}</td>
+        <td><b>{m.name}</b>{#if m.user_id === auth.ich?.user_id}<small class="muted du">(du)</small>{/if}</td>
         <td class="h-m">{m.email}</td>
-        <td>{#if darf && m.user_id !== auth.ich?.user_id}<select class="input sm" value={m.rolle} onchange={(e) => rolleAendern(m, (e.target as HTMLSelectElement).value)}>{#each Object.entries(ROLLEN) as [k, v]}<option value={k}>{v}</option>{/each}</select>{:else}{ROLLEN[m.rolle]}{/if}</td>
+        <td>{#if aenderbar(m)}<select class="input sm" value={m.rolle} onchange={(e) => rolleAendern(m, (e.target as HTMLSelectElement).value)}>{#each rollen as [k, v]}<option value={k}>{v}</option>{/each}</select>{:else}{ROLLEN[m.rolle]}{#if m.rolle === "inhaber"} <span class="muted lock" title="Nur der Inhaber selbst kann diesen Zugang ändern"><Icon name="shield" size={14} /></span>{/if}{/if}</td>
         <td><span class="pill pill--{m.aktiv ? 'gruen' : 'grau'}">{m.aktiv ? "Aktiv" : "Gesperrt"}</span></td>
-        {#if darf}<td class="acts">{#if m.user_id !== auth.ich?.user_id}
+        {#if darf}<td><div class="acts">{#if aenderbar(m)}
           <button class="btn btn--s btn--quiet" onclick={() => neuerLink(m)} title="Neuer Link zum Passwort setzen"><Icon name="key" size={15} /><span class="h-m">Neuer Link</span></button>
           <button class="btn btn--s btn--quiet" onclick={() => zweifaktor(m)} title="Zwei-Faktor zurücksetzen"><Icon name="shield" size={15} /><span class="h-m">2FA zurücksetzen</span></button>
           <button class="btn btn--s btn--quiet" onclick={() => sperren(m)} title={m.aktiv ? "Zugang sperren" : "Zugang entsperren"}><Icon name={m.aktiv ? "x" : "check"} size={15} /><span class="h-m">{m.aktiv ? "Sperren" : "Entsperren"}</span></button>
-        {/if}</td>{/if}
+          {#if binInhaber}<button class="btn btn--s btn--quiet del" onclick={() => loeschen(m)} title="Mitglied endgültig löschen"><Icon name="trash" size={15} /><span class="h-m">Löschen</span></button>{/if}
+        {/if}</div></td>{/if}
       </tr>
     {/each}
   </tbody>
@@ -120,6 +130,9 @@
   .linkbox__a { display: flex; gap: 8px; flex-wrap: wrap; }
   .nohover { cursor: default !important; }
   .acts { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
+  .du { margin-left: 6px; }
+  .lock { display: inline-flex; vertical-align: -2px; }
+  .del { color: #FF8080; }
   .sm { min-height: 32px; padding: 4px 30px 4px 10px; width: auto; }
   .sec { margin: 36px 0 6px; }
   .lead { margin-bottom: 14px; }

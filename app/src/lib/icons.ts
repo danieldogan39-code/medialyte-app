@@ -32,6 +32,7 @@ export const ICONS: Record<string, string> = {
   external: '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.3l1.7-1.8"/><path d="M20 20v-4.5h-4.5"/>',
   note: '<path d="M5 3.5h10l4 4V20.5H5z"/><path d="M14.5 3.5V8h4.5"/><path d="M8.5 12.5h7M8.5 16h5"/>',
+  trash: '<path d="M4 7h16"/><path d="M9 7V4.5h6V7"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   // Kategorien
   utensils: '<path d="M7 3v8a2 2 0 0 0 2 2v8"/><path d="M5 3v5a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V3"/><path d="M9 3v7"/><path d="M17 21V3c-2 1-3 3.5-3 7 0 2 1 3 3 3"/>',

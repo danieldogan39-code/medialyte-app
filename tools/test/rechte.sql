@@ -106,3 +106,26 @@ do $$ begin
   if (select count(*) from public.kategorien where aktiv) <> 1 then raise exception 'Kategorien-Start falsch'; end if;
   raise notice 'OK nur Gastronomie startet aktiv';
 end $$;
+
+-- 9) Inhaber geschützt: Ein Mitglied mit Team-Rechten kann den Inhaber nicht ändern und niemanden zum Inhaber machen
+insert into public.rechte (rolle, bereich, lesen, schreiben) values ('marketing', 'team', true, true)
+  on conflict (rolle, bereich) do update set lesen = true, schreiben = true;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ begin
+  begin update public.mitglieder set aktiv = false where rolle = 'inhaber'; raise exception 'Inhaber gesperrt durch Marketing';
+  exception when raise_exception then if sqlerrm not like 'Den Inhaber kann nur er selbst%' then raise; end if; end;
+  begin update public.mitglieder set rolle = 'inhaber' where user_id = '00000000-0000-0000-0000-0000000000f1'; raise exception 'Marketing machte Inhaber';
+  exception when raise_exception then if sqlerrm not like 'Zum Inhaber machen kann nur%' then raise; end if; end;
+  begin update public.rechte set schreiben = false where rolle = 'inhaber' and bereich = 'team'; raise exception 'Inhaber-Rechte geändert';
+  exception when raise_exception then if sqlerrm not like 'Der Inhaber hat immer%' then raise; end if; end;
+  raise notice 'OK Inhaber unantastbar für andere';
+end $$;
+-- Der Inhaber selbst darf seinen Namen ändern
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare n int; begin
+  update public.mitglieder set name = 'Daniel' where user_id = auth.uid(); get diagnostics n = row_count;
+  if n <> 1 then raise exception 'Inhaber kann sich nicht ändern'; end if;
+  raise notice 'OK Inhaber ändert sich selbst';
+end $$;
+reset role;

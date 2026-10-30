@@ -1,5 +1,6 @@
-// Team verwalten: Mitglied einladen, Zugangslink neu erzeugen, Zwei-Faktor zurücksetzen, Zugang sperren.
+// Team verwalten: Mitglied einladen, Zugangslink neu erzeugen, Zwei-Faktor zurücksetzen, Zugang sperren, löschen.
 // Nur für Mitglieder mit Schreibrecht im Bereich „team“ (und bestätigter Zwei-Faktor-Anmeldung).
+// Einen Inhaber kann niemand außer ihm selbst ändern; zum Inhaber machen und Mitglieder löschen kann nur ein Inhaber.
 // Einladungen kommen als Link zurück, den der Inhaber selbst weitergibt (WhatsApp, E-Mail) – so hängt nichts an einem Mailserver.
 import { admin, alsNutzer, cors, json } from "../_shared/util.ts";
 
@@ -14,6 +15,10 @@ Deno.serve(async (req) => {
   const { data: darf } = await nutzer.rpc("darf", { p_bereich: "team", p_schreiben: true });
   if (darf !== true) return json(403, { ok: false, error: "Dafür fehlt dir das Recht (oder die Zwei-Faktor-Anmeldung)." });
 
+  const { data: ich } = await nutzer.auth.getUser();
+  const { data: inhaber } = await nutzer.rpc("ist_inhaber");
+  const binInhaber = inhaber === true;
+
   let e: Record<string, any>;
   try { e = await req.json(); } catch { return json(400, { ok: false }); }
   const db = admin();
@@ -24,6 +29,9 @@ Deno.serve(async (req) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !name || !ROLLEN.includes(e.rolle)) {
       return json(422, { ok: false, error: "Bitte Name, E-Mail und Rolle angeben." });
     }
+    if (e.rolle === "inhaber" && !binInhaber) return json(403, { ok: false, error: "Zum Inhaber machen kann nur ein Inhaber." });
+    const { data: schon } = await db.from("mitglieder").select("rolle").eq("email", email).maybeSingle();
+    if (schon?.rolle === "inhaber") return json(403, { ok: false, error: "Den Inhaber kann nur er selbst ändern." });
     const { data, error } = await db.auth.admin.generateLink({ type: "invite", email, options: { redirectTo: `${APP_URL}/` } });
     if (error || !data?.user) return json(400, { ok: false, error: error?.message ?? "Einladung fehlgeschlagen" });
     const { error: e2 } = await db.from("mitglieder").upsert({ user_id: data.user.id, name, email, rolle: e.rolle, aktiv: true });
@@ -33,8 +41,9 @@ Deno.serve(async (req) => {
 
   const id = String(e.user_id ?? "");
   if (!/^[0-9a-f-]{36}$/.test(id)) return json(422, { ok: false, error: "Mitglied fehlt." });
-  const { data: m } = await db.from("mitglieder").select("email").eq("user_id", id).maybeSingle();
+  const { data: m } = await db.from("mitglieder").select("email,rolle").eq("user_id", id).maybeSingle();
   if (!m) return json(404, { ok: false, error: "Mitglied nicht gefunden." });
+  if (m.rolle === "inhaber" && id !== ich?.user?.id) return json(403, { ok: false, error: "Den Inhaber kann nur er selbst ändern." });
 
   if (e.aktion === "neuer_link") {
     // Passwort vergessen: neuer Link zum Setzen des Passworts
@@ -56,6 +65,17 @@ Deno.serve(async (req) => {
     const { error } = await db.from("mitglieder").update({ aktiv: !sperren }).eq("user_id", id);
     if (error) return json(400, { ok: false, error: error.message });   // z. B. letzter Inhaber
     await db.auth.admin.updateUserById(id, { ban_duration: sperren ? "876000h" : "none" });
+    return json(200, { ok: true });
+  }
+
+  if (e.aktion === "loeschen") {
+    // Endgültig: Konto und Mitgliedschaft entfernen. Notizen und Verlauf bleiben (ohne Namen).
+    if (!binInhaber) return json(403, { ok: false, error: "Mitglieder löschen kann nur der Inhaber." });
+    if (id === ich?.user?.id || m.rolle === "inhaber") return json(403, { ok: false, error: "Ein Inhaber kann nicht gelöscht werden." });
+    const { error } = await db.from("mitglieder").delete().eq("user_id", id);
+    if (error) return json(400, { ok: false, error: error.message });
+    const { error: e3 } = await db.auth.admin.deleteUser(id);
+    if (e3) return json(500, { ok: false, error: "Mitglied entfernt, Konto aber nicht gelöscht: " + e3.message });
     return json(200, { ok: true });
   }
 
