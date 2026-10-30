@@ -30,6 +30,7 @@ jobs:
           npm run check
           npm run build
           cp ../deploy/web/.htaccess dist/.htaccess
+          for d in tischbuch-ansicht tischbuch-beispiel; do cp ../deploy/web/tischbuch.htaccess "dist/$d/.htaccess"; done
       - name: Hochladen (nur wenn der IONOS-Zugang hinterlegt ist)
         env:
           HOST: ${{ secrets.IONOS_SFTP_HOST }}

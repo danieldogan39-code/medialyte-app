@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#7A1F35">
+<title>Tischbuch · Lokal am Eck</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tischbuch">
+<style>
+:root {
+  --grund: #F4F3F0; --karte: #FFFFFF; --tinte: #15171C; --tinte2: #5B6170; --tinte3: #8B909C; --linie: rgba(21,23,28,.1);
+  --akzent: #7A1F35; --auf-akzent: #FFFFFF; --gut: #138A55; --gut-hell: #E3F4EC; --warn: #B4540A; --warn-hell: #FDF0E3; --schlecht: #C2362F;
+  --ease: cubic-bezier(.23,1,.32,1); --r: 16px;
+  --schrift: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--grund); color: var(--tinte); font: 400 16px/1.45 var(--schrift); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--akzent); outline-offset: 2px; border-radius: 8px; }
+.wrap { width: min(40rem, 100%); margin: 0 auto; padding: 0 16px calc(28px + env(safe-area-inset-bottom)); }
+
+/* Kopf */
+.kopf { position: sticky; top: 0; z-index: 20; background: rgba(244,243,240,.86); -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px); border-bottom: 1px solid var(--linie); padding-top: env(safe-area-inset-top); }
+.kopf .wrap { display: flex; align-items: center; gap: 12px; padding-top: 12px; padding-bottom: 12px; }
+.marke { width: 40px; height: 40px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--akzent); color: var(--auf-akzent); font-weight: 700; font-size: 17px; }
+.kopf h1 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.2; }
+.kopf small { display: block; color: var(--tinte2); font-size: 13px; }
+.kopf .rechts { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.rund { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--linie); background: var(--karte); display: grid; place-items: center; transition: transform .16s var(--ease); }
+.rund:active { transform: scale(.94); }
+.rund svg { width: 20px; height: 20px; }
+.punkt { width: 8px; height: 8px; border-radius: 50%; background: var(--gut); box-shadow: 0 0 0 3px var(--gut-hell); }
+.punkt.aus { background: var(--tinte3); box-shadow: none; }
+
+/* Hinweise oben */
+.band { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--karte); border: 1px solid var(--linie); font-size: 15px; }
+.band.warn { background: var(--warn-hell); border-color: rgba(180,84,10,.25); }
+.band p { margin: 0; flex: 1; }
+.band button { flex: none; border: 0; border-radius: 10px; padding: 10px 14px; background: var(--tinte); color: #fff; font-weight: 600; font-size: 14px; }
+
+/* Abschnitte */
+h2 { margin: 26px 2px 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--tinte2); display: flex; gap: 8px; align-items: center; }
+h2 b { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--akzent); color: var(--auf-akzent); display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; }
+.leer { padding: 18px; border-radius: var(--r); border: 1px dashed var(--linie); color: var(--tinte3); text-align: center; font-size: 15px; }
+
+/* Neue Anfrage */
+.anfrage { background: var(--karte); border-radius: 20px; border: 1px solid var(--linie); box-shadow: 0 10px 30px -18px rgba(21,23,28,.35); padding: 16px; margin-bottom: 12px; animation: rein .35s var(--ease); }
+@keyframes rein { from { opacity: 0; transform: translateY(8px); } }
+.anfrage.ziel { box-shadow: 0 0 0 3px var(--akzent), 0 10px 30px -18px rgba(21,23,28,.35); }
+.wann { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wann strong { font-size: 24px; line-height: 1.1; letter-spacing: -.01em; }
+.wann span { font-size: 17px; font-weight: 600; color: var(--tinte2); }
+.wer { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 16px; }
+.wer a { font-weight: 600; text-decoration: none; color: var(--akzent-text, var(--tinte)); border-bottom: 1px solid var(--linie); }
+.notiz { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--grund); font-size: 15px; color: var(--tinte2); }
+.eingang { margin-top: 8px; font-size: 13px; color: var(--tinte3); }
+.knoepfe { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin-top: 14px; }
+.knopf { min-height: 52px; border-radius: 14px; border: 0; font-weight: 700; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform .16s var(--ease), opacity .2s; padding: 0 14px; }
+.knopf:active { transform: scale(.97); }
+.knopf[disabled] { opacity: .55; }
+.knopf.ja { background: var(--gut); color: #fff; }
+.knopf.nein { background: var(--grund); color: var(--tinte); border: 1px solid var(--linie); }
+.knopf.haupt { background: var(--akzent); color: var(--auf-akzent); }
+.knopf.grau { background: var(--grund); color: var(--tinte); border: 1px solid var(--linie); }
+.knopf svg { width: 20px; height: 20px; }
+
+/* Tagesliste */
+.tag { background: var(--karte); border-radius: var(--r); border: 1px solid var(--linie); overflow: hidden; margin-bottom: 12px; }
+.tag > header { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px; border-bottom: 1px solid var(--linie); }
+.tag > header b { font-size: 16px; }
+.tag > header span { font-size: 14px; color: var(--tinte2); }
+.zeile { display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 11px 14px; border-top: 1px solid var(--linie); }
+.zeile:first-of-type { border-top: 0; }
+.zeile time { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.zeile .n { font-weight: 600; }
+.zeile small { display: block; color: var(--tinte2); font-size: 14px; }
+.zeile .auto { font-size: 12px; color: var(--gut); font-weight: 600; }
+.zeile.aus { opacity: .5; }
+.zeile.aus time, .zeile.aus .n { text-decoration: line-through; }
+.zeile .mehr { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; display: grid; place-items: center; color: var(--tinte2); }
+.zeile .mehr svg { width: 20px; height: 20px; }
+details.alt { margin-top: 18px; }
+details.alt summary { cursor: pointer; color: var(--tinte2); font-size: 14px; font-weight: 600; padding: 8px 2px; list-style: none; }
+details.alt summary::-webkit-details-marker { display: none; }
+
+/* Blätter (unten aufgehende Fenster) */
+.schleier { position: fixed; inset: 0; z-index: 40; background: rgba(15,17,22,.42); opacity: 0; transition: opacity .25s var(--ease); }
+.schleier.an { opacity: 1; }
+.blatt { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 88dvh; overflow: auto; background: var(--karte); border-radius: 22px 22px 0 0; padding: 10px 18px calc(22px + env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .38s cubic-bezier(.32,.72,0,1); }
+.blatt.an { transform: none; }
+@media (min-width: 640px) { .blatt { left: 50%; right: auto; width: 34rem; bottom: 24px; border-radius: 22px; transform: translate(-50%, calc(100% + 40px)); } .blatt.an { transform: translate(-50%, 0); } }
+.griff { width: 40px; height: 5px; border-radius: 3px; background: var(--linie); margin: 2px auto 12px; }
+.blatt h3 { margin: 0 0 4px; font-size: 20px; }
+.blatt p.unter { margin: 0 0 14px; color: var(--tinte2); font-size: 15px; }
+.wahl { display: grid; gap: 8px; margin: 12px 0; }
+.wahl button { text-align: left; min-height: 50px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--linie); background: var(--karte); font-size: 16px; transition: transform .16s var(--ease); }
+.wahl button:active { transform: scale(.98); }
+.wahl button[aria-pressed="true"] { border-color: var(--akzent); box-shadow: inset 0 0 0 1px var(--akzent); }
+textarea { width: 100%; min-height: 72px; border-radius: 12px; border: 1px solid var(--linie); padding: 10px 12px; font: inherit; resize: vertical; }
+.reihe { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.einst { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--linie); }
+.einst:first-of-type { border-top: 0; }
+.einst div { flex: 1; }
+.einst b { display: block; font-size: 16px; }
+.einst small { color: var(--tinte2); font-size: 14px; }
+.schalter { position: relative; width: 52px; height: 32px; flex: none; border-radius: 999px; border: 0; background: #D7D8DC; transition: background .25s var(--ease); }
+.schalter::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .3s var(--ease); }
+.schalter[aria-checked="true"] { background: var(--gut); }
+.schalter[aria-checked="true"]::after { transform: translateX(20px); }
+.zahl { display: inline-flex; align-items: center; gap: 6px; }
+.zahl button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--linie); background: var(--karte); font-size: 20px; line-height: 1; }
+.zahl output { min-width: 26px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.unterpunkt { padding: 0 0 12px; display: grid; gap: 10px; }
+.unterpunkt label { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--tinte2); }
+.meldung { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 20px); opacity: 0; max-width: calc(100vw - 32px); padding: 12px 16px; border-radius: 14px; background: var(--tinte); color: #fff; font-size: 15px; transition: opacity .25s var(--ease), transform .35s var(--ease); pointer-events: none; }
+.meldung.an { opacity: 1; transform: translate(-50%, 0); }
+.start { min-height: 100dvh; display: grid; place-items: center; text-align: center; padding: 24px; }
+.start .marke { width: 64px; height: 64px; font-size: 26px; border-radius: 18px; margin: 0 auto 18px; }
+.start h1 { margin: 0; font-size: 24px; }
+.start p { color: var(--tinte2); max-width: 22rem; margin: 10px auto 0; }
+/* Reiter unten: Reservierungen und Website */
+.reiter { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: rgba(244,243,240,.9); -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px); border-top: 1px solid var(--linie); padding-bottom: env(safe-area-inset-bottom); }
+.reiter .wrap { display: grid; grid-template-columns: 1fr 1fr; padding-bottom: 0; }
+.reiter button { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 0 7px; border: 0; background: none; color: var(--tinte3); font-size: 12px; font-weight: 600; transition: color .2s var(--ease); }
+.reiter button svg { width: 24px; height: 24px; }
+.reiter button[aria-selected="true"] { color: var(--tinte); }
+.reiter button[aria-selected="true"] svg { color: var(--akzent); }
+.reiter button:active svg { transform: scale(.92); }
+.reiter .zahl-reiter { position: absolute; top: 4px; left: calc(50% + 8px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--schlecht); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+main.wrap { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Website-Agent: Chat */
+#ansicht-web { padding-bottom: calc(176px + env(safe-area-inset-bottom)); }
+.agent-intro { margin-top: 16px; padding: 18px; border-radius: 20px; background: var(--karte); border: 1px solid var(--linie); }
+.agent-intro h3 { margin: 0 0 6px; font-size: 19px; }
+.agent-intro p { margin: 0 0 12px; color: var(--tinte2); font-size: 15px; }
+.beispiele { display: flex; flex-wrap: wrap; gap: 8px; }
+.beispiele button { min-height: 40px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--linie); background: var(--grund); font-size: 14px; font-weight: 600; transition: transform .16s var(--ease); }
+.beispiele button:active { transform: scale(.96); }
+.verlauf { display: grid; gap: 10px; margin-top: 16px; }
+.msg { max-width: 88%; padding: 10px 13px; border-radius: 18px; font-size: 16px; line-height: 1.42; white-space: pre-wrap; overflow-wrap: anywhere; animation: rein .3s var(--ease); }
+.msg.wirt { justify-self: end; background: var(--akzent); color: var(--auf-akzent); border-bottom-right-radius: 6px; }
+.msg.agent { justify-self: start; background: var(--karte); border: 1px solid var(--linie); border-bottom-left-radius: 6px; }
+.msg.agent.frage { border-color: var(--akzent); box-shadow: inset 0 0 0 1px var(--akzent); }
+.msg.agent.fehler { background: var(--warn-hell); border-color: rgba(180,84,10,.25); }
+.msg .klein { display: block; margin-top: 4px; font-size: 12px; opacity: .75; white-space: normal; }
+.msg .foto-zahl { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; opacity: .9; }
+.msg .foto-zahl svg { width: 16px; height: 16px; }
+.vorschau-bild { display: block; margin: 10px -4px 6px; border-radius: 14px; overflow: hidden; border: 1px solid var(--linie); background: var(--grund); max-height: 420px; }
+.vorschau-bild img { display: block; width: 100%; height: auto; max-height: 420px; object-fit: cover; object-position: top; }
+.msg .aktionen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; white-space: normal; }
+.msg .aktionen .knopf { min-height: 46px; font-size: 15px; }
+.msg .aktionen .knopf.voll { grid-column: 1 / -1; }
+.msg .stand { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 14px; font-weight: 600; white-space: normal; }
+.msg .stand.gut { color: var(--gut); }
+.msg .stand svg { width: 16px; height: 16px; }
+.msg a.link { font-weight: 600; }
+.tippt { justify-self: start; display: inline-flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; border-bottom-left-radius: 6px; background: var(--karte); border: 1px solid var(--linie); font-size: 15px; color: var(--tinte2); }
+.tippt i { width: 7px; height: 7px; border-radius: 50%; background: var(--tinte3); animation: hupf 1.1s infinite var(--ease); }
+.tippt i:nth-child(2) { animation-delay: .15s; } .tippt i:nth-child(3) { animation-delay: .3s; }
+@keyframes hupf { 30% { transform: translateY(-4px); opacity: 1; } 0%, 60%, 100% { opacity: .45; } }
+.eingabe { position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 29; background: rgba(244,243,240,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid var(--linie); }
+.eingabe .wrap { padding-top: 10px; padding-bottom: 10px; }
+.eingabe .zeile-ein { display: flex; align-items: flex-end; gap: 8px; }
+.eingabe textarea { flex: 1; min-height: 46px; max-height: 160px; padding: 11px 14px; border-radius: 22px; border: 1px solid var(--linie); background: var(--karte); font-size: 16px; line-height: 1.35; resize: none; }
+.eingabe .rund { flex: none; width: 46px; height: 46px; }
+.eingabe .senden { background: var(--akzent); color: var(--auf-akzent); border-color: transparent; }
+.eingabe .senden[disabled] { opacity: .45; }
+.anhaenge { display: flex; gap: 8px; margin-bottom: 8px; overflow-x: auto; }
+.anhang { position: relative; flex: none; width: 64px; height: 64px; border-radius: 12px; overflow: hidden; border: 1px solid var(--linie); }
+.anhang img { width: 100%; height: 100%; object-fit: cover; }
+.anhang button { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(21,23,28,.7); color: #fff; font-size: 15px; line-height: 1; }
+.band-agent { margin-top: 14px; }
+/* Beispiel und Ansicht für Medialyte: schmales Band unter dem Kopf */
+.modus-band { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 7px 16px; background: var(--tinte); color: #fff; font-size: 13px; font-weight: 600; line-height: 1.35; text-align: center; }
+.modus-band svg { width: 15px; height: 15px; flex: none; }
+.nur-ansehen .eingabe textarea { background: var(--grund); }
+@media (hover: hover) and (pointer: fine) { .wahl button:hover, .rund:hover { border-color: rgba(21,23,28,.25); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="start" id="ohne" hidden>
+  <div><div class="marke">LA</div><h1>Tischbuch Lokal am Eck</h1>
+  <p>Bitte öffnen Sie einmal den Link aus Ihrer Willkommensnachricht. Danach bleibt das Tischbuch auf diesem Gerät angemeldet.</p></div>
+</div>
+
+<div id="app" hidden>
+  <header class="kopf"><div class="wrap">
+    <div class="marke" aria-hidden="true">LA</div>
+    <div><h1 id="titel">Tischbuch</h1><small id="heute"></small></div>
+    <div class="rechts">
+      <span class="punkt" id="verbindung" title="Verbunden" aria-hidden="true"></span>
+      <button class="rund" type="button" id="einst-auf" aria-label="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+    </div>
+  </div><div class="modus-band" id="modus-band" hidden></div></header>
+  <main class="wrap" id="ansicht-buch">
+    <div class="band" id="band-push" hidden><p>Damit Sie keine Anfrage verpassen: Benachrichtigungen auf diesem Gerät einschalten.</p><button type="button" id="push-an">Einschalten</button></div>
+    <div class="band warn" id="band-pause" hidden><p id="pause-text"></p><button type="button" id="pause-weg">Fortsetzen</button></div>
+    <h2>Neue Anfragen <b id="zahl-neu">0</b></h2>
+    <div id="neu"></div>
+    <h2>Reservierungen</h2>
+    <div id="tage"></div>
+    <details class="alt" id="alt-box" hidden><summary>Vergangene und abgelehnte Anfragen</summary><div id="alt"></div></details>
+  </main>
+  <main class="wrap" id="ansicht-web" hidden>
+    <div class="band warn band-agent" id="band-agent" hidden><p>Der Website-Agent wird gerade eingerichtet. Ihre Nachricht kommt trotzdem an.</p></div>
+    <div class="agent-intro" id="agent-intro" hidden>
+      <h3>Ihr Website-Agent</h3>
+      <p>Schreiben Sie kurz, was sich auf Ihrer Website ändern soll, oder schicken Sie ein Foto. Sie bekommen eine Vorschau und entscheiden, ob es so online geht.</p>
+      <div class="beispiele">
+        <button type="button" data-beispiel="Neues Tagesgericht ab Montag: ">Tagesgericht</button>
+        <button type="button" data-beispiel="Neuer Preis: ">Preis ändern</button>
+        <button type="button" data-beispiel="Am  haben wir geschlossen.">Geschlossen</button>
+        <button type="button" data-beispiel="Wir machen Urlaub vom  bis .">Urlaub</button>
+        <button type="button" data-beispiel="Neue Öffnungszeiten: ">Öffnungszeiten</button>
+        <button type="button" data-foto-waehlen>Foto hinzufügen</button>
+      </div>
+    </div>
+    <div class="verlauf" id="verlauf" aria-live="polite"></div>
+  </main>
+  <div class="eingabe" id="eingabe" hidden><div class="wrap">
+    <div class="anhaenge" id="anhaenge" hidden></div>
+    <div class="zeile-ein">
+      <button class="rund" type="button" data-foto-waehlen aria-label="Foto anhängen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg></button>
+      <textarea id="nachricht" rows="1" maxlength="2000" placeholder="Was soll sich ändern?" aria-label="Nachricht an Ihren Website-Agenten"></textarea>
+      <button class="rund senden" type="button" id="senden" aria-label="Senden" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button>
+    </div>
+    <input type="file" id="foto-datei" accept="image/*" multiple hidden>
+  </div></div>
+  <nav class="reiter" role="tablist" aria-label="Ansicht"><div class="wrap">
+    <button type="button" role="tab" id="reiter-buch" aria-selected="true" aria-controls="ansicht-buch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Reservierungen</button>
+    <button type="button" role="tab" id="reiter-web" aria-selected="false" aria-controls="ansicht-web"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18.5 15l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8z"/></svg>Website</button>
+  </div></nav>
+</div>
+
+<div class="schleier" id="schleier" hidden></div>
+<section class="blatt" id="blatt" role="dialog" aria-modal="true" aria-labelledby="blatt-titel" hidden><div class="griff" aria-hidden="true"></div><div id="blatt-inhalt"></div></section>
+<div class="meldung" id="meldung" role="status" aria-live="polite"></div>
+
+<script src="beispiel.js"></script>
+<script>
+(function () {
+  var NAME = "Lokal am Eck", SLUG = "beispiel", DIENST = "", VAPID = "", TEL = "040 123 456";
+  var KEY = "tischbuch-" + SLUG, schluessel = null, D = null, ziel = (location.hash || "").replace(/^#/, "");
+  // Beispiel: erfundene Daten, nichts verlässt das Gerät. Ansicht (liegt beim Cockpit): dieselbe Oberfläche für ein
+  // beliebiges Restaurant, nur ansehen; Name, Farbe und Zugang schickt das Cockpit, gespeichert wird nichts, kein Push.
+  var BEISPIEL = true && !!window.TB_BEISPIEL;
+  // Agent-Demo (vom Cockpit mit demo: true): wie die Ansicht, aber der Chat mit dem Agenten lässt sich bedienen.
+  var EINSICHT = false, NUR_ANSEHEN = EINSICHT, DEMO = false;
+  var NUR_TEXT = "Nur ansehen. Bestätigen, Ablehnen und Änderungen macht das Restaurant.";
+  var TAG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"], TAGK = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function heute() { return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date()); }
+  function plus(iso, n) { var d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  function tagName(iso) { var h = heute(); if (iso === h) return "Heute"; if (iso === plus(h, 1)) return "Morgen"; var d = new Date(iso + "T12:00:00Z"); return TAG[d.getUTCDay()] + ", " + iso.slice(8, 10) + "." + iso.slice(5, 7) + "."; }
+  function tagKurz(iso) { var d = new Date(iso + "T12:00:00Z"); return TAGK[d.getUTCDay()] + " " + iso.slice(8, 10) + "." + iso.slice(5, 7) + "."; }
+  function pers(n) { return n + (n === 1 ? " Person" : " Personen"); }
+  function seit(isoZeit) {
+    var m = Math.round((Date.now() - Date.parse(isoZeit)) / 60000);
+    return m < 1 ? "gerade eben" : m < 60 ? "vor " + m + " Min." : m < 1440 ? "vor " + Math.round(m / 60) + " Std." : "am " + tagKurz(isoZeit.slice(0, 10));
+  }
+  function meldung(t) { var m = $("#meldung"); m.textContent = t; m.classList.add("an"); clearTimeout(meldung.t); meldung.t = setTimeout(function () { m.classList.remove("an"); }, 3200); }
+  function nummerIntl(t) { var d = String(t || "").replace(/[^\d+]/g, ""); if (d.indexOf("+") === 0) return d.slice(1); if (d.indexOf("00") === 0) return d.slice(2); if (d.indexOf("0") === 0) return "49" + d.slice(1); return d; }
+
+  /* Anmeldung über den Link (#k=…), danach bleibt der Schlüssel auf dem Gerät */
+  var m = location.hash.match(/k=([A-Za-z0-9_-]{20,})/);
+  if (BEISPIEL) schluessel = "beispiel";
+  else if (EINSICHT) schluessel = "";  // kommt gleich vom Cockpit
+  else try { if (m) { localStorage.setItem(KEY, m[1]); history.replaceState(null, "", location.pathname); ziel = ""; } schluessel = localStorage.getItem(KEY); } catch (e) { schluessel = m && m[1]; }
+  if (!schluessel && !EINSICHT) { $("#ohne").hidden = false; return; }
+  if (!EINSICHT) $("#app").hidden = false;
+  if (BEISPIEL || EINSICHT) {
+    var band = $("#modus-band"); band.hidden = false;
+    band.innerHTML = BEISPIEL ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/></svg>Beispiel mit erfundenen Daten. Hier wird nichts gesendet.'
+                              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Ansicht für Medialyte. So sieht es das Restaurant, hier nur zum Ansehen.';
+  }
+  if (EINSICHT) {
+    document.body.classList.add("nur-ansehen");
+    // alles, was etwas ändern oder senden würde, bleibt still (vor allen anderen Klick-Handlern); in der Agent-Demo
+    // nur das Tischbuch, der Chat mit dem Agenten geht
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-ja], [data-nein], #storno, #nein-los, #pause-weg, #push-an, #s-push, #s-auto, [data-zahl], [data-pause]" +
+                               (NUR_ANSEHEN ? ", [data-uebernehmen], [data-verwerfen], [data-zurueck], #senden, [data-foto-waehlen], [data-beispiel]" : ""));
+      if (!b) return; e.preventDefault(); e.stopPropagation(); meldung(DEMO ? "In der Agent-Demo gibt es keine echten Reservierungen." : NUR_TEXT);
+    }, true);
+  }
+  if (BEISPIEL) document.addEventListener("click", function (e) {  // im Beispiel ruft und schreibt niemand
+    var a = e.target.closest('a[href^="tel:"], a[href^="sms:"], a[href*="wa.me/"]');
+    if (!a) return; e.preventDefault(); e.stopPropagation();
+    meldung(/^tel:/.test(a.getAttribute("href")) ? "Im Beispiel wird niemand angerufen." : "Im Beispiel geht keine Nachricht raus. Im echten Tischbuch öffnet sich hier WhatsApp oder SMS mit fertigem Text.");
+  }, true);
+
+  function api(methode, body) {
+    if (BEISPIEL) return window.TB_BEISPIEL.buch(methode, body);
+    if (!schluessel || (EINSICHT && methode !== "GET")) return Promise.reject(new Error("nur ansehen"));
+    return fetch(DIENST + "/t/buch?l=" + encodeURIComponent(SLUG), { method: methode, cache: "no-store",
+      headers: { Authorization: "Bearer " + schluessel, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) {
+        if (r.status === 401 && EINSICHT) throw new Error("401");
+        if (r.status === 401) { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); throw new Error("401"); }
+        if (!r.ok) throw new Error(r.status); return r.json();
+      });
+  }
+  function laden() {
+    return api("GET").then(function (d) { D = d; $("#verbindung").classList.remove("aus"); zeichnen(); })
+      .catch(function () { $("#verbindung").classList.add("aus"); });
+  }
+
+  function zeichnen() {
+    var h = heute(), alle = D.anfragen.slice().sort(function (a, b) { return (a.datum + a.uhrzeit) < (b.datum + b.uhrzeit) ? -1 : 1; });
+    var d0 = new Date(h + "T12:00:00Z");
+    $("#heute").textContent = NAME + " · " + TAG[d0.getUTCDay()] + ", " + h.slice(8, 10) + "." + h.slice(5, 7) + ".";
+    var neu = alle.filter(function (a) { return a.status === "offen" && a.datum >= h; });
+    $("#zahl-neu").textContent = neu.length; $("#zahl-neu").hidden = !neu.length;
+    $("#neu").innerHTML = neu.length ? neu.map(karte).join("") : '<div class="leer">Keine offenen Anfragen. Neue erscheinen hier sofort.</div>';
+    var kommend = alle.filter(function (a) { return a.status === "bestaetigt" && a.datum >= h && a.datum <= plus(h, 30); }), tage = {};
+    kommend.forEach(function (a) { (tage[a.datum] = tage[a.datum] || []).push(a); });
+    var html = "";
+    if (!tage[h]) html += '<div class="tag"><header><b>Heute</b><span>keine Reservierungen</span></header></div>';
+    Object.keys(tage).sort().forEach(function (t) {
+      var p = tage[t].reduce(function (s, a) { return s + a.personen; }, 0);
+      html += '<div class="tag"><header><b>' + tagName(t) + "</b><span>" + tage[t].length + (tage[t].length === 1 ? " Tisch" : " Tische") + " · " + pers(p) + "</span></header>" + tage[t].map(zeile).join("") + "</div>";
+    });
+    $("#tage").innerHTML = html;
+    var alt = alle.filter(function (a) { return a.datum < h || a.status === "abgelehnt" || a.status === "storniert"; }).reverse().slice(0, 60);
+    $("#alt-box").hidden = !alt.length;
+    $("#alt").innerHTML = '<div class="tag">' + alt.map(zeile).join("") + "</div>";
+    var l = D.lokal, pause = l.pause_alle ? "Online-Anfragen sind pausiert, bis Sie fortsetzen." : l.pause_bis ? "Online-Anfragen pausiert bis einschließlich " + tagName(l.pause_bis) + "." : "";
+    $("#band-pause").hidden = !pause; $("#pause-text").textContent = pause;
+    pushStand();
+    if (ziel) { var z = document.getElementById("a-" + ziel); if (z) { z.classList.add("ziel"); z.scrollIntoView({ block: "center" }); } ziel = ""; }
+  }
+  function karte(a) {
+    return '<article class="anfrage" id="a-' + esc(a.id) + '"><div class="wann"><strong>' + tagName(a.datum) + ", " + esc(a.uhrzeit) + "</strong><span>" + pers(a.personen) + "</span></div>" +
+      '<div class="wer"><span>' + esc(a.name) + '</span><a href="tel:' + esc(a.telefon.replace(/[^\d+]/g, "")) + '">' + esc(a.telefon) + "</a></div>" +
+      (a.nachricht ? '<p class="notiz">„' + esc(a.nachricht) + "“</p>" : "") +
+      '<div class="eingang">Angefragt ' + seit(a.zeit) + "</div>" +
+      '<div class="knoepfe"><button class="knopf ja" type="button" data-ja="' + esc(a.id) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Bestätigen</button>' +
+      '<button class="knopf nein" type="button" data-nein="' + esc(a.id) + '">Ablehnen</button></div></article>';
+  }
+  function zeile(a) {
+    var aus = a.status === "abgelehnt" || a.status === "storniert";
+    return '<div class="zeile' + (aus ? " aus" : "") + '" id="a-' + esc(a.id) + '"><time>' + esc(a.uhrzeit) + "</time><div><span class=\"n\">" + esc(a.name) + "</span> · " + pers(a.personen) +
+      "<small>" + (aus ? (a.status === "storniert" ? "storniert" : "abgelehnt") + " · " : "") + (a.datum < heute() || aus ? tagKurz(a.datum) + " · " : "") +
+      '<a href="tel:' + esc(a.telefon.replace(/[^\d+]/g, "")) + '">' + esc(a.telefon) + "</a>" + (a.von === "auto" ? ' · <span class="auto">automatisch</span>' : "") + "</small>" +
+      (a.nachricht ? "<small>„" + esc(a.nachricht) + "“</small>" : "") + "</div>" +
+      (!aus && a.datum >= heute() ? '<button class="mehr" type="button" data-mehr="' + esc(a.id) + '" aria-label="Mehr zu ' + esc(a.name) + '"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>' : "<span></span>") + "</div>";
+  }
+  function finde(id) { return D.anfragen.filter(function (a) { return a.id === id; })[0]; }
+
+  /* Blatt (unten) */
+  var vorher = null;
+  function blatt(html) {
+    vorher = document.activeElement;
+    $("#blatt-inhalt").innerHTML = html;
+    var s = $("#schleier"), b = $("#blatt"); s.hidden = false; b.hidden = false;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { s.classList.add("an"); b.classList.add("an"); var f = b.querySelector("button, textarea"); if (f) f.focus({ preventScroll: true }); }); });
+  }
+  function zu() {
+    var s = $("#schleier"), b = $("#blatt"); s.classList.remove("an"); b.classList.remove("an");
+    setTimeout(function () { s.hidden = true; b.hidden = true; }, 300);
+    if (vorher && vorher.focus) try { vorher.focus({ preventScroll: true }); } catch (e) {}
+  }
+  $("#schleier").addEventListener("click", zu);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("#blatt").hidden) zu(); });
+
+  function text(a, ok, hinweis) {
+    var w = tagKurz(a.datum) + " um " + a.uhrzeit + " Uhr";
+    return ok ? "Hallo " + a.name + ", Ihr Tisch bei " + NAME + " ist bestätigt: " + w + " für " + pers(a.personen) + "." + (hinweis ? " " + hinweis : "") + " Wir freuen uns auf Sie!"
+              : "Hallo " + a.name + ", leider können wir Ihre Anfrage für " + w + " nicht bestätigen." + (hinweis ? " " + hinweis : "") + " Viele Grüße, " + NAME;
+  }
+  function gastInfo(a, ok, hinweis, gemailt) {
+    var t = encodeURIComponent(text(a, ok, hinweis)), n = nummerIntl(a.telefon);
+    blatt("<h3>" + (ok ? "Bestätigt" : "Abgelehnt") + "</h3><p class=\"unter\">" + (gemailt ? "Der Gast hat eine E-Mail bekommen. Sie können zusätzlich schreiben:" : "Jetzt noch den Gast informieren, mit einem Tipp:") + "</p>" +
+      '<div class="wahl"><a class="knopf haupt" href="https://wa.me/' + n + "?text=" + t + '" target="_blank" rel="noopener">Per WhatsApp schreiben</a>' +
+      '<a class="knopf grau" href="sms:+' + n + "?&body=" + t + '">Per SMS schreiben</a>' +
+      '<a class="knopf grau" href="tel:' + esc(a.telefon.replace(/[^\d+]/g, "")) + '">Anrufen</a></div>' +
+      '<button class="knopf grau" type="button" data-zu style="width:100%">Fertig</button>');
+  }
+  function entscheiden(a, status, hinweis) {
+    return api("POST", { aktion: "entscheiden", id: a.id, status: status, hinweis: hinweis || "" }).then(function (r) {
+      Object.assign(a, r.anfrage); zeichnen();
+      if (status === "bestaetigt" || status === "abgelehnt") gastInfo(a, status === "bestaetigt", hinweis, r.gemailt);
+      else { zu(); meldung("Reservierung storniert."); }
+    }).catch(function () { meldung("Nicht gespeichert. Bitte nochmal versuchen."); });
+  }
+  function ablehnenBlatt(a) {
+    var g = ["Leider sind wir zu dieser Zeit ausgebucht.", "Zu dieser Zeit haben wir leider geschlossen.", "Bitte rufen Sie uns kurz an" + (TEL ? ": " + TEL : "") + "."];
+    blatt("<h3>Anfrage ablehnen</h3><p class=\"unter\">" + esc(a.name) + " · " + tagName(a.datum) + ", " + esc(a.uhrzeit) + " · " + pers(a.personen) + "</p>" +
+      '<div class="wahl">' + g.map(function (x) { return '<button type="button" data-grund="' + esc(x) + '">' + esc(x) + "</button>"; }).join("") + "</div>" +
+      '<textarea id="eigener-grund" placeholder="Oder eigener Text (optional)" maxlength="300"></textarea>' +
+      '<div class="reihe"><button class="knopf grau" type="button" data-zu>Abbrechen</button><button class="knopf haupt" type="button" id="nein-los">Ablehnen</button></div>');
+    var gewaehlt = "";
+    $("#blatt-inhalt").querySelectorAll("[data-grund]").forEach(function (b) {
+      b.addEventListener("click", function () { gewaehlt = b.dataset.grund; $("#blatt-inhalt").querySelectorAll("[data-grund]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); });
+    });
+    $("#nein-los").addEventListener("click", function () { this.disabled = true; entscheiden(a, "abgelehnt", ($("#eigener-grund").value.trim() || gewaehlt)); });
+  }
+  function mehrBlatt(a) {
+    blatt("<h3>" + esc(a.name) + "</h3><p class=\"unter\">" + tagName(a.datum) + ", " + esc(a.uhrzeit) + " · " + pers(a.personen) + "</p>" +
+      '<div class="wahl"><a class="knopf grau" href="tel:' + esc(a.telefon.replace(/[^\d+]/g, "")) + '">Anrufen: ' + esc(a.telefon) + "</a>" +
+      '<button class="knopf grau" type="button" id="storno">Reservierung stornieren</button></div><button class="knopf grau" type="button" data-zu style="width:100%">Schließen</button>');
+    $("#storno").addEventListener("click", function () { this.disabled = true; entscheiden(a, "storniert", ""); });
+  }
+  document.addEventListener("click", function (e) {
+    var b;
+    if ((b = e.target.closest("[data-zu]"))) { zu(); return; }
+    if ((b = e.target.closest("[data-ja]"))) { var a = finde(b.dataset.ja); if (a) { b.disabled = true; entscheiden(a, "bestaetigt", ""); } return; }
+    if ((b = e.target.closest("[data-nein]"))) { var a2 = finde(b.dataset.nein); if (a2) ablehnenBlatt(a2); return; }
+    if ((b = e.target.closest("[data-mehr]"))) { var a3 = finde(b.dataset.mehr); if (a3) mehrBlatt(a3); }
+  });
+
+  /* Einstellungen: Benachrichtigungen, automatisch bestätigen, Pause */
+  function zahl(id, wert, min, max) { return '<span class="zahl"><button type="button" data-zahl="' + id + '" data-d="-1" aria-label="weniger">−</button><output id="' + id + '" data-min="' + min + '" data-max="' + max + '">' + wert + '</output><button type="button" data-zahl="' + id + '" data-d="1" aria-label="mehr">+</button></span>'; }
+  function einstellungen() {
+    var l = D.lokal, au = l.auto_regel || { an: false, max: 4, tische: 3 }, h = heute();
+    blatt("<h3>Einstellungen</h3><p class=\"unter\">Gilt für " + esc(NAME) + " auf allen Geräten, Benachrichtigungen nur für dieses Gerät.</p>" +
+      '<div class="einst"><div><b>Benachrichtigungen</b><small>Neue Anfragen sofort auf diesem Gerät</small></div><button class="schalter" type="button" role="switch" id="s-push" aria-checked="false" aria-label="Benachrichtigungen"></button></div>' +
+      '<div class="einst"><div><b>Automatisch bestätigen</b><small>Kleine Gruppen ohne Ihr Zutun, solange Tische frei sind</small></div><button class="schalter" type="button" role="switch" id="s-auto" aria-checked="' + !!au.an + '" aria-label="Automatisch bestätigen"></button></div>' +
+      '<div class="unterpunkt" id="auto-regel"' + (au.an ? "" : " hidden") + '><label>bis zu Personen ' + zahl("z-max", au.max, 1, 20) + '</label><label>höchstens Tische je Uhrzeit ' + zahl("z-tische", au.tische, 1, 50) + "</label></div>" +
+      '<div class="einst"><div><b>Online-Anfragen pausieren</b><small>Gäste sehen dann: bitte anrufen</small></div></div>' +
+      '<div class="wahl" style="margin-top:0">' +
+        '<button type="button" data-pause="aus" aria-pressed="' + (!l.pause_alle && !l.pause_bis) + '">Nicht pausieren</button>' +
+        '<button type="button" data-pause="' + h + '" aria-pressed="' + (l.pause_bis === h) + '">Für heute pausieren</button>' +
+        '<button type="button" data-pause="' + plus(h, 1) + '" aria-pressed="' + (l.pause_bis === plus(h, 1)) + '">Heute und morgen</button>' +
+        '<button type="button" data-pause="alle" aria-pressed="' + !!l.pause_alle + '">Bis auf Weiteres</button></div>' +
+      '<button class="knopf grau" type="button" data-zu style="width:100%">Fertig</button>');
+    pushStand();
+    $("#s-push").addEventListener("click", function () { this.getAttribute("aria-checked") === "true" ? pushAus() : pushAn(); });
+    $("#s-auto").addEventListener("click", function () {
+      var an = this.getAttribute("aria-checked") !== "true"; this.setAttribute("aria-checked", an); $("#auto-regel").hidden = !an; autoSpeichern();
+    });
+    $("#blatt-inhalt").querySelectorAll("[data-zahl]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var o = document.getElementById(b.dataset.zahl), v = Math.max(+o.dataset.min, Math.min(+o.dataset.max, +o.textContent + +b.dataset.d));
+        o.textContent = v; clearTimeout(autoSpeichern.t); autoSpeichern.t = setTimeout(autoSpeichern, 500);
+      });
+    });
+    $("#blatt-inhalt").querySelectorAll("[data-pause]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var w = b.dataset.pause, p = w === "aus" ? null : w === "alle" ? { alle: true } : { bis: w };
+        api("POST", { aktion: "einstellungen", pause: p }).then(function (r) {
+          Object.assign(D.lokal, r.lokal); zeichnen();
+          $("#blatt-inhalt").querySelectorAll("[data-pause]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+          meldung(p ? "Online-Anfragen pausiert." : "Online-Anfragen sind wieder an.");
+        }).catch(function () { meldung("Nicht gespeichert."); });
+      });
+    });
+  }
+  function autoSpeichern() {
+    var an = $("#s-auto").getAttribute("aria-checked") === "true";
+    api("POST", { aktion: "einstellungen", auto: { an: an, max: +$("#z-max").textContent, tische: +$("#z-tische").textContent } })
+      .then(function (r) { Object.assign(D.lokal, r.lokal); meldung(an ? "Automatische Bestätigung ist an." : "Automatische Bestätigung ist aus."); })
+      .catch(function () { meldung("Nicht gespeichert."); });
+  }
+  $("#einst-auf").addEventListener("click", function () { if (D) einstellungen(); });
+  $("#pause-weg").addEventListener("click", function () {
+    api("POST", { aktion: "einstellungen", pause: null }).then(function (r) { Object.assign(D.lokal, r.lokal); zeichnen(); meldung("Online-Anfragen sind wieder an."); });
+  });
+
+  /* Benachrichtigungen (Web-Push über den Dienst) */
+  var SW = (!BEISPIEL && !EINSICHT && "serviceWorker" in navigator) ? navigator.serviceWorker.register("sw.js").then(function () { return navigator.serviceWorker.ready; }).catch(function () { return null; }) : Promise.resolve(null);
+  function kann() { return !BEISPIEL && !EINSICHT && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!VAPID; }
+  function bytes(s) { s = String(s).replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function pushStand() {
+    if (!kann()) { $("#band-push").hidden = true; return; }
+    SW.then(function (r) { return r && r.pushManager.getSubscription(); }).then(function (s) {
+      var an = !!s && Notification.permission === "granted";
+      $("#band-push").hidden = an; var k = $("#s-push"); if (k) k.setAttribute("aria-checked", an);
+    }).catch(function () {});
+  }
+  function geraet() { var ua = navigator.userAgent; return (/Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iPhone/iPad" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Gerät"); }
+  function pushAn() {
+    if (BEISPIEL) { meldung("Im Beispiel gibt es keine Benachrichtigungen. Im echten Tischbuch kommt jede Anfrage sofort aufs Handy."); return; }
+    if (!kann()) { meldung("Dieses Gerät kann keine Benachrichtigungen empfangen. Auf dem iPhone: erst „Zum Home-Bildschirm“ hinzufügen."); return; }
+    Notification.requestPermission().then(function (e) {
+      if (e !== "granted") { meldung("Benachrichtigungen sind in den Einstellungen des Browsers blockiert."); return; }
+      return SW.then(function (r) { return r.pushManager.getSubscription().then(function (alt) { return alt || r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(VAPID) }); }); })
+        .then(function (s) { return api("POST", { aktion: "abo", abo: s.toJSON(), geraet: geraet() }); })
+        .then(function () { pushStand(); meldung("Benachrichtigungen sind an. Eine Probe ist unterwegs."); return api("POST", { aktion: "probe" }); });
+    }).catch(function () { meldung("Ließ sich gerade nicht einschalten. Bitte nochmal versuchen."); });
+  }
+  function pushAus() {
+    SW.then(function (r) { return r && r.pushManager.getSubscription(); }).then(function (s) {
+      if (!s) return; var ep = s.endpoint; return s.unsubscribe().then(function () { return api("POST", { aktion: "abo_weg", endpoint: ep }); });
+    }).then(function () { pushStand(); meldung("Benachrichtigungen auf diesem Gerät sind aus."); }).catch(function () {});
+  }
+  $("#push-an").addEventListener("click", pushAn);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) {
+    if (!e.data || e.data.typ !== "neu") return;
+    if (e.data.id === "website") { agLaden(); if (ansicht !== "web") zeigen("web"); return; }
+    ziel = e.data.id || ""; laden();
+  });
+
+  /* ---------------------------------------------------------------- Website-Agent (Reiter „Website“) */
+  var AG = null, anhaenge = [], agTimer = null, ansicht = "buch";
+  var HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var KAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>';
+  function agApi(methode, body) {
+    if (BEISPIEL) return window.TB_BEISPIEL.agent(methode, body);
+    if (!schluessel || (NUR_ANSEHEN && methode !== "GET")) return Promise.reject(new Error("nur ansehen"));
+    return fetch(DIENST + "/t/agent?l=" + encodeURIComponent(SLUG), { method: methode, cache: "no-store",
+      headers: { Authorization: "Bearer " + schluessel, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) {
+        if (r.status === 401 && EINSICHT) throw new Error("401");
+        if (r.status === 401) { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); throw new Error("401"); }
+        return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) { var e = new Error(r.status); e.status = r.status; e.daten = d; throw e; } return d; });
+      });
+  }
+  function agLaden() {
+    return agApi("GET").then(function (d) { AG = d; agZeichnen(); }).catch(function () {});
+  }
+  function agOffen() {  // braucht der Wirt etwas zu tun? (Vorschau ansehen oder Frage beantworten)
+    if (!AG) return 0;
+    var n = AG.nachrichten, letzte = n[n.length - 1];
+    return n.filter(function (m) { return m.art === "vorschau" && m.status === "offen"; }).length + (letzte && letzte.art === "rueckfrage" ? 1 : 0);
+  }
+  function uhrzeit(iso) { var d = new Date(iso); return (iso.slice(0, 10) === new Date().toISOString().slice(0, 10) ? "" : tagKurz(new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(d)) + " ") + d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }); }
+  function nachrichtHtml(m, letzteOnline) {
+    if (m.von === "wirt") {
+      var st = m.status === "fehler" ? " · nicht angekommen" : m.status === "wartet" || m.status === "in_arbeit" ? "" : "";
+      return '<div class="msg wirt">' + (m.text ? esc(m.text) : "") + (m.fotos ? (m.text ? "\n" : "") + '<span class="foto-zahl">' + KAMERA + m.fotos + (m.fotos === 1 ? " Foto" : " Fotos") + "</span>" : "") +
+        '<span class="klein">' + uhrzeit(m.zeit) + st + "</span></div>";
+    }
+    var kl = m.art === "rueckfrage" ? " frage" : m.art === "fehler" ? " fehler" : "", innen = esc(m.text);
+    if (m.art === "vorschau") {
+      if (m.bild) innen += '<a class="vorschau-bild" href="' + esc(m.vorschau || m.bild) + '" target="_blank" rel="noopener"><img src="' + esc(m.bild) + '" alt="Vorschau der Änderung"></a>';
+      if (m.status === "offen") innen += '<div class="aktionen"><button class="knopf ja voll" type="button" data-uebernehmen="' + esc(m.id) + '">' + HAKEN + "Übernehmen</button>" +
+        (m.vorschau ? '<a class="knopf grau" href="' + esc(m.vorschau) + '" target="_blank" rel="noopener">Ganze Seite</a>' : "") +
+        '<button class="knopf grau' + (m.vorschau ? "" : " voll") + '" type="button" data-verwerfen="' + esc(m.id) + '">Verwerfen</button></div>';
+      else innen += '<span class="stand' + (m.status === "online" ? " gut" : "") + '">' + (m.status === "online" ? HAKEN + "Ist online" : m.status === "wird_online" ? "Wird veröffentlicht …" :
+        m.status === "verworfen" ? "Verworfen" : m.status === "ersetzt" ? "Steckt in der neueren Vorschau" : "") + "</span>";
+    }
+    if (m.art === "online") {
+      if (m.seite) innen += '\n<a class="link" href="' + esc(m.seite) + '" target="_blank" rel="noopener">Website ansehen</a>';
+      if (m === letzteOnline && !m.zurueck && !AG.arbeitet) innen += '<div class="aktionen"><button class="knopf grau voll" type="button" data-zurueck>Rückgängig machen</button></div>';
+      else if (m.zurueck) innen += '<span class="stand">Zurückgenommen</span>';
+    }
+    return '<div class="msg agent' + kl + '">' + innen + '<span class="klein">' + uhrzeit(m.zeit) + "</span></div>";
+  }
+  function agZeichnen() {
+    if (!AG) return;
+    var n = AG.nachrichten, letzteOnline = null;
+    n.forEach(function (m) { if (m.von === "agent" && (m.art === "online" || m.art === "zurueck")) letzteOnline = m; });
+    if (letzteOnline && letzteOnline.art !== "online") letzteOnline = null;
+    $("#agent-intro").hidden = !!n.length;
+    $("#band-agent").hidden = AG.eingerichtet !== false;
+    $("#verlauf").innerHTML = n.map(function (m) { return nachrichtHtml(m, letzteOnline); }).join("") +
+      (AG.arbeitet ? '<div class="tippt" role="status"><i></i><i></i><i></i><span>Ich arbeite daran, das dauert ein bis drei Minuten.</span></div>' : "");
+    var z = agOffen(), r = $("#reiter-web"), b = $(".zahl-reiter", r);
+    if (z && !b) { b = document.createElement("b"); b.className = "zahl-reiter"; r.appendChild(b); }
+    if (b) { if (z) b.textContent = z; else b.remove(); }
+    r.setAttribute("aria-label", "Website" + (z ? ", " + z + " neu" : ""));
+    knopfStand();
+    clearTimeout(agTimer);
+    if (AG.arbeitet) agTimer = setTimeout(function () { if (!document.hidden) agLaden(); else agTimer = null; }, 6000);
+    if (ansicht === "web") {
+      var nachUnten = function () { window.scrollTo({ top: document.documentElement.scrollHeight }); };
+      requestAnimationFrame(nachUnten);
+      $("#verlauf").querySelectorAll("img").forEach(function (i) { if (!i.complete) i.addEventListener("load", nachUnten, { once: true }); });
+    }
+  }
+  function knopfStand() { $("#senden").disabled = !!(AG && AG.arbeitet) || (!$("#nachricht").value.trim() && !anhaenge.length); }
+  function zeigen(welche) {
+    ansicht = welche;
+    var web = welche === "web";
+    $("#ansicht-buch").hidden = web; $("#ansicht-web").hidden = !web; $("#eingabe").hidden = !web;
+    $("#reiter-buch").setAttribute("aria-selected", !web); $("#reiter-web").setAttribute("aria-selected", web);
+    $("#titel").textContent = web ? "Website" : "Tischbuch";
+    if (!BEISPIEL && !EINSICHT) try { localStorage.setItem(KEY + "-ansicht", welche); } catch (e) {}
+    if (web) { agLaden(); window.scrollTo({ top: document.documentElement.scrollHeight }); } else window.scrollTo({ top: 0 });
+  }
+  $("#reiter-buch").addEventListener("click", function () { zeigen("buch"); });
+  $("#reiter-web").addEventListener("click", function () { zeigen("web"); });
+
+  /* Fotos: verkleinern (höchstens 1600 px, JPEG), als Vorschau zeigen */
+  function verkleinern(datei) {
+    return new Promise(function (ok, nein) {
+      var url = URL.createObjectURL(datei), img = new Image();
+      img.onload = function () {
+        var f = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * f); c.height = Math.round(img.naturalHeight * f);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+        ok(c.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); nein(new Error("Bild")); };
+      img.src = url;
+    });
+  }
+  function anhaengeZeigen() {
+    var box = $("#anhaenge");
+    box.hidden = !anhaenge.length;
+    box.innerHTML = anhaenge.map(function (a, i) { return '<div class="anhang"><img src="' + a + '" alt="Foto ' + (i + 1) + '"><button type="button" data-weg="' + i + '" aria-label="Foto ' + (i + 1) + ' entfernen">×</button></div>'; }).join("");
+    knopfStand();
+  }
+  $("#foto-datei").addEventListener("change", function () {
+    var dateien = [].slice.call(this.files || []).slice(0, Math.max(0, 4 - anhaenge.length));
+    if ((this.files || []).length > dateien.length) meldung("Höchstens 4 Fotos pro Nachricht.");
+    Promise.all(dateien.map(verkleinern)).then(function (bilder) { anhaenge = anhaenge.concat(bilder); anhaengeZeigen(); })
+      .catch(function () { meldung("Dieses Foto ließ sich nicht öffnen."); });
+    this.value = "";
+  });
+  var feld = $("#nachricht");
+  if (NUR_ANSEHEN) { feld.readOnly = true; feld.placeholder = "Nur ansehen"; }
+  function hoehe() { feld.style.height = "auto"; feld.style.height = Math.min(feld.scrollHeight + 2, 160) + "px"; }
+  feld.addEventListener("input", function () { hoehe(); knopfStand(); });
+  function senden() {
+    var text = feld.value.trim();
+    if ((!text && !anhaenge.length) || (AG && AG.arbeitet)) return;
+    var knopf = $("#senden"); knopf.disabled = true;
+    agApi("POST", { aktion: "nachricht", text: text, fotos: anhaenge }).then(function (d) {
+      AG = d; feld.value = ""; anhaenge = []; anhaengeZeigen(); hoehe(); agZeichnen();
+    }).catch(function (e) {
+      if (e.daten && e.daten.nachrichten) { AG = e.daten; agZeichnen(); }
+      meldung(e.status === 409 ? "Ich arbeite noch an Ihrer letzten Nachricht. Gleich geht es weiter." : e.status === 429 ? "Für heute sind es genug Nachrichten. Morgen geht es weiter, oder rufen Sie Medialyte an." :
+              e.status === 400 ? "Das Foto ist zu groß. Bitte ein anderes wählen." : "Nicht gesendet. Bitte nochmal versuchen.");
+      knopfStand();
+    });
+  }
+  $("#senden").addEventListener("click", senden);
+  feld.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey && matchMedia("(pointer: fine)").matches) { e.preventDefault(); senden(); } });
+  function aktion(body, text) {
+    return agApi("POST", body).then(function (d) { AG = d; agZeichnen(); if (text) meldung(text); })
+      .catch(function (e) { if (e.daten && e.daten.nachrichten) { AG = e.daten; agZeichnen(); } meldung("Das ging gerade nicht. Bitte nochmal versuchen."); });
+  }
+  document.addEventListener("click", function (e) {
+    var b;
+    if ((b = e.target.closest("[data-foto-waehlen]"))) { if (ansicht !== "web") zeigen("web"); $("#foto-datei").click(); return; }
+    if ((b = e.target.closest("[data-weg]"))) { anhaenge.splice(+b.dataset.weg, 1); anhaengeZeigen(); return; }
+    if ((b = e.target.closest("[data-beispiel]"))) {
+      feld.value = b.dataset.beispiel; hoehe(); knopfStand(); feld.focus();
+      var lucke = feld.value.indexOf("  "); var pos = lucke >= 0 ? lucke + 1 : feld.value.indexOf(" .") >= 0 ? feld.value.indexOf(" .") + 1 : feld.value.length;
+      try { feld.setSelectionRange(pos, pos); } catch (x) {}
+      return;
+    }
+    if ((b = e.target.closest("[data-uebernehmen]"))) { b.disabled = true; aktion({ aktion: "uebernehmen", id: b.dataset.uebernehmen }, "Wird veröffentlicht. Sie bekommen Bescheid, sobald es online ist."); return; }
+    if ((b = e.target.closest("[data-verwerfen]"))) { b.disabled = true; aktion({ aktion: "verwerfen", id: b.dataset.verwerfen }); return; }
+    if ((b = e.target.closest("[data-zurueck]"))) { b.disabled = true; aktion({ aktion: "zurueck" }, "Die letzte Änderung wird zurückgenommen."); }
+  });
+
+  /* Aktuell halten: beim Öffnen, jede Minute und wenn die App wieder sichtbar wird */
+  var start = ziel === "website" || /[?&]start=website(&|$)/.test(location.search) ? "web"
+            : BEISPIEL || EINSICHT ? "buch" : (function () { try { return localStorage.getItem(KEY + "-ansicht"); } catch (e) { return null; } })();
+  if (ziel === "website") ziel = "";
+  function los() { laden(); agLaden(); zeigen(start === "web" ? "web" : "buch"); }
+  if (EINSICHT) {  // Ansicht: wartet auf Restaurant und Zugang vom Cockpit (nur von derselben Adresse)
+    addEventListener("message", function (e) {
+      var z = e.data;
+      if (e.origin !== location.origin || e.source !== window.parent || !z || z.typ !== "tb-zugang" || !z.slug || !z.schluessel) return;
+      NAME = String(z.name || z.slug); SLUG = String(z.slug); DIENST = String(z.dienst || "").replace(/\/$/, ""); TEL = String(z.telefon || "");
+      schluessel = String(z.schluessel); D = null; AG = null;
+      DEMO = z.demo === true; NUR_ANSEHEN = !DEMO;
+      feld.readOnly = NUR_ANSEHEN; feld.placeholder = NUR_ANSEHEN ? "Nur ansehen" : "Was soll sich ändern?";
+      if (DEMO) {
+        start = "web";
+        $("#modus-band").innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/></svg>' +
+          "Agent-Demo mit der Seite von " + esc(NAME) + ". Die Vorschauen sind echt, online geht nichts.";
+      }
+      var f = /^#[0-9a-fA-F]{6}$/.test(z.farbe || "") ? z.farbe : "#223C64", n = parseInt(f.slice(1), 16);
+      var hell = (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255 > 0.62;
+      document.documentElement.style.setProperty("--akzent", f); document.documentElement.style.setProperty("--auf-akzent", hell ? "#15171C" : "#FFFFFF");
+      var w = (NAME.match(/[A-Za-zÀ-ÿ0-9]+/g) || []).filter(function (x) { return !/^(restaurant|cafe|café|bar|the|das|der|die|la|le|il)$/i.test(x); });
+      var kurz = !w.length ? NAME.slice(0, 2).toUpperCase() : w.length === 1 ? w[0].charAt(0).toUpperCase() + w[0].charAt(1).toLowerCase() : (w[0].charAt(0) + w[1].charAt(0)).toUpperCase();
+      document.querySelectorAll(".marke").forEach(function (el) { el.textContent = kurz; });
+      document.title = "Tischbuch · " + NAME;
+      $("#app").hidden = false; los();
+    });
+    if (window.parent !== window) window.parent.postMessage({ typ: "tb-bereit" }, location.origin);
+  } else los();
+  setInterval(function () { if (!document.hidden) { laden(); agLaden(); } }, 60000);
+  if (BEISPIEL) addEventListener("tb-beispiel", function () { laden(); agLaden(); });  // Beispiel: Antwort des Agenten sofort zeigen
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { laden(); agLaden(); } });
+})();
+</script>
+</body>
+</html>

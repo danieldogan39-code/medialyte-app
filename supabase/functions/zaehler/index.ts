@@ -4,6 +4,10 @@
 //   {aktion: "anfrage_entfernen", slug, zeit} → Rückrufwunsch, der nur ein Test war, entfernen
 //   {aktion: "tischbuecher"}               → {lokale: {slug: Lage}, heute}  (Recht Kunden)
 //   {aktion: "tischbuch", slug}            → {lokal, anfragen, heute}      (Recht Kunden, Gästedaten nur durchgereicht)
+//   {aktion: "push_info"}                  → {vapid, geraete}               Benachrichtigungen (Recht Akquise)
+//   {aktion: "push_an", abo, geraet} / {aktion: "push_aus", endpoint} / {aktion: "push_test"}
+//   {aktion: "zugang"}                     → {url, schluessel}  nur mit Schreibrecht Kunden: für die Tischbuch-Live-Ansicht
+//   {aktion: "agent_demo", slug, name}     → Demo-Tischbuch „demo-<slug>“ anlegen (Website-Agent ausprobieren)
 import { admin, alsNutzer, cors, json } from "../_shared/util.ts";
 
 Deno.serve(async (req) => {
@@ -13,7 +17,8 @@ Deno.serve(async (req) => {
   try { e = await req.json(); } catch { /* leer */ }
 
   const nutzer = alsNutzer(req);
-  const schreiben = e.aktion === "anfrage_entfernen", tb = e.aktion === "tischbuecher" || e.aktion === "tischbuch";
+  const voll = e.aktion === "zugang" || e.aktion === "agent_demo";
+  const schreiben = e.aktion === "anfrage_entfernen" || voll, tb = e.aktion === "tischbuecher" || e.aktion === "tischbuch" || voll;
   const { data: darf } = await nutzer.rpc("darf", { p_bereich: tb ? "kunden" : "akquise", p_schreiben: schreiben });
   if (darf !== true) return json(403, { ok: false, error: "Dafür fehlt dir das Recht." });
 
@@ -21,6 +26,35 @@ Deno.serve(async (req) => {
   const z = g?.wert as { url?: string; schluessel?: string } | undefined;
   if (!z?.url || !z?.schluessel) return json(200, { ok: true, aufrufe: {}, anfragen: {}, lokale: null, hinweis: "Zähler-Dienst noch nicht verbunden" });
   const basis = z.url.replace(/\/$/, ""), h = { Authorization: `Bearer ${z.schluessel}`, "Content-Type": "application/json" };
+
+  if (e.aktion === "zugang") return json(200, { ok: true, url: basis, schluessel: z.schluessel });
+  if (e.aktion === "agent_demo") {
+    if (!/^[a-z0-9-]{3,75}$/.test(String(e.slug ?? ""))) return json(400, { ok: false, error: "Demo fehlt" });
+    const r = await fetch(`${basis}/t/lokale`, { method: "POST", headers: h,
+      body: JSON.stringify({ lokale: { [`demo-${e.slug}`]: { name: String(e.name ?? e.slug).slice(0, 80), demo: true } } }) });
+    return json(r.ok ? 200 : 502, { ok: r.ok, lokal: `demo-${e.slug}` });
+  }
+  if (e.aktion?.startsWith?.("push_")) {
+    const vapid = (z as any).vapid ?? null;
+    if (e.aktion === "push_info") {
+      const r = await fetch(`${basis}/abo`, { headers: h });
+      return json(200, { ok: true, vapid, geraete: r.ok ? (await r.json()).geraete ?? 0 : null });
+    }
+    if (e.aktion === "push_an") {
+      const r = await fetch(`${basis}/abo`, { method: "POST", headers: h, body: JSON.stringify({ abo: e.abo, geraet: String(e.geraet ?? "").slice(0, 60) }) });
+      return json(r.ok ? 200 : 502, { ok: r.ok });
+    }
+    if (e.aktion === "push_aus") {
+      const r = await fetch(`${basis}/abo`, { method: "DELETE", headers: h, body: JSON.stringify({ abo: { endpoint: e.endpoint } }) });
+      return json(r.ok ? 200 : 502, { ok: r.ok });
+    }
+    if (e.aktion === "push_test") {
+      const r = await fetch(`${basis}/melden`, { method: "POST", headers: h, body: JSON.stringify({ titel: "Benachrichtigungen sind an",
+        text: "Du erfährst jetzt sofort, wenn jemand seine Demo öffnet, um Rückruf bittet oder ein Gast im Tischbuch wartet.", url: "./", tag: "probe" }) });
+      return json(r.ok ? 200 : 502, { ok: r.ok });
+    }
+    return json(400, { ok: false });
+  }
 
   if (tb) {
     if (e.aktion === "tischbuch" && !/^[a-z0-9-]{3,80}$/.test(String(e.slug ?? ""))) return json(400, { ok: false, error: "Restaurant fehlt" });

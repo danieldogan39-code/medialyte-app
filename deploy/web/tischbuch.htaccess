@@ -1,0 +1,4 @@
+# Tischbuch-Ansicht und Beispiel: dürfen in der App (gleiche Adresse) eingebettet werden
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>

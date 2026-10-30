@@ -9,6 +9,7 @@
   import { BETRIEB_STATUS } from "../lib/status";
   import { befehl } from "../lib/befehl";
   import { frage } from "../lib/frage.svelte";
+  import { agent } from "../lib/agent.svelte";
 
   let { id }: { id: string } = $props();
   let b = $state<any>(null), fehlt = $state(false);
@@ -42,7 +43,10 @@
     pdfUrl = data.signedUrl;
   }
   async function briefSenden() {
-    if (!(await frage(`Brief an ${b.name} verschicken?`, "Der Agent prüft vorher bei Google, ob der Betrieb noch keine Website hat, setzt das Versanddatum und ein frisches Bild der Demo ein und gibt den Brief bei LetterXpress in Druck und Versand. Das kostet Porto.", "Brief verschicken"))) return;
+    const e = agent.c.einstellungen, test = e && e.briefmodus !== "live";
+    if (!(await frage(`${test ? "Testbrief" : "Brief"} an ${b.name} verschicken?`,
+      `${test ? "Testmodus: Der Brief geht nicht wirklich in den Druck. " : "Echter Versand über LetterXpress, das kostet Porto. "}Vorher prüft der Agent bei Google, ob der Betrieb noch geöffnet ist und weiterhin keine eigene Website hat. Der Brief bekommt das Datum des Versandtags und ein frisches Bild der Demo.${e?.loeschen_nach ? ` Die Demo bleibt danach ${e.loeschen_nach} Tage online.` : ""}`,
+      test ? "Testbrief verschicken" : "Brief verschicken"))) return;
     await befehl("brief_senden", { slug: demo.slug, place_id: b.place_id, name: b.name }, demo.slug, "Brief geht an den Agenten …");
   }
   async function vorschau() {
@@ -100,7 +104,7 @@
       </section>
 
       <section class="card box">
-        <div class="box__h"><h3>Brief</h3>
+        <div class="box__h"><h3>Brief{#if agent.c.einstellungen}<span class="modus" class:test={agent.c.einstellungen.briefmodus !== "live"}>{agent.c.einstellungen.briefmodus === "live" ? "Echter Versand" : "Testmodus"}</span>{/if}</h3>
           <div class="acts">
             {#if brief && pdfDa}<button class="btn btn--s" onclick={briefAnsehen}><Icon name="eye" size={15} />Ansehen</button>{/if}
             {#if demo && !demo.geloescht && auth.darf("briefe", true)}
@@ -136,6 +140,8 @@
   .box { padding: 4px 0 8px; }
   .box__h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px 6px; }
   .st { width: auto; min-height: 34px; }
+  .modus { margin-left: 10px; font-size: .72rem; font-weight: 500; padding: 3px 8px; border-radius: 999px; background: rgba(76, 195, 138, .14); color: #6FD3A2; vertical-align: middle; }
+  .modus.test { background: rgba(231, 185, 74, .14); color: #EBC56B; }
   .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
   .del { color: #FF8080; }
   .pdf { margin: 4px 20px 10px; border-radius: var(--radius-s); overflow: hidden; border: 1px solid var(--line); height: min(80vh, 900px); background: #fff; }

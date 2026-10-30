@@ -2,9 +2,11 @@ import "./app.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import { auth } from "./lib/auth.svelte";
+import { swStarten } from "./lib/push";
 
 auth.init();
 mount(App, { target: document.getElementById("app")! });
+swStarten();
 
 // Im Mac-/Windows-Programm: Links nach außen (Demos, WhatsApp, E-Mail, Telefon) im Standardprogramm öffnen
 if ("__TAURI_INTERNALS__" in window) {

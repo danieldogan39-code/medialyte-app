@@ -175,3 +175,14 @@ do $$ declare n int; begin
   raise notice 'OK Kunden-Aufträge für Buchhaltung';
 end $$;
 reset role;
+
+-- 13) Cockpit-Daten: Akquise liest, Buchhaltung ohne Akquise-Lesen? (hat lesen) – Befehle suchgebiete/analyse bekannt
+insert into public.agent_daten (name, daten) values ('cockpit', '{"x": 1}') on conflict do nothing;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare n int; begin
+  select count(*) into n from public.agent_daten; if n <> 1 then raise exception 'Cockpit-Daten nicht lesbar'; end if;
+  insert into public.befehle (art, daten) values ('suchgebiete', '{"liste": []}'), ('analyse', '{}');
+  raise notice 'OK Cockpit-Daten und neue Befehle';
+end $$;
+reset role;

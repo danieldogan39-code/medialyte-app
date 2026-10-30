@@ -14,11 +14,23 @@
   import Bald from "./Bald.svelte";
   import Kunden from "./Kunden.svelte";
   import Kunde from "./Kunde.svelte";
+  import Kosten from "./Kosten.svelte";
+  import Einstellungen from "./Einstellungen.svelte";
+  import DemoWeiter from "./DemoWeiter.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
 
   let offen = $state(false);   // Navigation auf dem Handy
   $effect(() => { daten.laden(); });
   $effect(() => { router.pfad; offen = false; window.scrollTo(0, 0); });
+  // „/“ springt in das Suchfeld der Seite (wie im Cockpit)
+  $effect(() => {
+    const f = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || (e.target as HTMLElement)?.closest?.("input, textarea, select, [contenteditable]")) return;
+      const s = document.querySelector<HTMLInputElement>("main .search input, main input[type=search]");
+      if (s) { e.preventDefault(); s.focus(); }
+    };
+    addEventListener("keydown", f); return () => removeEventListener("keydown", f);
+  });
 
   const t = $derived(router.teile);
   const aktiv = (p: string) => (p === "/" ? router.pfad === "/" : router.pfad.startsWith(p));
@@ -44,9 +56,11 @@
         </div>
       {/if}
       {#if auth.darf("akquise")}<a href="#/nachfassen" class:on={aktiv("/nachfassen")}><Icon name="phone" />Nachfassen{#if daten.nachfassHeute}<span class="badge badge--b num">{daten.nachfassHeute}</span>{/if}</a>{/if}
-      {#if auth.darf("kunden")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden</a>{/if}
+      {#if auth.darf("kunden")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden{#if daten.tischbuchWartet}<span class="badge num" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/if}</a>{/if}
       {#if auth.darf("rechnungen")}<a href="#/rechnungen" class:on={aktiv("/rechnungen")}><Icon name="receipt" />Rechnungen</a>{/if}
+      {#if auth.darf("akquise")}<a href="#/kosten" class:on={aktiv("/kosten")}><Icon name="scale" />Kosten</a>{/if}
       {#if auth.darf("team")}<a href="#/team" class:on={aktiv("/team")}><Icon name="shield" />Team & Rechte</a>{/if}
+      <a href="#/einstellungen" class:on={aktiv("/einstellungen")}><Icon name="settings" />Einstellungen</a>
     </div>
     <div class="me">
       <span class="me__av" aria-hidden="true">{auth.ich?.name?.[0] ?? "?"}</span>
@@ -59,7 +73,10 @@
   <main class="main">
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
-    {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "board"} />
+    {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}<DemoWeiter slug={t[2]} />
+    {:else if t[0] === "kosten"}<Kosten />
+    {:else if t[0] === "einstellungen"}<Einstellungen />
+    {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "ueberblick"} />
     {:else if t[0] === "akquise"}<Akquise />
     {:else if t[0] === "nachfassen"}<Nachfassen slug={t[1]} />
     {:else if t[0] === "team"}<Team />

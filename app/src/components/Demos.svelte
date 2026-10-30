@@ -7,20 +7,28 @@
   import { frage } from "../lib/frage.svelte";
   import { sb, fehler } from "../lib/supabase";
   import { datum, vor } from "../lib/format";
+  import { sofort, sparHinweis } from "../lib/agent.svelte";
+  import { GERAET } from "../lib/nachfass";
 
   let { kat }: { kat: Kategorie } = $props();
   let demos = $state<any[]>([]), bew = $state<Record<string, any>>({}), aufrufe = $state<Record<string, any[]>>({}), laedt = $state(true);
-  let filter = $state("alle"), sort = $state("neu"), suche = $state(""), anzahl = $state(24);
+  // Filter, Sortierung und Ort bleiben auf diesem Gerät gespeichert (wie im Cockpit)
+  const MERK = "medialyte-demos-filter";
+  const gemerkt = (() => { try { return JSON.parse(localStorage.getItem(MERK) ?? "{}"); } catch { return {}; } })();
+  let filter = $state<string>(gemerkt.filter ?? "alle"), sort = $state<string>(gemerkt.sort ?? "neu"), ort = $state<string>(gemerkt.ort ?? ""), suche = $state(""), anzahl = $state(24);
+  $effect(() => { try { localStorage.setItem(MERK, JSON.stringify({ filter, sort, ort })); } catch { /* egal */ } });
+  let warumOffen = $state(""), gelernt = $state<Record<string, string>>({});
   let neuOffen = $state(""), wunsch = $state(""), modus = $state("neu"), kommentarOffen = $state(""), kommentar = $state("");
   const darf = $derived(auth.darf("akquise", true));
 
   async function laden() {
     const [d, b, z] = await Promise.all([
-      sb.from("demos").select("slug,url,kurz,erstellt,gebaut,loescht_am,version,daten,betriebe!inner(id,name,branche,ort,punkte,status,kategorie,place_id,briefe(verschickt,test,daten))")
+      sb.from("demos").select("slug,url,kurz,erstellt,gebaut,loescht_am,version,vorlage,daten,betriebe!inner(id,name,branche,ort,punkte,status,kategorie,place_id,entfernung_km,bewertung,anzahl_bewertungen,website_art,plattform,daten,briefe(verschickt,test,status,grund,daten))")
         .eq("betriebe.kategorie", kat.slug).is("geloescht", null).limit(500),
       sb.from("bewertungen").select("*"),
       sb.functions.invoke("zaehler", { body: { aktion: "stand" } }),
-    ]);
+      sb.from("gedaechtnis").select("daten").eq("kategorie", kat.slug).maybeSingle(),
+    ]).then((r) => { gelernt = (r[3] as any).data?.daten?.verarbeitet ?? {}; return r; });
     demos = d.data ?? []; bew = Object.fromEntries((b.data ?? []).map((x: any) => [x.slug, x])); aufrufe = z.data?.aufrufe ?? {}; laedt = false;
   }
   $effect(() => { kat.slug; laden(); });
@@ -32,18 +40,25 @@
   const b = (x: any) => bew[x.slug];
   const aktuell = (x: any) => b(x) && String(b(x).version ?? "") === String(x.version ?? "");
   const geoeffnet = (x: any) => (aufrufe[x.kurz ?? ""] ?? []).filter((a: any) => !brief(x)?.verschickt || Date.parse(a.z) > Date.parse(brief(x).verschickt + "T23:59:59Z"));
+  const nurSeite = (x: any, seite: string) => geoeffnet(x).filter((a: any) => (a.s || "demo") === seite);
+  const behalten = (x: any) => ["behalten", "interesse", "kunde"].includes(x.betriebe?.status);
+  const orte = $derived([...new Set(demos.map((x) => x.betriebe?.ort).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de")) as string[]);
+  const istGelernt = (x: any) => { const r = b(x); return !!r && gelernt[`${x.slug}@${x.version}`] === `${r.daumen ?? 0}|${String(r.kommentar ?? "").trim().slice(0, 800)}`; };
   const FILTER: [string, string, (x: any) => boolean][] = [
     ["alle", "Alle", () => true],
     ["fav", "Favoriten", (x) => !!b(x)?.favorit],
     ["offen", "Geöffnet", (x) => geoeffnet(x).length > 0],
     ["neu", "Neu", (x) => !!x.erstellt && heute - Date.parse(x.erstellt) < 7 * 864e5],
     ["ohne", "Ohne Brief", (x) => !brief(x)],
-    ["versch", "Verschickt", (x) => !!brief(x)?.verschickt],
+    ["versch", "Verschickt", (x) => !!brief(x)?.verschickt && !brief(x)?.test],
+    ["test", "Testbrief", (x) => !!brief(x)?.test],
     ["bald", "Läuft bald ab", (x) => { const t = tageBis(x.loescht_am); return t !== null && t <= 7; }],
   ];
-  const passt = (x: any) => !suche || `${x.betriebe?.name} ${x.betriebe?.ort} ${x.betriebe?.branche}`.toLowerCase().includes(suche.toLowerCase());
+  const passt = (x: any) => (!suche || `${x.betriebe?.name} ${x.betriebe?.ort} ${x.betriebe?.branche}`.toLowerCase().includes(suche.toLowerCase())) && (!ort || x.betriebe?.ort === ort);
+  const gefiltert = $derived(filter !== "alle" || !!ort || !!suche || sort !== "neu");
+  function zuruecksetzen() { filter = "alle"; ort = ""; suche = ""; sort = "neu"; anzahl = 24; }
   const liste = $derived.by(() => {
-    const f = FILTER.find((y) => y[0] === filter)![2];
+    const f = (FILTER.find((y) => y[0] === filter) ?? FILTER[0])[2];
     const l = demos.filter((x) => f(x) && passt(x));
     if (sort === "neu") l.sort((p, q) => String(q.gebaut ?? q.erstellt).localeCompare(String(p.gebaut ?? p.erstellt)));
     if (sort === "ab") l.sort((p, q) => (tageBis(p.loescht_am) ?? 9999) - (tageBis(q.loescht_am) ?? 9999));
@@ -72,11 +87,11 @@
   }
   async function favorit(x: any) { await setzen(x, { favorit: !b(x)?.favorit }); }
   async function neubau(x: any) {
-    if (!wunsch.trim()) return;
     const nb = { wunsch: wunsch.trim().slice(0, 1200), modus, zeit: new Date().toISOString(), version: x.version };
     if (!(await setzen(x, { neubau: nb }))) return;
     neuOffen = ""; wunsch = "";
-    await befehl("neubau", { slug: x.slug, version: x.version, wunsch: nb.wunsch, modus, name: x.betriebe?.name, welt: x.daten?.welt }, x.slug, "Neubau angefordert – der Agent baut gleich");
+    await befehl("neubau", { slug: x.slug, version: x.version, wunsch: nb.wunsch, modus, name: x.betriebe?.name, welt: x.daten?.welt, sofort: sofort.an }, x.slug,
+      (nb.wunsch ? "Neubau angefordert – der Agent baut gleich." : "Frischer Entwurf angefordert – der Agent baut gleich.") + sparHinweis());
   }
   async function neubauZurueck(x: any) {
     if (!(await setzen(x, { neubau: null }))) return;
@@ -93,7 +108,7 @@
     if (nb && String(nb.version) === String(x.version)) return daten.offen("neubau", x.slug).length || daten.laufend[kat.slug] ? "Neubau läuft …" : "Neubau angefordert";
     if (fe && (!x.daten?.neubau_erledigt || fe.zeit > x.daten.neubau_erledigt)) return "Neubau fehlgeschlagen: " + String(fe.fehler ?? "").slice(0, 80);
     if (!aktuell(x) && b(x)) return "Neue Version – bitte bewerten";
-    if (aktuell(x) && b(x).daumen) return "Gespeichert, die KI lernt daraus";
+    if (aktuell(x) && (b(x).daumen || b(x).kommentar)) return istGelernt(x) ? "Gelernt" : "Gespeichert, die KI lernt gleich daraus";
     return "Wie gefällt sie dir?";
   }
 </script>
@@ -101,6 +116,8 @@
 <div class="bar">
   <label class="search"><Icon name="search" size={16} /><input class="input" placeholder="Name, Ort, Art" bind:value={suche}></label>
   <select class="input sel" bind:value={sort} aria-label="Sortierung"><option value="neu">Neueste</option><option value="ab">Läuft ab</option><option value="punkte">Eignung</option></select>
+  {#if orte.length > 1}<select class="input sel" bind:value={ort} aria-label="Ort"><option value="">Alle Orte</option>{#each orte as o}<option value={o}>{o}</option>{/each}</select>{/if}
+  {#if gefiltert}<button class="btn btn--s btn--quiet" onclick={zuruecksetzen}><Icon name="x" size={14} />Zurücksetzen</button>{/if}
 </div>
 <div class="chips">
   {#each FILTER as [k, n, f]}<button class="chip" class:on={filter === k} onclick={() => { filter = k; anzahl = 24; }}>{n} <span class="num">{demos.filter((x) => f(x) && passt(x)).length}</span></button>{/each}
@@ -123,10 +140,28 @@
             {#if x.betriebe?.punkte}<span class="pill pill--plain">Eignung {Math.round(x.betriebe.punkte)}</span>{/if}
             {#if x.daten?.design === "einzeln"}<span class="pill pill--plain pill--lila">Einzelstück{x.daten?.note ? ` · Note ${x.daten.note}/10` : ""}</span>{/if}
             {#if x.daten?.welt_label}<span class="pill pill--plain">{x.daten.welt_label}</span>{/if}
-            {#if brief(x)?.verschickt}<span class="pill pill--plain pill--blau">Brief {datum(brief(x).verschickt)}</span>{:else if brief(x)}<span class="pill pill--plain">Brief bereit</span>{/if}
-            {#if auf.length}<span class="pill pill--plain pill--gruen">Geöffnet {vor(auf[0].z)}{auf.length > 1 ? ` · ${auf.length}×` : ""}</span>{/if}
+            {#if x.betriebe?.entfernung_km != null}<span class="pill pill--plain">{String(x.betriebe.entfernung_km).replace(".", ",")} km</span>{/if}
+            {#if x.betriebe?.bewertung}<span class="pill pill--plain">{String(x.betriebe.bewertung).replace(".", ",")} ★ ({x.betriebe.anzahl_bewertungen ?? 0})</span>{/if}
+            {#if x.betriebe?.website_art}<span class="pill pill--plain" title="Website heute">{x.betriebe.website_art}{x.betriebe.plattform ? ` · ${x.betriebe.plattform}` : ""}</span>{/if}
+            {#if x.vorlage && !x.daten?.welt_label}<span class="pill pill--plain">{x.vorlage}</span>{/if}
+            {#if behalten(x)}<span class="pill pill--plain pill--gruen">bleibt online</span>{/if}
+            {#if daten.offen("brief_senden", x.slug).length}<span class="pill pill--plain pill--gelb">Brief wird verschickt</span>
+            {:else if brief(x)?.verschickt}<span class="pill pill--plain pill--{brief(x).test ? 'gelb' : 'blau'}">{brief(x).test ? "Testbrief" : "Brief"} {datum(brief(x).verschickt)}</span>
+            {:else if brief(x)?.grund}<span class="pill pill--plain pill--rot" title={brief(x).grund}>Brief nicht verschickt: {String(brief(x).grund).slice(0, 40)}</span>
+            {:else if brief(x)}<span class="pill pill--plain">Brief bereit</span>{/if}
+            {#each [["demo", "Demo"], ["angebot", "Angebot"]] as [seite, wort]}
+              {@const a = nurSeite(x, seite)}
+              {#if a.length}<span class="pill pill--plain pill--gruen">{wort} angesehen {vor(a[0].z)}{a[0].g && GERAET[a[0].g] ? ` · ${GERAET[a[0].g]}` : ""}{a.length > 1 ? ` · ${a.length}×` : ""}</span>{/if}
+            {/each}
           </div>
-          <p class="st muted">{stand(x)}</p>
+          <p class="st" class:ok={stand(x) === "Gelernt"}>{stand(x)}</p>
+          {#if (x.betriebe?.daten?.bewertung_details ?? []).length}
+            <button class="lnk warum" onclick={() => (warumOffen = warumOffen === x.slug ? "" : x.slug)} aria-expanded={warumOffen === x.slug}>Warum ausgewählt?</button>
+            {#if warumOffen === x.slug}
+              <div class="kats">{#each x.betriebe.daten.bewertung_details.slice(0, 10) as k}
+                <div class="kat"><span>{k.name}</span><span class="kb"><i style="width:{Math.round(((k.punkte ?? 0) / (k.max || 1)) * 100)}%"></i></span>{#if k.warum}<small class="muted">{k.warum}</small>{/if}</div>{/each}</div>
+            {/if}
+          {/if}
           {#if darf}
             <div class="dk__a">
               <button class="btn btn--s btn--icon" class:up={aktuell(x) && r?.daumen > 0} onclick={() => daumen(x, 1)} aria-label="Gefällt mir" aria-pressed={aktuell(x) && r?.daumen > 0}>👍</button>
@@ -143,16 +178,17 @@
           {/if}
           {#if neuOffen === x.slug}
             <form class="box col" onsubmit={(e) => { e.preventDefault(); neubau(x); }}>
-              <textarea class="input" rows="3" maxlength="1200" placeholder="Was soll anders werden? z. B. heller, mehr Fotos vom Essen, ruhigere Schrift" bind:value={wunsch}></textarea>
+              <textarea class="input" rows="3" maxlength="1200" placeholder="Was soll anders werden? z. B. heller, mehr Fotos vom Essen, ruhigere Schrift. Leer lassen = ganz frischer Entwurf." bind:value={wunsch}
+                onkeydown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); neubau(x); } }}></textarea>
               <div class="seg">
                 {#if x.daten?.design === "einzeln"}<button type="button" aria-pressed={modus === "ueberarbeiten"} onclick={() => (modus = "ueberarbeiten")}>Überarbeiten</button>{/if}
                 <button type="button" aria-pressed={modus === "neu"} onclick={() => (modus = "neu")}>Neu entwerfen</button>
               </div>
-              <div class="row"><button class="btn btn--s btn--quiet" type="button" onclick={() => (neuOffen = "")}>Abbrechen</button><button class="btn btn--s btn--primary" type="submit" disabled={!wunsch.trim()}>Neu generieren</button></div>
+              <div class="row"><button class="btn btn--s btn--quiet" type="button" onclick={() => (neuOffen = "")}>Abbrechen</button><button class="btn btn--s btn--primary" type="submit">{wunsch.trim() ? "Neu generieren" : "Frisch entwerfen"}</button></div>
             </form>
           {/if}
           {#if r?.neubau && String(r.neubau.version) === String(x.version)}
-            <div class="wunsch"><span class="muted">Dein Wunsch ({r.neubau.modus === "ueberarbeiten" ? "überarbeiten" : "neu entwerfen"}):</span> {r.neubau.wunsch}
+            <div class="wunsch"><span class="muted">Dein Wunsch ({r.neubau.modus === "ueberarbeiten" ? "überarbeiten" : "neu entwerfen"}):</span> {r.neubau.wunsch || "ganz frischer Entwurf"}
               {#if darf && !daten.laufend[kat.slug]}<button class="lnk" onclick={() => neubauZurueck(x)}>Zurückziehen</button>{/if}</div>
           {/if}
           <div class="dk__f">
@@ -193,7 +229,14 @@
   .dk__h small { font-size: .8rem; }
   .tags { display: flex; flex-wrap: wrap; gap: 4px; }
   .tags .pill { height: 22px; font-size: .72rem; padding: 0 8px; }
-  .st { font-size: .8rem; }
+  .st { font-size: .8rem; color: var(--steel); margin: 0; }
+  .st.ok { color: #6FD3A2; }
+  .warum { justify-self: start; margin: 0; font-size: .8rem; }
+  .kats { display: grid; gap: 6px; font-size: .78rem; }
+  .kat { display: grid; grid-template-columns: 1fr 60px; gap: 2px 8px; align-items: center; }
+  .kat small { grid-column: 1 / -1; font-size: .72rem; }
+  .kb { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+  .kb i { display: block; height: 100%; background: var(--ok); }
   .dk__a, .dk__f { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
   .dk__f { border-top: 1px solid var(--line); padding-top: 8px; }
   .btn--icon { width: 34px; font-size: 1rem; }

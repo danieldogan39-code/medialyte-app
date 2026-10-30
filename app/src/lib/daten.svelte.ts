@@ -1,6 +1,9 @@
 // Gemeinsam genutzte Daten: Kategorien, Team, Zähler für die Navigation (mit Live-Aktualisierung)
 import { sb } from "./supabase";
 import { auth } from "./auth.svelte";
+import { agent } from "./agent.svelte";
+import { nachfassDaten, einschaetzen } from "./nachfass";
+import { tischbuecher, wartet } from "./kunden";
 
 export type Kategorie = { slug: string; name: string; beschreibung: string | null; icon: string; farbe: string; sortierung: number; aktiv: boolean; suche: any };
 export type Agent = { schluessel: string; name: string; beschreibung: string | null; rhythmus: string | null; icon: string; sortierung: number; aktiv: boolean; geaendert: string; geaendert_von: string | null };
@@ -11,7 +14,8 @@ class Daten {
   team = $state<Mitglied[]>([]);
   agenten = $state<Agent[]>([]);
   neueAnfragen = $state(0);
-  nachfassHeute = $state(0);      // wird von der Nachfass-Seite gesetzt
+  nachfassHeute = $state(0);      // Zähler im Menü: heute dran (auch ohne die Seite zu öffnen)
+  tischbuchWartet = $state(0);    // Restaurants, bei denen ein Gast seit über einer Stunde wartet
   befehle = $state<any[]>([]);      // offene/laufende Aufträge an den Agenten
   laufend = $state<Record<string, any>>({});   // laufender Lauf je Kategorie (Live-Stand)
   toast = $state("");
@@ -19,6 +23,19 @@ class Daten {
   #kanal: ReturnType<typeof sb.channel> | null = null;
   #kanal2: ReturnType<typeof sb.channel> | null = null;
   #t = 0;
+  #nfTimer = 0;
+  async nachfassZaehlen() {
+    if (!auth.darf("akquise")) return;
+    try {
+      const d = await nachfassDaten(), tage = agent.c.einstellungen?.nachfass_tage ?? 6;
+      this.nachfassHeute = d.faelle.map((x) => einschaetzen(x, d.eintraege[x.slug], d.aufrufe[x.kurz ?? ""] ?? [], d.anfragen[x.slug] ?? [], tage))
+        .filter((n) => (n.g === "heiss" || n.g === "heute") && n.st !== "kunde").length;
+    } catch { /* Zähler ist nur ein Hinweis */ }
+    if (auth.darf("kunden")) {
+      const t = await tischbuecher().catch(() => null);
+      if (t?.lokale) this.tischbuchWartet = Object.values(t.lokale).filter((l) => !l.demo && wartet(l)).length;
+    }
+  }
 
   async laden() {
     const [k, t, a] = await Promise.all([
@@ -31,6 +48,9 @@ class Daten {
     this.team = (t.data as Mitglied[]) ?? [];
     await this.zaehlen();
     await this.agentStand();
+    agent.laden();
+    this.nachfassZaehlen();
+    if (!this.#nfTimer) this.#nfTimer = setInterval(() => this.nachfassZaehlen(), 300000) as unknown as number;
     if (!this.#kanal2 && auth.darf("akquise")) {
       this.#kanal2 = sb.channel("agent-live")
         .on("postgres_changes", { event: "*", schema: "public", table: "befehle" }, () => this.agentStand())

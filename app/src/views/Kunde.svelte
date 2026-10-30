@@ -6,6 +6,7 @@
   import { sb, fehler } from "../lib/supabase";
   import { befehl } from "../lib/befehl";
   import { frage } from "../lib/frage.svelte";
+  import TischbuchAnsicht from "../components/TischbuchAnsicht.svelte";
   import { datum, datumKurz, vor } from "../lib/format";
   import { IMPRESSUM, STAND, datenschutzVorlage, demoLesen, domainPruefen, domainVorschlag, fotoHochladen, hinweise, personen, standMit, tischbuch,
     type DemoInfo, type Impressum, type Kunde, type Lage } from "../lib/kunden";
@@ -18,6 +19,7 @@
   let domain = $state(""), imp = $state<Partial<Impressum>>({}), ds = $state("");
   let eigen = $state<Set<number>>(new Set()), aus = $state<Set<number>>(new Set()), bilder = $state<Record<number, string>>({}), laedtFoto = $state<Record<number, boolean>>({});
   let markieren = $state(false), sendet = $state(false), formGeladen = "";
+  let ansicht = $state(false);
   let tb = $state<{ lokal?: Lage; anfragen?: any[]; heute?: string; fehler?: string } | null>(null);
 
   async function befehleLaden() {
@@ -249,7 +251,7 @@
 
       {#if tb}
         <section class="card box">
-          <h3>Tischbuch</h3>
+          <div class="tbk"><h3>Tischbuch</h3>{#if darf && !tb.fehler}<button class="btn btn--s" onclick={() => (ansicht = true)}><Icon name="eye" size={14} />Live ansehen</button>{/if}</div>
           {#if tb.fehler}<p class="muted klein">{tb.fehler}</p>
           {:else if tb.lokal}
             {#each hinweise(tb.lokal) as [ton, text]}<p class="hw hw--{ton}">{text}</p>{/each}
@@ -274,8 +276,11 @@
     </div>
   </div>
 {/if}
+{#if ansicht}<TischbuchAnsicht art="ansicht" {slug} {name} {link} onclose={() => (ansicht = false)} />{/if}
 
 <style>
+  .tbk { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+  .tbk h3 { margin: 0 !important; }
   .lage { padding: 16px 20px; display: grid; gap: 10px; margin-bottom: 14px; }
   .lage p { margin: 0; line-height: 1.5; }
   .lage--gruen { border-color: rgba(76, 195, 138, .4); }

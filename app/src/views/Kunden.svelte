@@ -2,12 +2,14 @@
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import { auth } from "../lib/auth.svelte";
+  import TischbuchAnsicht from "../components/TischbuchAnsicht.svelte";
   import { sb } from "../lib/supabase";
   import { vor } from "../lib/format";
   import { STAND, hinweise, personen, tischbuecher, wartet, dauer, type Kunde, type Lage } from "../lib/kunden";
 
   type Neu = { slug: string; name: string; ort?: string; branche?: string };
   let kunden = $state<Kunde[]>([]), neue = $state<Neu[]>([]), laedt = $state(true);
+  let ansicht = $state<"" | "beispiel" | "demo">("");
   let lokale = $state<Record<string, Lage> | null>(null), tbFehler = $state("");
 
   async function laden() {
@@ -42,7 +44,11 @@
   const liste = $derived([...kunden].sort((a, b) => Number(wartet(lokale?.[b.slug])) - Number(wartet(lokale?.[a.slug])) || a.name.localeCompare(b.name, "de")));
 </script>
 
-<Head titel="Kunden" text="Websites deiner Kunden: übernehmen, live schalten, Tischbücher und der Website-Agent." />
+<Head titel="Kunden" text="Websites deiner Kunden: übernehmen, live schalten, Tischbücher und der Website-Agent.">
+  <button class="btn" onclick={() => (ansicht = "beispiel")}><Icon name="eye" size={16} />Beispiel-Tischbuch</button>
+  {#if auth.darf("kunden", true)}<button class="btn" onclick={() => (ansicht = "demo")}><Icon name="sparkles" size={16} />Agent ausprobieren</button>{/if}
+</Head>
+{#if ansicht}<TischbuchAnsicht art={ansicht} onclose={() => (ansicht = "")} />{/if}
 
 {#if lokale && kunden.length}
   <div class="kz">

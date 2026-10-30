@@ -7,52 +7,64 @@
   import { frage } from "../lib/frage.svelte";
   import { sb, fehler } from "../lib/supabase";
   import { NF_STATUS, einschaetzen, grund, skript, verlauf, wiederFuer, tagHeute, tagPlus, werktag, tagText, zeitFmt, datumLang,
-    type Fall, type Eintrag, type Anfrage, type Aufruf, type Einschaetzung } from "../lib/nachfass";
+    nachfassDaten, letzteAktivitaet, type Fall, type Eintrag, type Anfrage, type Aufruf, type Einschaetzung } from "../lib/nachfass";
+  import { agent } from "../lib/agent.svelte";
+  import { STAND } from "../lib/kunden";
 
   let { slug: ziel }: { slug?: string } = $props();
   let faelle = $state<Fall[]>([]), eintraege = $state<Record<string, Eintrag>>({}), aufrufe = $state<Record<string, Aufruf[]>>({}),
-    anfragen = $state<Record<string, Anfrage[]>>({}), laedt = $state(true), offen = $state<Record<string, boolean>>({}), zeigeErledigt = $state(false);
+    anfragen = $state<Record<string, Anfrage[]>>({}), kunden = $state<Record<string, any>>({}), laedt = $state(true), offen = $state<Record<string, boolean>>({}), zeigeErledigt = $state(false);
   const darf = $derived(auth.darf("akquise", true));
 
   async function laden() {
-    const [br, nf, z] = await Promise.all([
-      sb.from("briefe").select("demo_slug,verschickt,betriebe(id,name,branche,ort,telefon),demos(slug,url,kurz,geloescht)").not("verschickt", "is", null),
-      sb.from("nachfass").select("*"),
-      sb.functions.invoke("zaehler", { body: { aktion: "stand" } }),
-    ]);
-    const map: Record<string, Fall> = {};
-    for (const b of (br.data ?? []) as any[]) {
-      if (!b.demos || b.demos.geloescht) continue;
-      map[b.demo_slug] = { slug: b.demo_slug, name: b.betriebe?.name ?? b.demo_slug, branche: b.betriebe?.branche, ort: b.betriebe?.ort, telefon: b.betriebe?.telefon,
-        url: b.demos.url, kurz: b.demos.kurz, betriebId: b.betriebe?.id, verschickt: b.verschickt };
-    }
-    aufrufe = z.data?.aufrufe ?? {}; anfragen = z.data?.anfragen ?? {};
-    // Rückrufwünsche ohne Brief (z. B. Demo-Link direkt weitergegeben)
-    const ohne = Object.keys(anfragen).filter((s) => !map[s]);
-    if (ohne.length) {
-      const { data } = await sb.from("demos").select("slug,url,kurz,geloescht,betriebe(id,name,branche,ort,telefon)").in("slug", ohne);
-      for (const d of (data ?? []) as any[]) if (!d.geloescht) map[d.slug] = { slug: d.slug, name: d.betriebe?.name ?? d.slug, branche: d.betriebe?.branche, ort: d.betriebe?.ort,
-        telefon: d.betriebe?.telefon, url: d.url, kurz: d.kurz, betriebId: d.betriebe?.id, verschickt: null };
-    }
-    faelle = Object.values(map);
-    eintraege = Object.fromEntries(((nf.data ?? []) as Eintrag[]).map((e) => [e.slug, e]));
+    const d = await nachfassDaten();
+    faelle = d.faelle; eintraege = d.eintraege; aufrufe = d.aufrufe; anfragen = d.anfragen;
     laedt = false;
-    if (ziel) offen[ziel] = true;
+    if (ziel && !offen[ziel]) { offen[ziel] = true; setTimeout(() => document.getElementById("nf-" + ziel)?.scrollIntoView({ block: "center", behavior: "smooth" }), 100); }
+    const k = await sb.from("kunden").select("slug,stand");
+    kunden = Object.fromEntries(((k.data ?? []) as any[]).map((x) => [x.slug, x.stand ?? {}]));
   }
   $effect(() => { laden(); const t = setInterval(laden, 120000); const k = sb.channel("nachfass-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "nachfass" }, (p: any) => { if (p.new?.slug) eintraege[p.new.slug] = p.new; }).subscribe();
     return () => { clearInterval(t); sb.removeChannel(k); }; });
 
-  const liste = $derived(faelle.map((x) => ({ x, n: einschaetzen(x, eintraege[x.slug], aufrufe[x.kurz ?? ""] ?? [], anfragen[x.slug] ?? []) })));
+  const tage = $derived(agent.c.einstellungen?.nachfass_tage ?? 6);
+  const liste = $derived(faelle.map((x) => ({ x, n: einschaetzen(x, eintraege[x.slug], aufrufe[x.kurz ?? ""] ?? [], anfragen[x.slug] ?? [], tage) })));
   const ORD = { heiss: 0, heute: 1, spaeter: 2, erledigt: 3 } as const;
-  const sortiert = $derived([...liste].sort((a, b) => ORD[a.n.g] - ORD[b.n.g] || (a.n.faellig ?? "9").localeCompare(b.n.faellig ?? "9") || a.x.name.localeCompare(b.x.name)));
+  // heiße Fälle: neueste Aktivität zuerst; sonst nach Fälligkeit
+  const sortiert = $derived([...liste].sort((a, b) => ORD[a.n.g] - ORD[b.n.g] || (a.n.g === "heiss" ? letzteAktivitaet(b.n) - letzteAktivitaet(a.n) : 0)
+    || (a.n.faellig ?? "9").localeCompare(b.n.faellig ?? "9") || a.x.name.localeCompare(b.x.name)));
   const gruppen = $derived({
-    neueKunden: sortiert.filter((y) => y.n.st === "kunde"),
-    dran: sortiert.filter((y) => y.n.g === "heiss" || y.n.g === "heute"),
+    neueKunden: sortiert.filter((y) => y.n.st === "kunde" && !y.n.anfNeu),
+    dran: sortiert.filter((y) => (y.n.g === "heiss" || y.n.g === "heute") && !(y.n.st === "kunde" && !y.n.anfNeu)),
     spaeter: sortiert.filter((y) => y.n.g === "spaeter"),
-    erledigt: sortiert.filter((y) => y.n.g === "erledigt"),
+    erledigt: sortiert.filter((y) => y.n.g === "erledigt" && y.n.st !== "kunde"),
   });
+  const naechster = $derived(gruppen.spaeter.filter((y) => y.n.faellig).sort((a, b) => a.n.faellig!.localeCompare(b.n.faellig!))[0]);
   $effect(() => { daten.nachfassHeute = gruppen.dran.length; });
+  let spaeterAlle = $state(false);
+  // Zurück vom Telefonat: die Karte geht auf und fragt nach dem Stand
+  let anruf: { slug: string; t: number } | null = null;
+  $effect(() => {
+    const f = () => {
+      if (document.hidden || !anruf) return;
+      const a = anruf, d = Date.now() - a.t; anruf = null;
+      if (d < 2500 || d > 3 * 36e5) return;
+      const y = liste.find((z) => z.x.slug === a.slug); if (!y) return;
+      offen[a.slug] = true; setTimeout(() => document.getElementById("nf-" + a.slug)?.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+      daten.melden(`Wie lief es mit ${y.x.name}? Tipp den Stand an.`);
+    };
+    document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f);
+  });
+  let gespeichert = $state<Record<string, boolean>>({});
+  function kundenZeile(slug: string): string {
+    const s = kunden[slug];
+    if (!s?.stand) return "Website noch nicht übernommen.";
+    if (s.stand === "vorschau") return "Vorschau fertig. Ansehen und live schalten.";
+    if (s.stand === "wartet") return `Nameserver bei INWX eintragen, dann ist www.${s.domain} live.`;
+    if (s.stand === "live") return `Live unter www.${s.domain}`;
+    return STAND[s.stand]?.name ?? s.stand;
+  }
 
   async function speichern(slug: string, neu: Partial<Eintrag>, was: string, rueck?: Eintrag | null) {
     const alt = eintraege[slug] ?? null;
@@ -80,7 +92,8 @@
   const nt: Record<string, number> = {};
   function notiz(slug: string, text: string) {
     clearTimeout(nt[slug]);
-    nt[slug] = setTimeout(() => speichern(slug, { notiz: text.slice(0, 1200) }, ""), 900) as unknown as number;
+    gespeichert[slug] = false;
+    nt[slug] = setTimeout(async () => { await speichern(slug, { notiz: text.slice(0, 1200) }, ""); gespeichert[slug] = true; }, 900) as unknown as number;
   }
   async function testEntfernen(y: { x: Fall; n: Einschaetzung }) {
     const r = y.n.anfNeu ?? y.n.anf[0]; if (!r) return;
@@ -91,7 +104,8 @@
   }
   const kurzlink = (x: Fall) => { if (!x.kurz || !x.url) return x.url ?? ""; try { return new URL(x.url).origin + "/k/" + x.kurz; } catch { return x.url; } };
   async function linkSenden(x: Fall) {
-    const text = `Hier ist der Entwurf für Ihre neue Website: ${kurzlink(x)}`;
+    const e = agent.c.einstellungen;
+    const text = `Guten Tag, hier ist der Entwurf für die neue Website von ${x.name}: ${kurzlink(x)} Viele Grüße, ${e?.absender || auth.ich?.name || "Daniel"}${e?.firma ? ", " + e.firma : ", Medialyte"}`;
     try { if (navigator.share) { await navigator.share({ text }); return; } } catch { return; }
     try { await navigator.clipboard.writeText(text); daten.melden("Text mit Link kopiert"); } catch { daten.melden(kurzlink(x)); }
   }
@@ -103,18 +117,19 @@
 
 {#snippet karte(y: { x: Fall; n: Einschaetzung })}
   {@const x = y.x}{@const n = y.n}{@const auf = !!offen[x.slug]}
-  <article class="nk card g-{n.g}" class:is-open={auf}>
+  <article class="nk card g-{n.g}" class:is-open={auf} id="nf-{x.slug}">
     <button class="nk__h" onclick={() => (offen[x.slug] = !auf)} aria-expanded={auf}>
       <span class="nk__t">
         <span class="nk__n"><b>{x.name}</b>{#if n.st !== "offen"}<span class="pill pill--plain pill--{n.st === 'kunde' || n.st === 'interesse' ? 'gruen' : n.st === 'kein_interesse' ? 'grau' : 'gelb'}">{NF_STATUS[n.st]}</span>{/if}</span>
         <small class="muted">{[x.branche, x.ort, x.verschickt ? "Brief " + datumLang(x.verschickt.slice(0, 10)) : "ohne Brief"].filter(Boolean).join(" · ")}</small>
         <span class="nk__g">{grund(n)}</span>
         {#if n.anfNeu?.nachricht}<q class="nk__q">{n.anfNeu.nachricht}</q>{/if}
+        {#if n.st === "kunde"}<span class="nk__k">{kundenZeile(x.slug)}</span>{/if}
       </span>
       <span class="pill pill--{TONE[n.g]}">{WOERTER[n.g]}</span>
     </button>
     <div class="nk__a">
-      {#if tel(y)}<a class="btn btn--s btn--primary" href="tel:{wahl(tel(y))}"><Icon name="phone" size={14} />Anrufen</a>
+      {#if tel(y)}<a class="btn btn--s btn--primary" href="tel:{wahl(tel(y))}" onclick={() => (anruf = { slug: x.slug, t: Date.now() })}><Icon name="phone" size={14} />Anrufen</a>
       {:else}<a class="btn btn--s" href="https://www.google.com/maps/search/{encodeURIComponent(x.name + ' ' + (x.ort ?? ''))}" target="_blank" rel="noopener"><Icon name="search" size={14} />Nummer suchen</a>{/if}
       {#if x.url}<a class="btn btn--s btn--quiet" href={x.url} target="_blank" rel="noopener"><Icon name="external" size={14} />Demo</a>{/if}
       <button class="btn btn--s btn--quiet" onclick={() => linkSenden(x)}><Icon name="link" size={14} />Link senden</button>
@@ -133,7 +148,7 @@
               <input class="input dat" type="date" value={n.e.wieder ?? ""} onchange={(e) => wieder(y, (e.target as HTMLInputElement).value || null)}>
             </div>
           {/if}
-          <label class="field"><span>Notiz</span><textarea class="input" rows="2" maxlength="1200" value={n.e.notiz ?? ""} oninput={(e) => notiz(x.slug, (e.target as HTMLTextAreaElement).value)} placeholder="z. B. Inhaber ist ab 15 Uhr da"></textarea></label>
+          <label class="field"><span>Notiz{#if gespeichert[x.slug]}<small class="ok"> · Gespeichert</small>{/if}</span><textarea class="input" rows="2" maxlength="1200" value={n.e.notiz ?? ""} oninput={(e) => notiz(x.slug, (e.target as HTMLTextAreaElement).value)} placeholder="z. B. Inhaber ist ab 15 Uhr da"></textarea></label>
         {/if}
         <details class="sk"><summary>Was sage ich am Telefon?</summary>
           <div>{#each skript(x, n).text as p}<p>{p}</p>{/each}<p class="muted tipp">{skript(x, n).tipp}</p></div></details>
@@ -159,8 +174,12 @@
 {#if laedt}<p class="muted">Lade …</p>
 {:else if !faelle.length}<div class="card empty"><b>Noch niemand zum Nachfassen</b><p>Sobald ein Brief verschickt ist oder jemand um Rückruf bittet, steht der Betrieb hier.</p></div>
 {:else}
-  {#if gruppen.dran.length}<h2 class="sec">Heute dran</h2><div class="list">{#each gruppen.dran as y (y.x.slug)}{@render karte(y)}{/each}</div>{/if}
-  {#if gruppen.spaeter.length}<h2 class="sec">Später</h2><div class="list">{#each gruppen.spaeter as y (y.x.slug)}{@render karte(y)}{/each}</div>{/if}
+  {#if gruppen.neueKunden.length}<h2 class="sec">Neue Kunden: Website übernehmen</h2><div class="list">{#each gruppen.neueKunden as y (y.x.slug)}{@render karte(y)}{/each}</div>{/if}
+  <h2 class="sec">Jetzt anrufen</h2>
+  {#if gruppen.dran.length}<div class="list">{#each gruppen.dran as y (y.x.slug)}{@render karte(y)}{/each}</div>
+  {:else}<p class="muted">Heute ist niemand dran.{#if naechster} Als Nächstes: {naechster.x.name}, {tagText(naechster.n.faellig)}.{/if}</p>{/if}
+  {#if gruppen.spaeter.length}<h2 class="sec">Später</h2><div class="list">{#each (spaeterAlle ? gruppen.spaeter : gruppen.spaeter.slice(0, 4)) as y (y.x.slug)}{@render karte(y)}{/each}</div>
+    {#if gruppen.spaeter.length > 4}<button class="btn btn--s btn--quiet mehr" onclick={() => (spaeterAlle = !spaeterAlle)}>{spaeterAlle ? "Weniger anzeigen" : `Alle ${gruppen.spaeter.length} anzeigen`}</button>{/if}{/if}
   {#if gruppen.erledigt.length}
     <button class="btn btn--quiet sec" onclick={() => (zeigeErledigt = !zeigeErledigt)}><Icon name={zeigeErledigt ? "down" : "right"} size={15} />Erledigt ({gruppen.erledigt.length})</button>
     {#if zeigeErledigt}<div class="list">{#each gruppen.erledigt as y (y.x.slug)}{@render karte(y)}{/each}</div>{/if}
@@ -183,6 +202,9 @@
   .nk__n b { color: var(--text); font-weight: 600; font-size: 1.02rem; }
   .nk__t small { font-size: .8rem; }
   .nk__g { color: var(--text-2); font-size: .9rem; }
+  .nk__k { font-size: .86rem; color: #6FD3A2; }
+  .ok { color: #6FD3A2; font-size: .78rem; }
+  .mehr { margin-top: 8px; }
   .nk__q { display: block; margin-top: 4px; padding: 8px 12px; border-radius: 8px; background: var(--bg-2); font-size: .88rem; color: var(--text-2); quotes: "„" "“"; }
   .nk__a { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 14px; }
   .nk__d { display: grid; gap: 14px; padding: 14px 16px 16px; border-top: 1px solid var(--line); }

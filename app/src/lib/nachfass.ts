@@ -3,7 +3,7 @@ export const NF_STATUS: Record<string, string> = {
   offen: "Offen", nicht_erreicht: "Nicht erreicht", rueckruf: "Rückruf", interesse: "Interesse", kunde: "Kunde", kein_interesse: "Kein Interesse",
 };
 export const NF_ERLEDIGT = new Set(["kunde", "kein_interesse"]);
-export const GERAET: Record<string, string> = { m: "Handy", d: "Rechner", t: "Tablet" };
+export const GERAET: Record<string, string> = { handy: "Handy", tablet: "Tablet", laptop: "Rechner", m: "Handy", d: "Rechner", t: "Tablet" };
 export const TAGE_BIS_ANRUF = 6;
 
 const berlin = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" });
@@ -117,3 +117,31 @@ export function wiederFuer(status: string, bisher: string | null): string | null
   if (status === "interesse") { let d = tagHeute(); for (let i = 0; i < 3; i++) d = werktag(tagPlus(d, 1)); return d; }
   return null;
 }
+
+// ---------- Daten laden (Nachfass-Seite und Zähler im Menü)
+import { sb } from "./supabase";
+export type NfDaten = { faelle: Fall[]; eintraege: Record<string, Eintrag>; aufrufe: Record<string, Aufruf[]>; anfragen: Record<string, Anfrage[]> };
+export async function nachfassDaten(): Promise<NfDaten> {
+  const [br, nf, z] = await Promise.all([
+    sb.from("briefe").select("demo_slug,verschickt,betriebe(id,name,branche,ort,telefon),demos(slug,url,kurz,geloescht)").not("verschickt", "is", null),
+    sb.from("nachfass").select("*"),
+    sb.functions.invoke("zaehler", { body: { aktion: "stand" } }),
+  ]);
+  const map: Record<string, Fall> = {};
+  for (const b of (br.data ?? []) as any[]) {
+    if (!b.demos || b.demos.geloescht) continue;
+    map[b.demo_slug] = { slug: b.demo_slug, name: b.betriebe?.name ?? b.demo_slug, branche: b.betriebe?.branche, ort: b.betriebe?.ort, telefon: b.betriebe?.telefon,
+      url: b.demos.url, kurz: b.demos.kurz, betriebId: b.betriebe?.id, verschickt: b.verschickt };
+  }
+  const aufrufe = z.data?.aufrufe ?? {}, anfragen = z.data?.anfragen ?? {};
+  // Rückrufwünsche ohne Brief (z. B. Demo-Link direkt weitergegeben)
+  const ohne = Object.keys(anfragen).filter((s) => !map[s]);
+  if (ohne.length) {
+    const { data } = await sb.from("demos").select("slug,url,kurz,geloescht,betriebe(id,name,branche,ort,telefon)").in("slug", ohne);
+    for (const d of (data ?? []) as any[]) if (!d.geloescht) map[d.slug] = { slug: d.slug, name: d.betriebe?.name ?? d.slug, branche: d.betriebe?.branche, ort: d.betriebe?.ort,
+      telefon: d.betriebe?.telefon, url: d.url, kurz: d.kurz, betriebId: d.betriebe?.id, verschickt: null };
+  }
+  return { faelle: Object.values(map), eintraege: Object.fromEntries(((nf.data ?? []) as Eintrag[]).map((e) => [e.slug, e])), aufrufe, anfragen };
+}
+/** Letzte Aktivität (Aufruf oder Rückrufwunsch) für die Sortierung der heißen Fälle */
+export const letzteAktivitaet = (n: Einschaetzung) => Math.max(n.auf.length ? Date.parse(n.auf[0].z) : 0, n.anfNeu ? Date.parse(n.anfNeu.zeit) : 0);

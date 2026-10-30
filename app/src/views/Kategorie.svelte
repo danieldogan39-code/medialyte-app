@@ -5,6 +5,9 @@
   import Demos from "../components/Demos.svelte";
   import Gedaechtnis from "../components/Gedaechtnis.svelte";
   import LaufSteuerung from "../components/LaufSteuerung.svelte";
+  import Ueberblick from "../components/Ueberblick.svelte";
+  import Protokoll from "../components/Protokoll.svelte";
+  import AgentEinstellungen from "../components/AgentEinstellungen.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
   import { sb, fehler } from "../lib/supabase";
@@ -14,7 +17,8 @@
   let { slug, tab }: { slug: string; tab: string } = $props();
   const kat = $derived(daten.kat(slug));
 
-  let betriebe = $state<any[]>([]), zahlen = $state<any[]>([]), laeufe = $state<any[]>([]), laedt = $state(true);
+  let betriebe = $state<any[]>([]), zahlen = $state<any[]>([]), laedt = $state(true);
+  const agentBranche = $derived(slug === "gastronomie");  // der Agent arbeitet bisher nur hier (Suchgebiete, Einstellungen aus config.yaml)
   let filter = $state(""), suche = $state("");
 
   async function laden() {
@@ -29,7 +33,6 @@
   $effect(() => { slug; filter; laden(); });
   let st: number;
   function tippen() { clearTimeout(st); st = setTimeout(laden, 250) as unknown as number; }
-  $effect(() => { if (tab === "laeufe") sb.from("laeufe").select("*").eq("kategorie", slug).order("start", { ascending: false }).limit(30).then((r) => (laeufe = r.data ?? [])); });
 
   const anzahl = (s?: string) => zahlen.filter((x) => !s || x.status === s).reduce((a, x) => a + Number(x.anzahl), 0);
   const demo = (b: any) => (b.demos ?? []).find((d: any) => !d.geloescht);
@@ -53,15 +56,18 @@
     <LaufSteuerung {kat} />
 
     <div class="tabs" role="tablist">
-      <a role="tab" aria-selected={tab === "board"} href="#/akquise/{slug}">Board</a>
+      <a role="tab" aria-selected={tab === "ueberblick"} href="#/akquise/{slug}">Überblick</a>
+      <a role="tab" aria-selected={tab === "board"} href="#/akquise/{slug}/board">Board</a>
       <a role="tab" aria-selected={tab === "demos"} href="#/akquise/{slug}/demos">Demos</a>
       <a role="tab" aria-selected={tab === "betriebe"} href="#/akquise/{slug}/betriebe">Liste <span class="num muted">{zahl(anzahl())}</span></a>
       <a role="tab" aria-selected={tab === "gedaechtnis"} href="#/akquise/{slug}/gedaechtnis">Gedächtnis</a>
-      <a role="tab" aria-selected={tab === "laeufe"} href="#/akquise/{slug}/laeufe">Läufe</a>
+      <a role="tab" aria-selected={tab === "laeufe"} href="#/akquise/{slug}/laeufe">Protokoll</a>
       <a role="tab" aria-selected={tab === "suche"} href="#/akquise/{slug}/suche">Suche & Einstellungen</a>
     </div>
 
-    {#if tab === "board"}
+    {#if tab === "ueberblick"}
+      <Ueberblick {kat} />
+    {:else if tab === "board"}
       <Board {kat} />
     {:else if tab === "demos"}
       <Demos {kat} />
@@ -100,17 +106,14 @@
       {/if}
 
     {:else if tab === "laeufe"}
-      {#if laeufe.length}
-        <div class="card tw"><table class="table">
-          <thead><tr><th>Start</th><th>Art</th><th>Status</th><th class="h-m">Ergebnis</th></tr></thead>
-          <tbody>{#each laeufe as l (l.id)}<tr><td>{datum(l.start)} <small class="muted">{vor(l.start)}</small></td><td>{l.art}</td><td>{l.status ?? "–"}</td>
-            <td class="h-m muted">{Object.entries(l.zahlen ?? {}).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(" · ")}</td></tr>{/each}</tbody>
-        </table></div>
-      {:else}<div class="card empty"><b>Noch keine Läufe</b><p>Hier erscheint jeder Lauf des Agenten in dieser Kategorie mit Ergebnis und Protokoll.</p></div>{/if}
+      <Protokoll {kat} />
 
     {:else if s}
+      {#if agentBranche}<AgentEinstellungen />{/if}
       <div class="card einst">
         <label class="tog"><input type="checkbox" bind:checked={s.aktiv} disabled={!auth.darf("akquise", true)}><span><b>Agent sucht in dieser Kategorie</b><small class="muted">Ausgeschaltet: keine neuen Betriebe, bestehende bleiben.</small></span></label>
+        {#if agentBranche}<p class="muted klein">Den Lauf in dieser Branche schaltest du hier an und aus. Suchgebiete und Filter oben gelten für den Agenten.</p>{:else}
+        <p class="muted klein">Diese Suche nutzt der Agent, sobald er diese Branche bearbeitet. Bis dahin werden hier noch keine Betriebe gesucht.</p>
         <label class="field"><span>Beschreibung</span><input class="input" bind:value={s.beschreibung}></label>
         <div class="field"><span>Suchbegriffe bei Google (z. B. „Tischlerei“)</span>
           <div class="tags">{#each s.begriffe as b, i}<span class="tag">{b}<button aria-label="{b} entfernen" onclick={() => s.begriffe.splice(i, 1)}><Icon name="x" size={13} /></button></span>{/each}
@@ -122,7 +125,7 @@
           <label class="field"><span>Mindestbewertung</span><input class="input" type="number" step="0.1" min="1" max="5" bind:value={s.mindestbewertung}></label>
           <label class="field"><span>Mindestens Bewertungen</span><input class="input" type="number" min="0" bind:value={s.mindestanzahl}></label>
           <label class="field"><span>Demo-Vorlage</span><input class="input" bind:value={s.vorlage}></label>
-        </div>
+        </div>{/if}
         {#if auth.darf("akquise", true)}<div class="einst__a"><button class="btn btn--primary" onclick={sucheSpeichern} disabled={speichert}>Speichern</button></div>{/if}
       </div>
     {/if}
@@ -156,6 +159,7 @@
   .tag-in { width: 180px; min-height: 30px; padding: 4px 10px; }
   .row3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .einst__a { display: flex; justify-content: flex-end; }
+  .klein { font-size: .84rem; line-height: 1.45; margin: 0; }
   @media (max-width: 700px) { .h-m { display: none; } }
   @media (max-width: 480px) { .h-s { display: none; } }
 </style>
