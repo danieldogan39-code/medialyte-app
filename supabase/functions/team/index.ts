@@ -15,7 +15,9 @@ Deno.serve(async (req) => {
   const { data: darf } = await nutzer.rpc("darf", { p_bereich: "team", p_schreiben: true });
   if (darf !== true) return json(403, { ok: false, error: "Dafür fehlt dir das Recht (oder die Zwei-Faktor-Anmeldung)." });
 
-  const { data: ich } = await nutzer.auth.getUser();
+  // Wer ruft auf? (Token ausdrücklich übergeben: ohne gespeicherte Sitzung liefert getUser() sonst nichts)
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: ich } = await nutzer.auth.getUser(token);
   const { data: inhaber } = await nutzer.rpc("ist_inhaber");
   const binInhaber = inhaber === true;
 

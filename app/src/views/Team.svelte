@@ -5,6 +5,7 @@
   import { daten } from "../lib/daten.svelte";
   import { sb, fehler } from "../lib/supabase";
   import { BEREICHE, ROLLEN } from "../lib/status";
+  import { frage } from "../lib/frage.svelte";
 
   let rechte = $state<any[]>([]), einladen = $state(false), name = $state(""), email = $state(""), rolle = $state("marketing");
   let link = $state(""), linkFuer = $state(""), laeuft = $state(false);
@@ -35,19 +36,19 @@
   }
   async function neuerLink(m: any) { const r = await team({ aktion: "neuer_link", user_id: m.user_id }); if (r) { link = r.link; linkFuer = m.name; } }
   async function zweifaktor(m: any) {
-    if (!confirm(`Zwei-Faktor für ${m.name} zurücksetzen? Beim nächsten Anmelden muss ${m.name} sie neu einrichten.`)) return;
+    if (!(await frage("Zwei-Faktor zurücksetzen?", `Beim nächsten Anmelden richtet ${m.name} die Zwei-Faktor-Anmeldung neu ein, z. B. auf einem neuen Handy.`, "Zurücksetzen"))) return;
     if (await team({ aktion: "zweifaktor_zuruecksetzen", user_id: m.user_id })) daten.melden("Zurückgesetzt");
   }
   async function sperren(m: any) {
-    if (m.aktiv && !confirm(`Zugang von ${m.name} sperren?`)) return;
+    if (m.aktiv && !(await frage(`${m.name} sperren?`, `${m.name} wird sofort abgemeldet und kann sich nicht mehr anmelden, bis du den Zugang wieder entsperrst.`, "Sperren", true))) return;
     if (await team({ aktion: m.aktiv ? "sperren" : "entsperren", user_id: m.user_id })) { daten.melden(m.aktiv ? "Gesperrt" : "Entsperrt"); laden(); }
   }
   async function loeschen(m: any) {
-    if (!confirm(`${m.name} endgültig löschen? Das Konto wird entfernt, ${m.name} kann sich nicht mehr anmelden. Notizen und Verlauf bleiben erhalten.`)) return;
+    if (!(await frage(`${m.name} endgültig löschen?`, `Das Konto wird entfernt, ${m.name} kann sich nicht mehr anmelden. Notizen und Verlauf bleiben erhalten. Das lässt sich nicht rückgängig machen.`, "Endgültig löschen", true))) return;
     if (await team({ aktion: "loeschen", user_id: m.user_id })) { daten.melden(`${m.name} gelöscht`); laden(); }
   }
   async function rolleAendern(m: any, r: string) {
-    if (r === "inhaber" && !confirm(`${m.name} zum Inhaber machen? Danach kann nur ${m.name} selbst diesen Zugang ändern.`)) { laden(); return; }
+    if (r === "inhaber" && !(await frage(`${m.name} zum Inhaber machen?`, `Danach kann nur ${m.name} selbst diesen Zugang ändern – auch du nicht mehr.`, "Zum Inhaber machen", true))) { laden(); return; }
     const { error } = await sb.from("mitglieder").update({ rolle: r }).eq("user_id", m.user_id);
     if (error) daten.melden(fehler(error)); else { daten.melden("Rolle geändert"); laden(); }
   }

@@ -2,6 +2,7 @@
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Schalter from "../components/Schalter.svelte";
+  import { frage } from "../lib/frage.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
   import { sb } from "../lib/supabase";
@@ -31,7 +32,7 @@
   const darfAgent = $derived(auth.darf("einstellungen", true));
   const darfKat = $derived(auth.darf("akquise", true));
   async function agentSchalten(a: any, an: boolean) {
-    if (!an && a.schluessel === "website" && !confirm("Website-Agent ausschalten? Neue Änderungswünsche deiner Kunden bleiben dann liegen, bis du ihn wieder einschaltest.")) return;
+    if (!an && a.schluessel === "website" && !(await frage("Website-Agent ausschalten?", "Neue Änderungswünsche deiner Kunden bleiben dann liegen, bis du ihn wieder einschaltest. Übernehmen und Zurücknehmen funktioniert weiter.", "Ausschalten", true))) return;
     await daten.schalten("agent", a.schluessel, an);
   }
   const anzahlAn = $derived(daten.agenten.filter((a) => a.aktiv).length);

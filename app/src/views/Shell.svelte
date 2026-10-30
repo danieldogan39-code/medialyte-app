@@ -11,6 +11,7 @@
   import Anfragen from "./Anfragen.svelte";
   import Team from "./Team.svelte";
   import Bald from "./Bald.svelte";
+  import Rueckfrage from "../components/Rueckfrage.svelte";
 
   let offen = $state(false);   // Navigation auf dem Handy
   $effect(() => { daten.laden(); });
@@ -64,6 +65,7 @@
 </div>
 
 {#if daten.toast}<div class="toast" role="status">{daten.toast}</div>{/if}
+<Rueckfrage />
 
 <style>
   .shell { min-height: 100vh; display: grid; grid-template-columns: var(--side) minmax(0, 1fr); }
