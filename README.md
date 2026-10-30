@@ -50,7 +50,7 @@ Im Repo `website-agent` zusätzlich das Secret `SUPABASE_SECRET_KEY` (Supabase �
 
 ## Abläufe (GitHub Actions)
 
-- **Supabase aktualisieren:** von Hand (Actions → Run workflow)
+- **Supabase aktualisieren:** automatisch bei Änderungen in `supabase/` (vorher `tools/test/run.sh`)
 - **App bauen und veröffentlichen (Web):** bei Änderungen in `app/`
 - **Programme bauen (Mac, Windows):** von Hand oder bei neuer Version in `tauri.conf.json` → Releases
 - **Android-App bauen:** von Hand oder bei Änderungen in `mobile/` → Releases

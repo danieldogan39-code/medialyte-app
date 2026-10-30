@@ -3,9 +3,12 @@
 # Benötigt die Repository-Secrets SUPABASE_ACCESS_TOKEN und (für die Website-Verbindung) IONOS_SFTP_HOST/USER/PASS.
 name: Supabase aktualisieren
 
-# Vorerst nur von Hand starten (Actions → Supabase aktualisieren → Run workflow):
-# Änderungen an der Live-Datenbank erst nach Freigabe.
+# Läuft bei jeder Änderung in supabase/ (Daniel hat am 30.10.2026 freigegeben: Einspielen ohne Rückfrage,
+# immer erst nach bestandenen Tests: tools/test/run.sh).
 on:
+  push:
+    branches: [main]
+    paths: ["supabase/**", ".github/workflows/supabase.yml"]
   workflow_dispatch:
 
 concurrency:
