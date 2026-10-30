@@ -10,11 +10,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { ok: false });
 
   const nutzer = alsNutzer(req);
-  const [{ data: akquise }, { data: briefe }] = await Promise.all([
-    nutzer.rpc("darf", { p_bereich: "akquise", p_schreiben: true }),
-    nutzer.rpc("darf", { p_bereich: "briefe", p_schreiben: true }),
-  ]);
-  if (akquise !== true && briefe !== true) return json(403, { ok: false, error: "Dafür fehlt dir das Recht." });
+  const rechte = await Promise.all(["akquise", "briefe", "kunden"].map((b) => nutzer.rpc("darf", { p_bereich: b, p_schreiben: true })));
+  if (!rechte.some((r) => r.data === true)) return json(403, { ok: false, error: "Dafür fehlt dir das Recht." });
 
   const token = Deno.env.get("AGENT_GITHUB_TOKEN");
   if (!token) return json(503, { ok: false, error: "Der Schlüssel für den Agenten fehlt noch (Secret AGENT_GITHUB_TOKEN)." });

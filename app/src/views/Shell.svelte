@@ -12,6 +12,8 @@
   import Team from "./Team.svelte";
   import Nachfassen from "./Nachfassen.svelte";
   import Bald from "./Bald.svelte";
+  import Kunden from "./Kunden.svelte";
+  import Kunde from "./Kunde.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
 
   let offen = $state(false);   // Navigation auf dem Handy
@@ -61,7 +63,8 @@
     {:else if t[0] === "akquise"}<Akquise />
     {:else if t[0] === "nachfassen"}<Nachfassen slug={t[1]} />
     {:else if t[0] === "team"}<Team />
-    {:else if t[0] === "kunden"}<Bald titel="Kunden" text="Kunden aus Anfragen, Akquise und Rechnungen an einem Ort – kommt mit dem Zusammenführen der Rechnungs-App (Etappe 4)." />
+    {:else if t[0] === "kunden" && t[1]}<Kunde slug={t[1]} />
+    {:else if t[0] === "kunden"}<Kunden />
     {:else if t[0] === "rechnungen"}<Bald titel="Rechnungen & Angebote" text="Die Rechnungs-App zieht in Etappe 4 komplett hierher. Bis dahin öffnest du sie wie gewohnt." link />
     {:else}<Uebersicht />{/if}
   </main>

@@ -119,6 +119,7 @@
       {#if x.url}<a class="btn btn--s btn--quiet" href={x.url} target="_blank" rel="noopener"><Icon name="external" size={14} />Demo</a>{/if}
       <button class="btn btn--s btn--quiet" onclick={() => linkSenden(x)}><Icon name="link" size={14} />Link senden</button>
       {#if x.betriebId}<a class="btn btn--s btn--quiet" href="#/akquise/betrieb/{x.betriebId}"><Icon name="letter" size={14} />Brief</a>{/if}
+      {#if n.st === "kunde" && auth.darf("kunden")}<a class="btn btn--s" href="#/kunden/{x.slug}"><Icon name="globe" size={14} />Website übernehmen</a>{/if}
     </div>
     {#if auf}
       <div class="nk__d">

@@ -152,3 +152,26 @@ do $$ begin
   raise notice 'OK Nachfassen schreibbar';
 end $$;
 reset role;
+
+-- 12) Kunden: lesen mit Kunden-Recht, Tischbuch-Link und Aufträge nur mit Schreibrecht
+insert into public.kunden (slug, name) values ('test-kunde', 'Test') on conflict do nothing;
+insert into public.kunden_zugang (slug, tischbuch) values ('test-kunde', 'https://x/#k=geheim') on conflict do nothing;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ declare n int; begin
+  select count(*) into n from public.kunden; if n <> 1 then raise exception 'Marketing sieht Kunden nicht'; end if;
+  select count(*) into n from public.kunden_zugang; if n <> 0 then raise exception 'Marketing sieht Tischbuch-Link'; end if;
+  begin insert into public.befehle (art, ziel) values ('kunde', 'test-kunde'); raise exception 'Marketing darf Kunden-Auftrag';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Kunden nur lesen für Marketing';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare n int; begin
+  select count(*) into n from public.kunden_zugang; if n <> 1 then raise exception 'Buchhaltung sieht Tischbuch-Link nicht'; end if;
+  insert into public.befehle (art, ziel, daten) values ('kunde', 'test-kunde', '{"art": "vorschau"}');
+  begin insert into public.befehle (art) values ('lauf'); raise exception 'Buchhaltung darf Lauf starten';
+  exception when insufficient_privilege then null; end;
+  select count(*) into n from public.befehle where art = 'kunde'; if n <> 1 then raise exception 'Kunden-Auftrag nicht lesbar'; end if;
+  raise notice 'OK Kunden-Aufträge für Buchhaltung';
+end $$;
+reset role;

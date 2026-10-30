@@ -58,6 +58,7 @@
   <Head titel={b.name ?? "Betrieb"} text={[b.branche, b.ort, kat?.name].filter(Boolean).join(" · ")} zurueck="#/akquise/{b.kategorie}">
     {#if b.telefon}<a class="btn" href="tel:{b.telefon.replace(/[^+\d]/g, '')}"><Icon name="phone" size={16} />Anrufen</a>{/if}
     {#if b.maps_url}<a class="btn" href={b.maps_url} target="_blank" rel="noopener"><Icon name="pin" size={16} />Google Maps</a>{/if}
+    {#if b.status === "kunde" && demo && auth.darf("kunden")}<a class="btn btn--primary" href="#/kunden/{demo.slug}"><Icon name="globe" size={16} />Website übernehmen</a>{/if}
   </Head>
 
   <div class="cols">

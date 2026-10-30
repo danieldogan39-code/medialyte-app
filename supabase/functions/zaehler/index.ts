@@ -2,6 +2,8 @@
 // Der Leseschlüssel liegt nur auf dem Server (Tabelle geheim, vom Agenten eingetragen), nie im Gerät.
 //   {aktion: "stand"}                      → {aufrufe: {kurzcode: [{z, g, s}]}, anfragen: {slug: [{...}]}}
 //   {aktion: "anfrage_entfernen", slug, zeit} → Rückrufwunsch, der nur ein Test war, entfernen
+//   {aktion: "tischbuecher"}               → {lokale: {slug: Lage}, heute}  (Recht Kunden)
+//   {aktion: "tischbuch", slug}            → {lokal, anfragen, heute}      (Recht Kunden, Gästedaten nur durchgereicht)
 import { admin, alsNutzer, cors, json } from "../_shared/util.ts";
 
 Deno.serve(async (req) => {
@@ -11,14 +13,21 @@ Deno.serve(async (req) => {
   try { e = await req.json(); } catch { /* leer */ }
 
   const nutzer = alsNutzer(req);
-  const schreiben = e.aktion === "anfrage_entfernen";
-  const { data: darf } = await nutzer.rpc("darf", { p_bereich: "akquise", p_schreiben: schreiben });
+  const schreiben = e.aktion === "anfrage_entfernen", tb = e.aktion === "tischbuecher" || e.aktion === "tischbuch";
+  const { data: darf } = await nutzer.rpc("darf", { p_bereich: tb ? "kunden" : "akquise", p_schreiben: schreiben });
   if (darf !== true) return json(403, { ok: false, error: "Dafür fehlt dir das Recht." });
 
   const { data: g } = await admin().from("geheim").select("wert").eq("name", "zaehler").maybeSingle();
   const z = g?.wert as { url?: string; schluessel?: string } | undefined;
-  if (!z?.url || !z?.schluessel) return json(200, { ok: true, aufrufe: {}, anfragen: {}, hinweis: "Zähler-Dienst noch nicht verbunden" });
+  if (!z?.url || !z?.schluessel) return json(200, { ok: true, aufrufe: {}, anfragen: {}, lokale: null, hinweis: "Zähler-Dienst noch nicht verbunden" });
   const basis = z.url.replace(/\/$/, ""), h = { Authorization: `Bearer ${z.schluessel}`, "Content-Type": "application/json" };
+
+  if (tb) {
+    if (e.aktion === "tischbuch" && !/^[a-z0-9-]{3,80}$/.test(String(e.slug ?? ""))) return json(400, { ok: false, error: "Restaurant fehlt" });
+    const r = await fetch(e.aktion === "tischbuch" ? `${basis}/t/einsicht?l=${encodeURIComponent(e.slug)}` : `${basis}/t/lokale`, { headers: h });
+    if (!r.ok) return json(r.status === 404 ? 404 : 502, { ok: false, error: r.status === 404 ? "Dieses Tischbuch gibt es nicht (mehr)." : "Der Dienst ist gerade nicht erreichbar." });
+    return json(200, { ok: true, ...(await r.json()) });
+  }
 
   if (schreiben) {
     const r = await fetch(`${basis}/anfragen`, { method: "DELETE", headers: h, body: JSON.stringify({ slug: e.slug, zeit: e.zeit }) });
