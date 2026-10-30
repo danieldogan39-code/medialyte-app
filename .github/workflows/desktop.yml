@@ -43,6 +43,8 @@ jobs:
       - run: npm ci
         working-directory: app
       - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: app
           tagName: app-v__VERSION__
