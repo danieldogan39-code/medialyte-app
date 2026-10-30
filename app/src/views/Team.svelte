@@ -45,7 +45,8 @@
   }
   async function loeschen(m: any) {
     if (!(await frage(`${m.name} endgültig löschen?`, `Das Konto wird entfernt, ${m.name} kann sich nicht mehr anmelden. Notizen und Verlauf bleiben erhalten. Das lässt sich nicht rückgängig machen.`, "Endgültig löschen", true))) return;
-    if (await team({ aktion: "loeschen", user_id: m.user_id })) { daten.melden(`${m.name} gelöscht`); laden(); }
+    const r = await team({ aktion: "loeschen", user_id: m.user_id });
+    if (r) { daten.melden(r.gesperrt ? `${m.name} ist entfernt. Das Konto hing noch an Daten und ist jetzt dauerhaft gesperrt.` : `${m.name} gelöscht`); laden(); }
   }
   async function rolleAendern(m: any, r: string) {
     if (r === "inhaber" && !(await frage(`${m.name} zum Inhaber machen?`, `Danach kann nur ${m.name} selbst diesen Zugang ändern – auch du nicht mehr.`, "Zum Inhaber machen", true))) { laden(); return; }

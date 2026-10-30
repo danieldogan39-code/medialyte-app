@@ -3,7 +3,8 @@
   import type { Snippet } from "svelte";
   import { R } from "../../lib/rechnungen/daten.svelte";
   import { rechnungenAnsicht as A } from "../../lib/rechnungen/ansicht.svelte";
-  import { slide } from "svelte/transition";
+  import { slide, fade } from "svelte/transition";
+  import { flip } from "svelte/animate";
   import { federKurve, ruhig } from "../../lib/bewegung";
   const auf = federKurve(0.5, 0);
   let { art, docs, gefiltert, zeile, zusammenfassung, neu }: {
@@ -22,7 +23,7 @@
 {#each gruppen as g (g.k)}
   {@const sm = zusammenfassung(g.list)}{@const key = `${art}:${g.k}`}{@const modus = A.gruppen[key] ?? (gefiltert || sm.attention ? "open" : "closed")}
   {@const zeige = modus === "all" || gefiltert ? g.list : modus === "open" ? g.list.slice(0, 5) : []}{@const name = g.c ? g.c.name : g.list[0].customer?.name || "Ohne Kunde"}
-  <section class="gr card" class:auf={modus !== "closed"}>
+  <section class="gr card" class:auf={modus !== "closed"} animate:flip={{ duration: ruhig() ? 0 : auf.ms, easing: auf.easing }} in:fade={{ duration: ruhig() ? 0 : 220 }}>
     <button class="gh" aria-expanded={modus !== "closed"} onclick={() => (A.gruppen[key] = modus !== "closed" ? "closed" : "open")}>
       <span class="nr num">{g.c?.number || "–"}</span>
       <span class="hm"><b>{name}</b><small class="muted">{sm.line}</small></span>

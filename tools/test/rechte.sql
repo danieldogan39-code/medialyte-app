@@ -189,6 +189,7 @@ reset role;
 
 -- 14) Rechnungen im Team: Daten gehören dem Firmenkonto; Buchhaltung liest/schreibt, Marketing sieht nichts
 insert into public.settings (user_id, company) values ('00000000-0000-0000-0000-00000000000d', '{"name": "Medialyte"}') on conflict do nothing;
+delete from public.customers where name = 'Aktan GmbH';   -- Datenpflege aus 112, für den Test ohne Belang
 insert into public.customers (user_id, name) values ('00000000-0000-0000-0000-00000000000d', 'Testkunde');
 set role authenticated;
 select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
@@ -217,5 +218,24 @@ select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal1');
 do $$ declare n int; begin
   select count(*) into n from public.customers; if n <> 0 then raise exception 'ohne 2FA sichtbar'; end if;
   raise notice 'OK ohne Zwei-Faktor kein Team-Zugriff';
+end $$;
+reset role;
+
+-- 15) Kundenkategorien: wer Rechnungen oder Kunden schreiben darf, pflegt sie; Kunden bekommen beliebig viele
+reset role;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare k uuid; begin
+  insert into public.kundenkategorien (name, farbe) values ('Stammkunde', '#123456') returning id into k;
+  update public.customers set kategorien = kategorien || k where name = 'Testkunde';
+  if not exists (select 1 from public.customers where k = any(kategorien)) then raise exception 'Kategorie nicht am Kunden'; end if;
+  begin insert into public.kundenkategorien (name, farbe) values ('x', 'rot'); raise exception 'ungültige Farbe angenommen';
+  exception when check_violation then null; end;
+  raise notice 'OK Kundenkategorien';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
+do $$ begin
+  if exists (select 1 from public.kundenkategorien) then raise exception 'Kategorien ohne Zwei-Faktor sichtbar'; end if;
+  raise notice 'OK Kundenkategorien nur mit Zwei-Faktor';
 end $$;
 reset role;

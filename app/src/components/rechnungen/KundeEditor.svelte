@@ -2,6 +2,7 @@
   // Rechnungskunde anlegen/bearbeiten, mit Rechnungsverzeichnis (alle Rechnungen dieses Kunden)
   import Blatt from "./Blatt.svelte";
   import Status from "./Status.svelte";
+  import KategorieWahl from "./KategorieWahl.svelte";
   import { R } from "../../lib/rechnungen/daten.svelte";
   import { versuche } from "../../lib/rechnungen/blatt.svelte";
   import { daten } from "../../lib/daten.svelte";
@@ -15,6 +16,7 @@
   const K = ["number", "name", "contact", "email", "street", "zip", "city", "country", "vat_id", "website"] as const;
   let f = $state<Record<string, string>>(Object.fromEntries(K.map((k) => [k, k === "number" ? (c?.number ?? (neu ? R.nextCustomerNumber() : "")) : k === "country" ? (c?.country ?? "Deutschland") : (c?.[k] ?? vorlage[k] ?? "")])));
   let start = $state(String(c?.invoice_start ?? 1));
+  let kategorien = $state<string[]>([...(c?.kategorien ?? (kundeSlug && R.webKategorie ? [R.webKategorie.id] : []))]);
   let feld: HTMLInputElement | undefined = $state();
   $effect(() => { if (neu) setTimeout(() => feld?.focus(), 200); });
   const proKunde = $derived(isOn(R.settings.number_per_customer));
@@ -28,6 +30,7 @@
     if (proKunde) d.invoice_start = Math.max(1, parseInt(start, 10) || 1);
     if (!d.name) throw new Error("Bitte einen Namen eintragen.");
     if (neu && kundeSlug) d.kunde_slug = kundeSlug;
+    if (R.kategorien.length) d.kategorien = kategorien;
     const r = neu ? await R.write("customers", "insert", d) : await R.write("customers", "update", d, [["id", c.id]]);
     if (r.error) throw r.error;
     zu(); await R.loadAll().catch(() => {}); gespeichert?.(r.data); daten.melden("Kunde gespeichert");
@@ -47,6 +50,7 @@
   <label class="field"><span>Straße und Hausnummer</span><input class="input" bind:value={f.street}></label>
   <div class="drei"><label class="field"><span>PLZ</span><input class="input" inputmode="numeric" bind:value={f.zip}></label><label class="field"><span>Ort</span><input class="input" bind:value={f.city}></label></div>
   <div class="zwei"><label class="field"><span>Land</span><input class="input" bind:value={f.country}></label><label class="field"><span>USt-IdNr. (optional)</span><input class="input" bind:value={f.vat_id}></label></div>
+  <div class="field"><span>Kategorien</span><KategorieWahl ausgewaehlt={kategorien} onchange={(ids) => (kategorien = ids)} /></div>
   <label class="field"><span>Website (optional)</span><input class="input" inputmode="url" bind:value={f.website} placeholder="z. B. rubin-gold.de"></label>
   {#if proKunde}
     <label class="field"><span>Rechnungen fortsetzen ab Nr.</span><input class="input" inputmode="numeric" bind:value={start}></label>

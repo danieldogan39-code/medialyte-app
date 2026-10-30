@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { gleiter } from "../lib/bewegung";
+  import { gleiter, federKurve, ruhig } from "../lib/bewegung";
+  import { fly } from "svelte/transition";
+  const tabF = federKurve(0.45, 0);
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Board from "../components/Board.svelte";
@@ -66,6 +68,7 @@
       <a role="tab" aria-selected={tab === "suche"} href="#/akquise/{slug}/suche">Suche & Einstellungen</a>
     </div>
 
+    {#key tab}<div in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : tabF.ms, easing: tabF.easing, opacity: 0 }}>
     {#if tab === "ueberblick"}
       <Ueberblick {kat} />
     {:else if tab === "board"}
@@ -76,7 +79,7 @@
       <Gedaechtnis {kat} />
     {:else if tab === "betriebe"}
       <div class="bar">
-        <div class="chips">
+        <div class="chips" use:gleiter={{ sel: ".chip.on" }}>
           <button class="chip" class:on={!filter} onclick={() => (filter = "")}>Alle <span class="num">{anzahl()}</span></button>
           {#each Object.entries(BETRIEB_STATUS) as [k, v]}
             {#if anzahl(k)}<button class="chip" class:on={filter === k} onclick={() => (filter = k)}>{v.name} <span class="num">{anzahl(k)}</span></button>{/if}
@@ -130,6 +133,7 @@
         {#if auth.darf("akquise", true)}<div class="einst__a"><button class="btn btn--primary" onclick={sucheSpeichern} disabled={speichert}>Speichern</button></div>{/if}
       </div>
     {/if}
+    </div>{/key}
   </div>
 {:else}
   <div class="card empty"><b>Kategorie nicht gefunden</b></div>
@@ -145,6 +149,7 @@
   .chip span { color: var(--steel); margin-left: 4px; }
   .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
   .chip.on span { color: rgba(10, 18, 32, .6); }
+  .chips:global(.mit-gleiter) .chip.on { background: transparent; border-color: transparent; }
   .search { position: relative; display: block; width: min(260px, 100%); }
   .search :global(svg) { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--steel); pointer-events: none; }
   .search .input { padding-left: 34px; min-height: 36px; }

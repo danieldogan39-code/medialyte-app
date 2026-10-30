@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { slide } from "svelte/transition";
+  import { federKurve as _fk, ruhig as _ruhig } from "../../lib/bewegung";
+  const _f = _fk(0.45, 0);
   // Positionen-Editor (Rechnungen, Angebote, Abos, Website-Update-Vorlage): Positionen mit Menge, Einheit, Preis,
   // Rabatt und USt, bei Angeboten mit Abrechnungsart (einmalig/Abo); Gesamtrabatte; Vorlagen; Summen live.
   import Icon from "../Icon.svelte";
@@ -76,7 +79,7 @@
 <div class="pos">
   {#each zeilen as z (z.k)}
     {@const l = lineNet({ quantity: num(z.qty), price: num(z.price), discount: num(z.disc) })}
-    <div class="pz">
+    <div class="pz" transition:slide={{ duration: _ruhig() ? 0 : _f.ms, easing: _f.easing }}>
       {#if mitAbrechnung}<select class="input bill" bind:value={z.bill} aria-label="Abrechnungsart">{#each Object.entries(BILLING) as [k, t]}<option value={k}>{t}</option>{/each}</select>{/if}
       <textarea class="input" rows="2" bind:value={z.desc} use:wachsen placeholder={"Bezeichnung (erste Zeile, fett)\nDetails in weiteren Zeilen (optional)"} aria-label="Bezeichnung"></textarea>
       <div class="nums" class:ohne-ust={R.small}>
@@ -101,7 +104,7 @@
   <div class="rabatte">
     <div class="rh">Gesamtrabatt</div>
     {#each rabatte as d (d.k)}
-      <div class="rz" class:mit={mitAbrechnung}>
+      <div class="rz" class:mit={mitAbrechnung} transition:slide={{ duration: _ruhig() ? 0 : _f.ms, easing: _f.easing }}>
         <input class="input" list="rabattarten" bind:value={d.name} oninput={() => typRabatt(d)} onchange={() => typRabatt(d)} placeholder="Name, z. B. Bestandskundenrabatt" aria-label="Name des Rabatts">
         <input class="input" inputmode="decimal" bind:value={d.val} placeholder="0" aria-label="Rabatt">
         <select class="input" bind:value={d.mode} aria-label="Prozent oder Betrag"><option value="percent">%</option><option value="amount">€</option></select>

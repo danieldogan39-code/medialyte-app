@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Zahl from "./Zahl.svelte";
   // Überblick einer Branche (wie oben im alten Cockpit): Kennzahlen mit Verlauf, Pipeline, neue Demos pro Lauf, Suchradar
   import { agent, type Gebiet } from "../lib/agent.svelte";
   import { sb } from "../lib/supabase";
@@ -101,7 +102,7 @@
         <div class="stufe" class:aus={st.aus}>
           <span class="nm">{st.n}<small class="muted">{st.s}</small></span>
           <span class="bar"><i style="width:{st.v ? Math.max(2, Math.sqrt(st.v / stufen.max) * 100) : 0}%"></i></span>
-          <b class="num">{zahl(st.v)}</b>
+          <b class="num"><Zahl wert={+st.v || 0} /></b>
         </div>
       {/each}
     </div>

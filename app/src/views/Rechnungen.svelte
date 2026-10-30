@@ -2,6 +2,7 @@
   // Rechnungen & Angebote (bisher eigene Rechnungs-App): Rechnungen, Angebote mit Website-Update, Kunden, Abos, Einstellungen.
   // Arbeitet auch ohne Internet: alles wird auf dem Gerät gespeichert und später übertragen.
   import Icon from "../components/Icon.svelte";
+  import Zahl from "../components/Zahl.svelte";
   import Gruppen from "../components/rechnungen/Gruppen.svelte";
   import Status from "../components/rechnungen/Status.svelte";
   import Sync from "../components/rechnungen/Sync.svelte";
@@ -120,26 +121,26 @@
 {#if R.offline || R.outbox.length}<div class="banner">Ohne Internet arbeitest du ganz normal weiter: Alles wird auf dem Gerät gespeichert und automatisch übertragen, sobald du wieder online bist.</div>{/if}
 
 {#key A.tab}<div in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : tabRein.ms, easing: tabRein.easing, opacity: 0 }}>
-{#if !R.loaded}<p class="muted">Lade …</p>
+{#if !R.loaded}<div class="skelett" aria-label="Lade …"><i></i><i></i><i></i><i></i></div>
 {:else if A.tab === "invoices"}
   <div class="seite-h"><h1>{greeting(R.settings.account_holder || auth.ich?.name || "")}</h1>
     <p class="muted">{offenAnzahl ? `${offenAnzahl} offene ${offenAnzahl === 1 ? "Rechnung" : "Rechnungen"} · ${eur(summe(["open", "overdue"]))} ausstehend` : "Alles bezahlt – keine offenen Rechnungen."}</p></div>
   <div class="stats">
-    <div class="card"><small>Offen</small><b class="num">{eur(summe(["open", "overdue"]))}</b></div>
-    <div class="card" class:rot={summe(["overdue"]) > 0}><small>Überfällig</small><b class="num">{eur(summe(["overdue"]))}</b></div>
-    <div class="card"><small>Bezahlt gesamt</small><b class="num">{eur(ev.reduce((a, e) => a + e.amount, 0))}</b></div>
+    <div class="card"><small>Offen</small><b class="num"><Zahl wert={summe(["open", "overdue"])} format={eur} /></b></div>
+    <div class="card" class:rot={summe(["overdue"]) > 0}><small>Überfällig</small><b class="num"><Zahl wert={summe(["overdue"])} format={eur} /></b></div>
+    <div class="card"><small>Bezahlt gesamt</small><b class="num"><Zahl wert={ev.reduce((a, e) => a + e.amount, 0)} format={eur} /></b></div>
   </div>
   <div class="jahre">
-    <button class="jk alle" onclick={() => B.auf(Statistik, { welches: "all" })}><small>Gesamt seit 2024</small><b class="num">{eur(ev.reduce((a, e) => a + e.amount, 0))}</b><span class="d">Verlauf ansehen ›</span>
-      {#if sparkPunkte(kumuliert)}<svg viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points={sparkPunkte(kumuliert)} fill="none" stroke="var(--ok)" stroke-width="1.6" vector-effect="non-scaling-stroke" /></svg>{/if}</button>
+    <button class="jk alle" onclick={() => B.auf(Statistik, { welches: "all" })}><small>Gesamt seit 2024</small><b class="num"><Zahl wert={ev.reduce((a, e) => a + e.amount, 0)} format={eur} /></b><span class="d">Verlauf ansehen ›</span>
+      {#if sparkPunkte(kumuliert)}<svg viewBox="0 0 100 28" preserveAspectRatio="none"><polyline class="zeichnen" pathLength="1" points={sparkPunkte(kumuliert)} fill="none" stroke="var(--ok)" stroke-width="1.6" vector-effect="non-scaling-stroke" /></svg>{/if}</button>
     {#each kacheln as k (k.y)}
-      <button class="jk" onclick={() => B.auf(Statistik, { welches: String(k.y) })}><small>{k.y}{k.y === cy ? " · lfd." : ""}</small><b class="num">{eur(k.s)}</b>
+      <button class="jk" onclick={() => B.auf(Statistik, { welches: String(k.y) })}><small>{k.y}{k.y === cy ? " · lfd." : ""}</small><b class="num"><Zahl wert={k.s} format={eur} /></b>
         <span class="d" class:up={k.p !== null && k.p >= 0} class:down={k.p !== null && k.p < 0}>{k.p === null ? (k.y === 2024 ? "Start" : "–") : fmtPct(k.p)}</span>
-        {#if k.spark}<svg viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points={k.spark} fill="none" stroke={k.up ? "var(--ok)" : "var(--coral)"} stroke-width="1.6" vector-effect="non-scaling-stroke" /></svg>{/if}</button>
+        {#if k.spark}<svg viewBox="0 0 100 28" preserveAspectRatio="none"><polyline class="zeichnen" pathLength="1" points={k.spark} fill="none" stroke={k.up ? "var(--ok)" : "var(--coral)"} stroke-width="1.6" vector-effect="non-scaling-stroke" /></svg>{/if}</button>
     {/each}
   </div>
   <div class="bar">
-    <div class="chips">{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["overdue", "Überfällig"], ["paid", "Bezahlt"], ["cancelled", "Storniert"]] as [k, t]}<button class="chip" class:on={A.filter === k} onclick={() => (A.filter = k)}>{t}</button>{/each}</div>
+    <div class="chips" use:gleiter={{ sel: ".chip.on" }}>{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["overdue", "Überfällig"], ["paid", "Bezahlt"], ["cancelled", "Storniert"]] as [k, t]}<button class="chip" class:on={A.filter === k} onclick={() => (A.filter = k)}>{t}</button>{/each}</div>
     <label class="search"><Icon name="search" size={16} /><input class="input" type="search" placeholder="Suchen …" bind:value={A.query} aria-label="Rechnungen durchsuchen"></label>
   </div>
   {#if reListe.length}<Gruppen art="inv" docs={reListe} gefiltert={!!A.query.trim() || A.filter !== "all"} zeile={reZeile} zusammenfassung={reZusammen} neu={(k) => neueRechnung(k)} />
@@ -165,12 +166,12 @@
   {:else}
     <div class="seite-h"><h1>Angebote</h1><p class="muted">{aAnz(["open"]) ? `${aAnz(["open"])} ${aAnz(["open"]) === 1 ? "Angebot wartet" : "Angebote warten"} auf Antwort · ${eur(aSumme(["open"]))}` : "Schreib ein Angebot – mit einem Tipp wird daraus später die Rechnung."}</p></div>
     <div class="stats">
-      <div class="card"><small>Offen</small><b class="num">{eur(aSumme(["open"]))}</b></div>
-      <div class="card"><small>Angenommen</small><b class="num">{eur(aSumme(["accepted"]))}</b></div>
+      <div class="card"><small>Offen</small><b class="num"><Zahl wert={aSumme(["open"])} format={eur} /></b></div>
+      <div class="card"><small>Angenommen</small><b class="num"><Zahl wert={aSumme(["accepted"])} format={eur} /></b></div>
       <div class="card"><small>Zusagequote</small><b class="num">{quote_ === null ? "–" : quote_ + " %"}</b></div>
     </div>
     <div class="bar">
-      <div class="chips">{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["accepted", "Angenommen"], ["declined", "Abgelehnt"], ["expired", "Abgelaufen"]] as [k, t]}<button class="chip" class:on={A.qfilter === k} onclick={() => (A.qfilter = k)}>{t}</button>{/each}</div>
+      <div class="chips" use:gleiter={{ sel: ".chip.on" }}>{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["accepted", "Angenommen"], ["declined", "Abgelehnt"], ["expired", "Abgelaufen"]] as [k, t]}<button class="chip" class:on={A.qfilter === k} onclick={() => (A.qfilter = k)}>{t}</button>{/each}</div>
       <label class="search"><Icon name="search" size={16} /><input class="input" type="search" placeholder="Suchen …" bind:value={A.query} aria-label="Angebote durchsuchen"></label>
     </div>
     {#if anListe.length}<Gruppen art="quo" docs={anListe} gefiltert={!!A.query.trim() || A.qfilter !== "all"} zeile={anZeile} zusammenfassung={anZusammen} neu={(k) => neuesAngebot(k)} />
@@ -208,6 +209,8 @@
   .sp { flex: 1; }
   .sync { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font: inherit; font-size: .84rem; }
   .sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(76, 195, 138, .18); }
+  .sync--off i, .sync--bad i { animation: puls 1.6s ease-in-out infinite; }
+  @keyframes puls { 50% { transform: scale(.6); opacity: .55; } }
   .sync--off i { background: var(--warn); box-shadow: 0 0 0 3px rgba(231, 185, 74, .18); }
   .sync--bad { border-color: rgba(242, 74, 74, .5); color: #FF9C9C; } .sync--bad i { background: var(--coral); }
   .banner { padding: 10px 14px; border-radius: var(--radius-s); background: rgba(231, 185, 74, .1); color: #EBC56B; font-size: .88rem; margin-bottom: 14px; }
@@ -227,11 +230,14 @@
   .jk .d { font-size: .78rem; color: var(--steel); }
   .jk .up { color: #6FD3A2; } .jk .down { color: #FF8080; }
   .jk svg { width: 100%; height: 28px; margin-top: 4px; }
+  .zeichnen { stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 1.2s cubic-bezier(.32, .72, 0, 1) .15s forwards; }
+  @keyframes zeichnen { to { stroke-dashoffset: 0; } }
   @media (hover: hover) { .jk:hover { border-color: var(--line-2); } }
   .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .chips { display: flex; gap: 6px; overflow-x: auto; }
   .chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font-size: .86rem; white-space: nowrap; }
   .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chips:global(.mit-gleiter) .chip.on { background: transparent; border-color: transparent; }
   .search { position: relative; display: block; width: min(260px, 100%); margin-left: auto; }
   .search :global(svg) { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--steel); pointer-events: none; }
   .search .input { padding-left: 34px; min-height: 36px; }

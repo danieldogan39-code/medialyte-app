@@ -74,11 +74,21 @@ Deno.serve(async (req) => {
     // Endgültig: Konto und Mitgliedschaft entfernen. Notizen und Verlauf bleiben (ohne Namen).
     if (!binInhaber) return json(403, { ok: false, error: "Mitglieder löschen kann nur der Inhaber." });
     if (id === ich?.user?.id || m.rolle === "inhaber") return json(403, { ok: false, error: "Ein Inhaber kann nicht gelöscht werden." });
+    // Erst das Konto löschen (die Mitgliedschaft geht dabei mit), damit nie ein halb gelöschtes Mitglied übrig bleibt
+    const { error: e3 } = await db.auth.admin.deleteUser(id);
+    if (e3) {
+      // Hängt das Konto noch an Daten, die es nicht loslassen (z. B. hochgeladene Dateien): dann unbrauchbar machen –
+      // gesperrt, ohne Anmeldedaten und Zwei-Faktor, E-Mail-Adresse frei – und die Mitgliedschaft entfernen.
+      console.error("deleteUser", e3.message);
+      const { data: f } = await db.auth.admin.mfa.listFactors({ userId: id });
+      for (const x of f?.factors ?? []) await db.auth.admin.mfa.deleteFactor({ userId: id, id: x.id });
+      const { error: e4 } = await db.auth.admin.updateUserById(id, { email: `geloescht-${id.slice(0, 8)}@medialyte.invalid`, password: crypto.randomUUID() + crypto.randomUUID(),
+        ban_duration: "876000h", user_metadata: {}, email_confirm: true });
+      if (e4) return json(500, { ok: false, error: "Konto ließ sich nicht löschen: " + e3.message });
+    }
     const { error } = await db.from("mitglieder").delete().eq("user_id", id);
     if (error) return json(400, { ok: false, error: error.message });
-    const { error: e3 } = await db.auth.admin.deleteUser(id);
-    if (e3) return json(500, { ok: false, error: "Mitglied entfernt, Konto aber nicht gelöscht: " + e3.message });
-    return json(200, { ok: true });
+    return json(200, { ok: true, gesperrt: !!e3 });
   }
 
   return json(400, { ok: false, error: "Unbekannte Aktion." });

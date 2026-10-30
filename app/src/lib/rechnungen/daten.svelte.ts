@@ -7,8 +7,8 @@ import { DEFAULTS, totals, isOn, todayISO, positionsOf, type Posten } from "./ke
 
 const FN_URL = SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/rechnungen";
 const CACHE_KEY = "medialyte-rechnungen-cache-v1", OUTBOX_KEY = "medialyte-rechnungen-outbox-v1", FAILED_KEY = "medialyte-rechnungen-failed-v1";
-const TABLE_STATE: Record<string, string> = { customers: "customers", invoices: "invoices", quotes: "quotes", products: "products", recurring: "recurring", mail_log: "mail" };
-const TABLE_LABEL: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", customers: "Kunde", products: "Standard-Position", recurring: "Abo", settings: "Einstellungen" };
+const TABLE_STATE: Record<string, string> = { customers: "customers", invoices: "invoices", quotes: "quotes", products: "products", recurring: "recurring", mail_log: "mail", kundenkategorien: "kategorien" };
+const TABLE_LABEL: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", customers: "Kunde", products: "Standard-Position", recurring: "Abo", settings: "Einstellungen", kundenkategorien: "Kundenkategorie" };
 const OP_LABEL: Record<string, string> = { insert: "angelegt", update: "geändert", upsert: "gespeichert", delete: "gelöscht" };
 const FN_LABEL: Record<string, string> = { issue: "Rechnung abschließen", send: "Rechnung senden", remind: "Zahlungserinnerung senden", correct: "Rechnung stornieren", quote_issue: "Angebot abschließen",
   quote_send: "Angebot senden", recurring_backfill: "Abo-Rechnungen nachtragen", run_recurring: "Abo-Rechnung erstellen" };
@@ -34,6 +34,7 @@ class Rechnungen {
   settings = $state<Record<string, any>>({ ...DEFAULTS });
   firmaId = $state<string | null>(null);
   customers = $state<any[]>([]); invoices = $state<any[]>([]); quotes = $state<any[]>([]); products = $state<any[]>([]); recurring = $state<any[]>([]); mail = $state<any[]>([]);
+  kategorien = $state<{ id: string; name: string; farbe: string; sortierung: number }[]>([]);   // eigene Kundenkategorien
   outbox = $state<Op[]>(readLS(OUTBOX_KEY, [])); failed = $state<Op[]>(readLS(FAILED_KEY, []));
   offline = $state(false); loaded = $state(false); syncedAt = $state<number | null>(null);
   offeneBlaetter = $state(0);   // offene Formulare: dann nicht neu zeichnen
@@ -54,18 +55,18 @@ class Rechnungen {
     setInterval(() => { if (this.outbox.length && online()) this.flush().then((n) => { if (n && !this.offeneBlaetter) this.loadAll(); }); }, 60000);
     // Änderungen anderer Team-Mitglieder und der Abo-Automatik
     this.#kanal = sb.channel("rechnungen-live");
-    for (const t of ["invoices", "quotes", "customers", "recurring", "products", "settings"])
+    for (const t of ["invoices", "quotes", "customers", "recurring", "products", "settings", "kundenkategorien"])
       this.#kanal.on("postgres_changes", { event: "*", schema: "public", table: t }, () => { clearTimeout(this.#nachladen); this.#nachladen = setTimeout(() => { if (!this.offeneBlaetter && !this.outbox.length) this.loadAll(); }, 1500) as unknown as number; });
     this.#kanal.subscribe();
   }
   cacheSave() {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ settings: this.settings, firmaId: this.firmaId, customers: this.customers, invoices: this.invoices, quotes: this.quotes, products: this.products, recurring: this.recurring, mail: this.mail, at: Date.now(), syncedAt: this.syncedAt })); } catch { /* voll */ }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ settings: this.settings, firmaId: this.firmaId, customers: this.customers, invoices: this.invoices, quotes: this.quotes, products: this.products, recurring: this.recurring, mail: this.mail, kategorien: this.kategorien, at: Date.now(), syncedAt: this.syncedAt })); } catch { /* voll */ }
   }
   cacheLoad() {
     try {
       const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (!c) return false;
       this.settings = { ...DEFAULTS, ...c.settings }; this.firmaId = c.firmaId ?? null; this.customers = c.customers ?? []; this.invoices = c.invoices ?? []; this.quotes = c.quotes ?? [];
-      this.products = c.products ?? []; this.recurring = c.recurring ?? []; this.mail = c.mail ?? []; this.syncedAt = c.syncedAt ?? null; return true;
+      this.products = c.products ?? []; this.recurring = c.recurring ?? []; this.mail = c.mail ?? []; this.kategorien = c.kategorien ?? []; this.syncedAt = c.syncedAt ?? null; return true;
     } catch { return false; }
   }
   async loadAll() {
@@ -81,8 +82,10 @@ class Rechnungen {
         sb.from("products").select("*").order("name"),
         sb.from("mail_log").select("*").order("sent_at", { ascending: false }).limit(1000),
         sb.rpc("firma_id"),
+        sb.from("kundenkategorien").select("*").order("sortierung").order("name"),
       ]);
-      const err = q.find((r) => r.error); if (err) throw err.error;
+      const err = q.slice(0, 8).find((r) => r.error); if (err) throw err.error;
+      if (!q[8].error) this.kategorien = (q[8].data as any[]) ?? [];
       // Einstellungen des Firmenkontos (falls jemand aus dem Team früher eigene angelegt hat, gelten trotzdem die der Firma)
       const sets = (q[0].data as any[]) ?? [], fid = (q[7].data as string | null) ?? null;
       const set = sets.find((x) => x.user_id === fid) ?? sets[0] ?? null;
@@ -225,6 +228,9 @@ class Rechnungen {
 
   // ---------- Nachschlagen
   customer(id?: string | null) { return this.customers.find((c) => c.id === id); }
+  kategorie(id?: string | null) { return this.kategorien.find((k) => k.id === id); }
+  /** Kategorie „Website“ (für Website-Kunden aus dem Agenten automatisch) */
+  get webKategorie() { return this.kategorien.find((k) => k.name.trim().toLowerCase() === "website") ?? null; }
   invoice(id?: string | null) { return this.invoices.find((i) => i.id === id); }
   quote(id?: string | null) { return this.quotes.find((q) => q.id === id); }
   custName(inv: any) { return inv.customer?.name || this.customer(inv.customer_id)?.name || "Ohne Kunde"; }

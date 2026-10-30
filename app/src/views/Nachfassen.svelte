@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Zahl from "../components/Zahl.svelte";
   // Nachfassen: wen rufe ich heute an? Alle Betriebe mit verschicktem Brief oder Rückrufwunsch, nach Dringlichkeit.
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
@@ -166,9 +167,9 @@
 <Head titel="Nachfassen" text="Wen du heute anrufen solltest – Rückrufwünsche und wer die Demo geöffnet hat stehen ganz oben. Am besten zwischen 15 und 17 Uhr." />
 
 <div class="kz">
-  <div class="card"><small>Heute dran</small><b class="num">{gruppen.dran.length}</b></div>
-  <div class="card"><small>Später</small><b class="num">{gruppen.spaeter.length}</b></div>
-  <div class="card"><small>Kunden</small><b class="num">{gruppen.neueKunden.length}</b></div>
+  <div class="card"><small>Heute dran</small><b class="num"><Zahl wert={gruppen.dran.length} /></b></div>
+  <div class="card"><small>Später</small><b class="num"><Zahl wert={gruppen.spaeter.length} /></b></div>
+  <div class="card"><small>Kunden</small><b class="num"><Zahl wert={gruppen.neueKunden.length} /></b></div>
 </div>
 
 {#if laedt}<p class="muted">Lade …</p>

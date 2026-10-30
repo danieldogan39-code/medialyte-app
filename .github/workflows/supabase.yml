@@ -43,6 +43,13 @@ jobs:
             if [ "$code" -ge 300 ]; then cat /tmp/out.txt; echo "::error::$f fehlgeschlagen (HTTP $code)"; exit 1; fi
           done
 
+      - name: Konten prüfen (nur Verweise und Anzahlen, keine Personendaten)
+        run: |
+          jq -n --arg q "select c.conrelid::regclass::text as tabelle, a.attname as spalte, c.confdeltype as beim_loeschen from pg_constraint c join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any(c.conkey) where c.confrelid = 'auth.users'::regclass order by 3, 1" '{query: $q}' > /tmp/q.json
+          curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/q.json | jq -c '.[]?' || true
+          jq -n --arg q "select (select count(*) from auth.users) as konten, (select count(*) from public.mitglieder) as mitglieder, (select count(*) from auth.users u where not exists (select 1 from public.mitglieder m where m.user_id = u.id)) as ohne_mitgliedschaft" '{query: $q}' > /tmp/q.json
+          curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/q.json | jq -c '.[]?' || true
+
       - name: Anmeldung absichern (keine Registrierung von außen, Zwei-Faktor an, App-Adressen erlaubt)
         run: |
           api="https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth"

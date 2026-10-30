@@ -58,10 +58,10 @@
     <a class="brand side__brand" href="#/"><img src="./mono.svg" alt="" width="26" height="20"><img src="./wordmark.svg" alt="Medialyte" class="brand__wm" width="104" height="20"></a>
     <div class="nav" use:gleiter={{ sel: "a.on" }}>
       <a href="#/" class:on={aktiv("/")}><Icon name="home" />Übersicht</a>
-      {#if auth.darf("anfragen")}<a href="#/anfragen" class:on={aktiv("/anfragen")}><Icon name="inbox" />Anfragen{#if daten.neueAnfragen}<span class="badge num">{daten.neueAnfragen}</span>{/if}</a>{/if}
+      {#if auth.darf("anfragen")}<a href="#/anfragen" class:on={aktiv("/anfragen")}><Icon name="inbox" />Anfragen{#if daten.neueAnfragen}{#key daten.neueAnfragen}<span class="badge num pop">{daten.neueAnfragen}</span>{/key}{/if}</a>{/if}
       {#if auth.darf("akquise")}<a href="#/akquise" class:on={aktiv("/akquise")}><Icon name="layers" />Akquise</a>{/if}
-      {#if auth.darf("akquise")}<a href="#/nachfassen" class:on={aktiv("/nachfassen")}><Icon name="phone" />Nachfassen{#if daten.nachfassHeute}<span class="badge badge--b num">{daten.nachfassHeute}</span>{/if}</a>{/if}
-      {#if auth.darf("kunden") || auth.darf("rechnungen")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden{#if daten.tischbuchWartet}<span class="badge num" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/if}</a>{/if}
+      {#if auth.darf("akquise")}<a href="#/nachfassen" class:on={aktiv("/nachfassen")}><Icon name="phone" />Nachfassen{#if daten.nachfassHeute}{#key daten.nachfassHeute}<span class="badge badge--b num pop">{daten.nachfassHeute}</span>{/key}{/if}</a>{/if}
+      {#if auth.darf("kunden") || auth.darf("rechnungen")}<a href="#/kunden" class:on={aktiv("/kunden")}><Icon name="users" />Kunden{#if daten.tischbuchWartet}{#key daten.tischbuchWartet}<span class="badge num pop" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/key}{/if}</a>{/if}
       {#if auth.darf("rechnungen")}<a href="#/rechnungen" class:on={aktiv("/rechnungen")}><Icon name="receipt" />Rechnungen</a>{/if}
       {#if auth.darf("akquise")}<a href="#/kosten" class:on={aktiv("/kosten")}><Icon name="scale" />Kosten</a>{/if}
       {#if auth.darf("team")}<a href="#/team" class:on={aktiv("/team")}><Icon name="shield" />Team & Rechte</a>{/if}
@@ -120,6 +120,8 @@
   .nav :global(.gleiter) { background: rgba(255, 255, 255, .07) !important; border-radius: var(--radius-s) !important; }
   .nav a.on :global(svg) { color: var(--text); }
   @media (hover: hover) { .nav a:hover { background: var(--hover); color: var(--text); } }
+  .pop { animation: pop .6s var(--feder); }
+  @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 60% { opacity: 1; } }
   .badge--b { background: var(--info) !important; color: #06101F !important; }
   .badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--coral); color: #fff; font-size: .75rem; font-weight: 600; display: grid; place-items: center; }
   .me { display: flex; align-items: center; gap: 10px; padding: 10px 6px 0 8px; border-top: 1px solid var(--line); }

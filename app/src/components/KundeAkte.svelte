@@ -2,9 +2,13 @@
   // Rechnungsseite eines Kunden im Kundenmenü: Stammdaten, Umsatz, Rechnungen, Angebote und Abos.
   // Ohne Rechnungskunden: anlegen (mit den Angaben der Website) oder mit einem bestehenden verknüpfen.
   import Icon from "./Icon.svelte";
+  import Zahl from "./Zahl.svelte";
   import Status from "./rechnungen/Status.svelte";
+  import KategorieWahl from "./rechnungen/KategorieWahl.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
-  import { gleiter } from "../lib/bewegung";
+  import { gleiter, federKurve, ruhig } from "../lib/bewegung";
+  import { fly } from "svelte/transition";
+  const rf = federKurve(0.42, 0);
 
   import { versuche } from "../lib/rechnungen/blatt.svelte";
   import { invStatus, isWU } from "../lib/rechnungen/status";
@@ -72,16 +76,20 @@
       </span>{/if}
     </div>
 
+    <KategorieWahl ausgewaehlt={c.kategorien ?? []} auto={slug && R.webKategorie ? [R.webKategorie.id] : []} {darf}
+      onchange={(ids) => versuche(async () => { const { error } = await R.write("customers", "update", { kategorien: ids }, [["id", c.id]]); if (error) throw error; })} />
+
     <div class="zahlen">
-      <div><small>Bezahlt gesamt</small><b class="num">{eur(bezahlt)}</b></div>
-      <div class:rot={ueber}><small>{ueber ? "Überfällig / offen" : "Offen"}</small><b class="num">{eur(offen)}</b></div>
-      <div><small>Rechnungen</small><b class="num">{echt.length}</b></div>
+      <div><small>Bezahlt gesamt</small><b class="num"><Zahl wert={bezahlt} format={eur} /></b></div>
+      <div class:rot={ueber}><small>{ueber ? "Überfällig / offen" : "Offen"}</small><b class="num"><Zahl wert={offen} format={eur} /></b></div>
+      <div><small>Rechnungen</small><b class="num"><Zahl wert={echt.length} /></b></div>
     </div>
 
     <dl class="stamm">
       {#if c.contact}<dt>Ansprechpartner</dt><dd>{c.contact}</dd>{/if}
       <dt>E-Mail</dt><dd>{#if c.email}<a href="mailto:{c.email}">{c.email}</a>{:else}<span class="warn">keine – Rechnungen können nicht per Mail raus</span>{/if}</dd>
       {#if c.street || c.city}<dt>Anschrift</dt><dd>{[c.street, [c.zip, c.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")}</dd>{/if}
+      {#if c.website}<dt>Website</dt><dd><a href={/^https?:/.test(c.website) ? c.website : "https://" + c.website.replace(/^\/+/, "")} target="_blank" rel="noopener">{c.website.replace(/^https?:\/\//, "")}</a></dd>{/if}
       {#if c.vat_id}<dt>USt-IdNr.</dt><dd>{c.vat_id}</dd>{/if}
     </dl>
 
@@ -91,7 +99,7 @@
       <button role="tab" aria-selected={reiter === "abo"} onclick={() => (reiter = "abo")}>Abos <span class="n">{abos.length}</span></button>
     </div>
 
-    <div class="liste">
+    {#key reiter}<div class="liste" in:fly={{ y: ruhig() ? 0 : 8, duration: ruhig() ? 0 : rf.ms, easing: rf.easing, opacity: 0 }}>
       {#if reiter === "re"}
         {#each re as i (i.id)}
           <button class="zeile" onclick={() => oeffneRechnung(i)}><span class="h"><b>{i.number || "Entwurf"}</b><small class="muted">{i.issue_date ? fmtDate(i.issue_date) : "noch nicht ausgestellt"}{i.recurring_id ? " · Abo" : ""}{i.service_text ? " · " + i.service_text : ""}</small></span>
@@ -108,7 +116,7 @@
             <span class="r"><b class="num">{eur(R.totals(r.items).gross)}</b>{#if r.active}<span class="pill pill--plain pill--gruen">aktiv</span>{:else}<span class="pill pill--plain">pausiert</span>{/if}</span></button>
         {:else}<p class="muted klein">Keine Abos.</p>{/each}
       {/if}
-    </div>
+    </div>{/key}
     {#if slug && darf}<button class="lnk" onclick={loesen}>Verknüpfung mit der Website lösen</button>{/if}
   </section>
 {/if}

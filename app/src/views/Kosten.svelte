@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Zahl from "../components/Zahl.svelte";
   // Kosten & Verbrauch des Agenten (letzte 30 Tage, Schätzwerte aus config.yaml) und die KI-Analyse dazu
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
@@ -52,9 +53,9 @@
 
 {#if v}
   <div class="kz">
-    <div class="card"><small>Gesamt, geschätzt</small><b class="num">{eur.format(v.gesamt_eur ?? 0)}</b><span class="muted">letzte {v.tage} Tage</span></div>
+    <div class="card"><small>Gesamt, geschätzt</small><b class="num"><Zahl wert={v.gesamt_eur ?? 0} format={(n) => eur.format(n)} /></b><span class="muted">letzte {v.tage} Tage</span></div>
     <div class="card"><small>Pro gebauter Demo</small><b class="num">{v.pro_demo_eur != null ? eur.format(v.pro_demo_eur) : "–"}</b><span class="muted">{v.demos ?? 0} Demos</span></div>
-    <div class="card"><small>Läufe</small><b class="num">{zahl(v.laeufe ?? 0)}</b><span class="muted">Wochenläufe</span></div>
+    <div class="card"><small>Läufe</small><b class="num"><Zahl wert={v.laeufe ?? 0} /></b><span class="muted">Wochenläufe</span></div>
   </div>
 
   <div class="cols">

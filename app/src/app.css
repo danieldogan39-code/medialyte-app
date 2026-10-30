@@ -122,4 +122,13 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
 .input { transition: border-color .2s ease, box-shadow .25s ease, background-color .2s ease; }
 details > summary { transition: color .2s ease; }
 
+.skelett { display: grid; gap: 10px; }
+.skelett i { position: relative; overflow: hidden; display: block; height: 64px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); }
+.skelett i:nth-child(1) { height: 34px; width: 46%; border-radius: 10px; }
+.skelett i::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .045), transparent); animation: schimmer 1.4s cubic-bezier(.4, 0, .2, 1) infinite; }
+@keyframes schimmer { to { transform: translateX(100%); } }
+/* Karten heben sich am Computer leicht, wenn man darüberfährt */
+@media (hover: hover) { :where(a.card, button.jk):hover { box-shadow: 0 14px 34px -22px rgba(0, 0, 0, .9); } }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }

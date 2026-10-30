@@ -25,7 +25,7 @@
   });
 </script>
 
-{#if !R.loaded}<p class="muted">Lade …</p>
+{#if !R.loaded}<div class="skelett" aria-label="Lade …"><i></i><i></i><i></i></div>
 {:else if !c}
   <Head titel="Kunde nicht gefunden" zurueck="#/kunden" />
   <div class="card empty"><b>Diesen Kunden gibt es nicht (mehr).</b></div>
