@@ -11,13 +11,15 @@
   import Anfragen from "./Anfragen.svelte";
   import Team from "./Team.svelte";
   import Nachfassen from "./Nachfassen.svelte";
-  import Bald from "./Bald.svelte";
+  import Rechnungen from "./Rechnungen.svelte";
   import Kunden from "./Kunden.svelte";
   import Kunde from "./Kunde.svelte";
   import Kosten from "./Kosten.svelte";
   import Einstellungen from "./Einstellungen.svelte";
   import DemoWeiter from "./DemoWeiter.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
+  import { appUpdate } from "../lib/appupdate.svelte";
+  $effect(() => { setTimeout(() => appUpdate.pruefen(), 4000); });
 
   let offen = $state(false);   // Navigation auf dem Handy
   $effect(() => { daten.laden(); });
@@ -71,6 +73,7 @@
   {#if offen}<button class="scrim" aria-label="Menü schließen" onclick={() => (offen = false)}></button>{/if}
 
   <main class="main">
+    {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} verfügbar. Einfach herunterladen und über die alte installieren – deine Daten bleiben erhalten.</span><a class="btn btn--s btn--primary" href={appUpdate.neu.url} target="_blank" rel="noopener">Herunterladen</a><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
     {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}<DemoWeiter slug={t[2]} />
@@ -82,7 +85,7 @@
     {:else if t[0] === "team"}<Team />
     {:else if t[0] === "kunden" && t[1]}<Kunde slug={t[1]} />
     {:else if t[0] === "kunden"}<Kunden />
-    {:else if t[0] === "rechnungen"}<Bald titel="Rechnungen & Angebote" text="Die Rechnungs-App zieht in Etappe 4 komplett hierher. Bis dahin öffnest du sie wie gewohnt." link />
+    {:else if t[0] === "rechnungen" && auth.darf("rechnungen")}<Rechnungen />
     {:else}<Uebersicht />{/if}
   </main>
 </div>
@@ -91,6 +94,8 @@
 <Rueckfrage />
 
 <style>
+  .upd { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .12); color: #C4D9F7; font-size: .9rem; }
+  .upd span { flex: 1 1 260px; }
   .shell { min-height: 100vh; display: grid; grid-template-columns: var(--side) minmax(0, 1fr); }
   .top { display: none; }
   .brand { display: inline-flex; align-items: center; gap: 9px; }

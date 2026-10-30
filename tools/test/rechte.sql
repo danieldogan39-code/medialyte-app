@@ -186,3 +186,36 @@ do $$ declare n int; begin
   raise notice 'OK Cockpit-Daten und neue Befehle';
 end $$;
 reset role;
+
+-- 14) Rechnungen im Team: Daten gehören dem Firmenkonto; Buchhaltung liest/schreibt, Marketing sieht nichts
+insert into public.settings (user_id, company) values ('00000000-0000-0000-0000-00000000000d', '{"name": "Medialyte"}') on conflict do nothing;
+insert into public.customers (user_id, name) values ('00000000-0000-0000-0000-00000000000d', 'Testkunde');
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare n int; c uuid; begin
+  select count(*) into n from public.customers; if n <> 1 then raise exception 'Buchhaltung sieht Rechnungskunden nicht (%)', n; end if;
+  insert into public.customers (name) values ('Neu von Finn') returning id into c;
+  if (select user_id from public.customers where id = c) <> '00000000-0000-0000-0000-00000000000d' then raise exception 'Neuer Kunde gehört nicht dem Firmenkonto'; end if;
+  insert into public.invoices (customer_id, status) values (c, 'draft');
+  begin insert into public.invoices (customer_id, status, number) values (c, 'open', 'RE1'); raise exception 'ausgestellte Rechnung direkt angelegt';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Rechnungen für Buchhaltung';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ declare n int; begin
+  select count(*) into n from public.customers; if n <> 0 then raise exception 'Marketing sieht Rechnungskunden'; end if;
+  select count(*) into n from public.invoices; if n <> 0 then raise exception 'Marketing sieht Rechnungen'; end if;
+  raise notice 'OK Rechnungen für Marketing gesperrt';
+end $$;
+-- ohne Zwei-Faktor (alte Rechnungs-App): nur die eigenen Daten wie bisher
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
+do $$ declare n int; begin
+  select count(*) into n from public.customers; if n <> 2 then raise exception 'Inhaber ohne 2FA sieht eigene Daten nicht (%)', n; end if;
+  raise notice 'OK alte Rechnungs-App läuft weiter';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal1');
+do $$ declare n int; begin
+  select count(*) into n from public.customers; if n <> 0 then raise exception 'ohne 2FA sichtbar'; end if;
+  raise notice 'OK ohne Zwei-Faktor kein Team-Zugriff';
+end $$;
+reset role;

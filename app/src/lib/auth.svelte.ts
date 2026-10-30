@@ -42,7 +42,7 @@ class Auth {
     return !!r && (!schreiben || r === "schreiben");
   }
 
-  async abmelden() { await sb.auth.signOut(); this.session = null; this.ich = null; this.stufe = null; }
+  async abmelden() { try { localStorage.removeItem("medialyte-rechnungen-cache-v1"); } catch {} await sb.auth.signOut(); this.session = null; this.ich = null; this.stufe = null; }
 }
 
 export const auth = new Auth();

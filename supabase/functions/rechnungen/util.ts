@@ -1,0 +1,151 @@
+// Gemeinsame Hilfsfunktionen für die Rechnungs-App (Server).
+
+export interface Item {
+  description?: string;
+  quantity?: number;
+  unit?: string;
+  price?: number; // Einzelpreis netto
+  vat?: number; // Steuersatz in Prozent
+  discount?: number; // Rabatt in Prozent
+  billing?: string; // once | monthly | quarterly | yearly (nur in Angeboten relevant)
+  discount_label?: string; // Name des Positionsrabatts, z. B. "Bestandskundenrabatt"
+  type?: string; // "discount" = Gesamtrabatt-Zeile (keine Position)
+  mode?: string; // Gesamtrabatt: "percent" | "amount"
+  value?: number; // Gesamtrabatt: Prozent oder Betrag (netto)
+}
+
+export const isDiscountLine = (it: Item) => it?.type === "discount";
+export const positions = (items: Item[] = []) => items.filter((i) => !isDiscountLine(i));
+// leere Zeilen weglassen; Rabattzeilen nur mit Wert
+export const keepItem = (i: Item) => (isDiscountLine(i) ? Number(i.value) > 0 : !!(i.description || Number(i.price)));
+
+export const BILLING_LABEL: Record<string, string> = { once: "Einmalig", monthly: "Monatlich", quarterly: "Vierteljährlich", yearly: "Jährlich" };
+export const BILLING_SUFFIX: Record<string, string> = { once: "", monthly: " / Monat", quarterly: " / Quartal", yearly: " / Jahr" };
+export const billingOf = (it: Item) => (it.billing && it.billing in BILLING_LABEL ? it.billing : "once");
+
+// Positionen nach Abrechnungsart gruppieren (einmalig zuerst)
+export function splitByBilling(items: Item[] = []) {
+  const order = ["once", "monthly", "quarterly", "yearly"];
+  const groups: Record<string, Item[]> = {};
+  for (const it of items) (groups[billingOf(it)] ||= []).push(it);
+  return order.filter((k) => groups[k]?.some((i) => i?.type !== "discount")).map((k) => ({ billing: k, items: groups[k] }));
+}
+
+export const DEFAULTS: Record<string, unknown> = {
+  prefix: "RE",
+  number_year: false,
+  number_digits: 4,
+  number_start: 1,
+  small_business: false,
+  payment_days: 14,
+  accent: "#F44C4C",
+  discount_types: [{ name: "Bestandskundenrabatt", mode: "percent", value: 10 }],
+  intro: "Vielen Dank für Ihren Auftrag. Wir stellen Ihnen folgende Leistungen in Rechnung:",
+  closing: "Vielen Dank für die gute Zusammenarbeit!",
+  bcc_self: true,
+  reminders_enabled: true,
+  reminder_interval: 7,
+  max_reminders: 3,
+  // Website-Update-Angebot für Bestandskunden (Vorlage)
+  wu_title: "Zeit für eine neue Website",
+  wu_letter:
+    "{anrede},\n\nseit {kunde_seit} dürfen wir Sie mit Ihrer Website begleiten – vielen Dank für Ihr Vertrauen. In dieser Zeit haben sich die Ansprüche an Websites spürbar verändert: Die meisten Besucher kommen heute über das Smartphone, Google achtet stärker auf Ladezeit und Bedienbarkeit, und Interessenten entscheiden in wenigen Sekunden, ob sie bleiben oder weiterklicken.\n\nDeshalb machen wir unseren langjährigen Kunden ein besonderes Angebot: eine komplett neue Website zum Festpreis – modern gestaltet, technisch auf dem neuesten Stand und ohne Aufwand für Sie.\n\n## Warum sich ein Update jetzt lohnt\n- Zeitgemäßes Design, das Vertrauen schafft und Ihr Unternehmen so zeigt, wie es heute ist\n- Perfekt auf dem Smartphone und mit kurzen Ladezeiten\n- Besser gefunden werden: saubere Technik und Struktur für Google\n- Mehr Anfragen durch klare Wege zu Anruf, E-Mail und Kontaktformular\n- Aktuelle Sicherheitsstandards und Datenschutz nach DSGVO\n\n## So einfach geht es\nWir übernehmen Ihre bestehenden Inhalte, gestalten alles neu und stimmen den Entwurf mit Ihnen ab. Erst wenn Sie zufrieden sind, geht die neue Website online – Ihre Internetadresse und Ihre E-Mail-Postfächer bleiben unverändert.\n\nAlle Leistungen und den Festpreis finden Sie auf der nächsten Seite. Das Angebot gilt bis zum {gueltig}. Wir freuen uns auf Ihre Rückmeldung.\n\nViele Grüße\nDaniel Dogan\n{firma}",
+  wu_intro: "Wie im Anschreiben beschrieben, erneuern wir Ihre Website komplett zum Festpreis:",
+  wu_valid_days: 30,
+  wu_items: [{
+    description: "Komplett neue Website\nNeues Design, Übernahme Ihrer Inhalte, optimiert für Smartphone und Google, Kontaktformular, Impressum und Datenschutz, Einrichtung und Livegang",
+    quantity: 1, unit: "pauschal", price: 0, vat: 19, discount: 0, billing: "once",
+  }],
+  tpl_wu_subject: "Ihre neue Website – Angebot {nummer}",
+  tpl_wu_body:
+    "{anrede},\n\nanbei erhalten Sie unser Angebot für eine komplett neue Website. Auf der ersten Seite haben wir zusammengefasst, warum sich ein Update jetzt lohnt, auf der zweiten finden Sie alle Leistungen und den Festpreis von {betrag}. Das Angebot gilt bis zum {gueltig}.\n\nWenn alles passt, genügt eine kurze Antwort auf diese E-Mail.\n\nViele Grüße\n{firma}",
+  quote_prefix: "AN",
+  quote_valid_days: 30,
+  quote_intro: "Vielen Dank für Ihre Anfrage. Gerne unterbreiten wir Ihnen folgendes Angebot:",
+  quote_closing: "Wir freuen uns auf Ihre Zusage und die Zusammenarbeit.",
+  tpl_quote_subject: "Angebot {nummer} – {firma}",
+  tpl_quote_body:
+    "{anrede},\n\nvielen Dank für Ihr Interesse. Anbei erhalten Sie unser Angebot {nummer} über {betrag}. Es ist gültig bis zum {gueltig}.\n\nWenn alles passt, genügt eine kurze Antwort auf diese E-Mail. Bei Fragen melden Sie sich jederzeit gern.\n\nViele Grüße\n{firma}",
+  tpl_invoice_subject: "Rechnung {nummer} – {firma}",
+  tpl_invoice_body:
+    "{anrede},\n\nanbei erhalten Sie unsere Rechnung {nummer} vom {datum} über {betrag}.\n\nBitte überweisen Sie den Betrag bis zum {faellig} unter Angabe der Rechnungsnummer.\n\nVielen Dank und viele Grüße\n{firma}",
+  tpl_correction_subject: "Korrigierte Rechnung {nummer} (ersetzt {alte_nummer})",
+  tpl_correction_body:
+    "{anrede},\n\ndie Rechnung {alte_nummer} wurde storniert und durch die beigefügte Rechnung {nummer} über {betrag} ersetzt. Im Anhang finden Sie die Stornorechnung und die neue Rechnung.\n\nBitte überweisen Sie den Betrag bis zum {faellig}. Falls Sie die ursprüngliche Rechnung bereits bezahlt haben, geben Sie uns bitte kurz Bescheid, dann verrechnen wir den Betrag.\n\nViele Grüße\n{firma}",
+  tpl_cancel_subject: "Stornierung der Rechnung {alte_nummer}",
+  tpl_cancel_body:
+    "{anrede},\n\ndie Rechnung {alte_nummer} wurde storniert. Die Stornorechnung {nummer} finden Sie im Anhang. Sie müssen nichts weiter tun. Falls Sie bereits bezahlt haben, erstatten wir Ihnen den Betrag.\n\nViele Grüße\n{firma}",
+  tpl_reminder_subject: "Zahlungserinnerung zur Rechnung {nummer}",
+  tpl_reminder_body:
+    "{anrede},\n\nsicher ist es nur untergegangen: Für unsere Rechnung {nummer} vom {datum} über {betrag}, fällig am {faellig}, konnten wir noch keinen Zahlungseingang feststellen.\n\nBitte überweisen Sie den Betrag in den nächsten Tagen. Die Rechnung finden Sie noch einmal im Anhang. Falls Sie bereits gezahlt haben, betrachten Sie diese E-Mail bitte als gegenstandslos.\n\nViele Grüße\n{firma}",
+};
+
+export const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+export const lineNet = (it: Item) =>
+  r2((Number(it.quantity) || 0) * (Number(it.price) || 0) * (1 - Math.min(Math.max(Number(it.discount) || 0, 0), 100) / 100));
+
+export interface DiscountRow { label: string; mode: "percent" | "amount"; value: number; amount: number }
+
+// Summen inkl. Gesamtrabatten. Rabatte mindern die Steuerbasis anteilig je Steuersatz.
+// Prozent-Rabatte beziehen sich jeweils auf die Zwischensumme; zusammen nie mehr als die Zwischensumme.
+// Bei Stornos (negative Mengen) drehen sich die Vorzeichen automatisch mit.
+export function totals(items: Item[] = [], smallBusiness = false) {
+  let sub = 0;
+  const byRate: Record<string, number> = {};
+  for (const it of positions(items)) {
+    const line = lineNet(it);
+    sub += line;
+    const rate = smallBusiness ? 0 : Number(it.vat) || 0;
+    byRate[rate] = (byRate[rate] || 0) + line;
+  }
+  sub = r2(sub);
+  const abs = Math.abs(sub), sign = sub < 0 ? -1 : 1;
+  let left = abs;
+  const discounts: DiscountRow[] = items.filter(isDiscountLine).map((d) => {
+    const mode = d.mode === "amount" ? "amount" : "percent";
+    const value = Math.max(Number(d.value) || 0, 0);
+    const raw = mode === "amount" ? value : (abs * Math.min(value, 100)) / 100;
+    const a = r2(Math.min(raw, left));
+    left = r2(left - a);
+    return { label: String(d.description || "Rabatt").trim() || "Rabatt", mode, value, amount: r2(a * sign) };
+  });
+  const discountTotal = r2(discounts.reduce((s, d) => s + d.amount, 0));
+  const net = r2(sub - discountTotal);
+  const factor = sub ? net / sub : 1;
+  const vatLines = Object.entries(byRate)
+    .map(([rate, base]) => ({ rate: Number(rate), base: r2(base * factor), amount: r2((base * factor * Number(rate)) / 100) }))
+    .filter((v) => v.rate > 0)
+    .sort((a, b) => b.rate - a.rate);
+  const vat = r2(vatLines.reduce((s, v) => s + v.amount, 0));
+  return { net, vat, gross: r2(net + vat), vatLines, subtotal: sub, discounts, discountTotal };
+}
+
+const EUR = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+export const eur = (n: number) => EUR.format(Number(n) || 0);
+export const qty = (n: number) =>
+  new Intl.NumberFormat("de-DE", { maximumFractionDigits: 3, useGrouping: false }).format(Number(n) || 0);
+export const fmtDate = (iso?: string | null) => (iso ? String(iso).slice(0, 10).split("-").reverse().join(".") : "");
+
+export const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+
+export function addDays(iso: string, n: number) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+export function addMonths(iso: string, n: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, last));
+  return t.toISOString().slice(0, 10);
+}
+
+export const fill = (tpl: unknown, vars: Record<string, string>) =>
+  String(tpl ?? "").replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+
+export function formatIban(iban?: string) {
+  return String(iban ?? "").replace(/\s+/g, "").toUpperCase().replace(/(.{4})/g, "$1 ").trim();
+}
