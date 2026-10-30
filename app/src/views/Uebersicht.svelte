@@ -1,6 +1,7 @@
 <script lang="ts">
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
+  import Schalter from "../components/Schalter.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
   import { sb } from "../lib/supabase";
@@ -27,6 +28,13 @@
 
   const summe = (kat: string | null, st?: string[]) => zahlen.filter((z) => (!kat || z.kategorie === kat) && (!st || st.includes(z.status))).reduce((a, z) => a + Number(z.anzahl), 0);
   const online = (kat: string | null) => zahlen.filter((z) => !kat || z.kategorie === kat).reduce((a, z) => a + Number(z.demos_online), 0);
+  const darfAgent = $derived(auth.darf("einstellungen", true));
+  const darfKat = $derived(auth.darf("akquise", true));
+  async function agentSchalten(a: any, an: boolean) {
+    if (!an && a.schluessel === "website" && !confirm("Website-Agent ausschalten? Neue Änderungswünsche deiner Kunden bleiben dann liegen, bis du ihn wieder einschaltest.")) return;
+    await daten.schalten("agent", a.schluessel, an);
+  }
+  const anzahlAn = $derived(daten.agenten.filter((a) => a.aktiv).length);
   const gruss = () => { const h = new Date().getHours(); return h < 11 ? "Guten Morgen" : h < 18 ? "Hallo" : "Guten Abend"; };
 </script>
 
@@ -68,14 +76,34 @@
   {/if}
 </div>
 
+{#if daten.agenten.length}
+  <div class="box__h sec"><h2>Agenten</h2><span class="muted small">{anzahlAn} von {daten.agenten.length} an{darfAgent ? "" : " · nur der Inhaber kann schalten"}</span></div>
+  <div class="agents">
+    {#each daten.agenten as a (a.schluessel)}
+      <div class="agent card" class:is-off={!a.aktiv}>
+        <span class="agent__ic"><Icon name={a.icon} size={19} /></span>
+        <div class="agent__t">
+          <div class="agent__h"><b>{a.name}</b><span class="state">{a.aktiv ? "an" : "aus"}</span></div>
+          <p class="muted">{a.beschreibung}</p>
+          <small class="muted">{a.rhythmus}{a.geaendert_von && daten.name(a.geaendert_von) ? ` · zuletzt geschaltet von ${daten.name(a.geaendert_von)}, ${vor(a.geaendert)}` : ""}</small>
+        </div>
+        <Schalter an={a.aktiv} label="{a.name} {a.aktiv ? 'ausschalten' : 'einschalten'}" disabled={!darfAgent} onchange={(v) => agentSchalten(a, v)} />
+      </div>
+    {/each}
+  </div>
+{/if}
+
 {#if auth.darf("akquise")}
-  <div class="box__h sec"><h2>Akquise nach Kategorien</h2><a class="btn btn--s btn--quiet" href="#/akquise">Alle Kategorien</a></div>
+  <div class="box__h sec"><h2>Akquise-Agent je Branche</h2><a class="btn btn--s btn--quiet" href="#/akquise">Alle Kategorien</a></div>
   <div class="kats">
     {#each daten.kategorien as k (k.slug)}
-      <a class="kat card" href="#/akquise/{k.slug}" style="--c:{k.farbe}">
-        <span class="kat__ic"><Icon name={k.icon} size={20} /></span>
-        <span class="kat__t"><b>{k.name}</b><small class="muted">{summe(k.slug) ? `${zahl(summe(k.slug))} Betriebe · ${zahl(online(k.slug))} Demos online` : "Noch keine Betriebe"}</small></span>
-      </a>
+      <div class="kat card" class:is-off={!k.aktiv} style="--c:{k.farbe}">
+        <a class="kat__a" href="#/akquise/{k.slug}">
+          <span class="kat__ic"><Icon name={k.icon} size={20} /></span>
+          <span class="kat__t"><b>{k.name}</b><small class="muted">{summe(k.slug) ? `${zahl(summe(k.slug))} Betriebe · ${zahl(online(k.slug))} Demos online` : k.suche?.bereit ? "Noch keine Betriebe" : "Branchen-Vorlage folgt"}</small></span>
+        </a>
+        <Schalter an={k.aktiv} label="Akquise {k.name} {k.aktiv ? 'ausschalten' : 'einschalten'}" disabled={!darfKat} onchange={(v) => daten.schalten("kategorie", k.slug, v)} />
+      </div>
     {/each}
   </div>
   {#if laeufe.length}
@@ -95,6 +123,7 @@
   .kpi b { font-size: clamp(1.6rem, 5vw, 2rem); font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1.15; }
   .kpi span { font-size: .84rem; line-height: 1.35; }
   @media (hover: hover) { .kpi:hover, .kat:hover { border-color: var(--line-2); } }
+  @media (max-width: 420px) { .agents { grid-template-columns: minmax(0, 1fr); } }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
   .box { padding: 6px 0; }
   .box__h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px 8px; }
@@ -109,7 +138,22 @@
   .r { font-size: .84rem; white-space: nowrap; }
   .pad { padding: 8px 20px 16px; }
   .kats { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .kat { display: flex; align-items: center; gap: 14px; padding: 16px; transition: border-color .15s ease; }
+  .small { font-size: .84rem; }
+  .agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .agent { display: flex; align-items: flex-start; gap: 14px; padding: 16px 16px 16px 18px; transition: border-color .2s ease; }
+  .agent__ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--ok); background: rgba(76, 195, 138, .12); transition: color .2s ease, background-color .2s ease; }
+  .agent__t { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .agent__h { display: flex; align-items: center; gap: 8px; }
+  .agent__h b { color: var(--text); font-weight: 600; }
+  .state { font-size: .72rem; font-weight: 600; letter-spacing: .02em; color: var(--ok); }
+  .agent p { font-size: .86rem; line-height: 1.45; }
+  .agent small { font-size: .76rem; }
+  .agent.is-off .agent__ic { color: var(--steel); background: rgba(139, 152, 173, .12); }
+  .agent.is-off .state { color: var(--steel); }
+  .agent.is-off b { color: var(--text-2); }
+  .kat { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; transition: border-color .15s ease; }
+  .kat__a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 4px; border-radius: 8px; }
+  .kat.is-off .kat__ic { filter: grayscale(1); opacity: .55; }
   .kat__ic { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; flex: none;
     color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
   .kat__t { display: grid; min-width: 0; }

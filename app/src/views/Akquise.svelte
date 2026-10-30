@@ -1,6 +1,7 @@
 <script lang="ts">
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
+  import Schalter from "../components/Schalter.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
   import { sb, fehler } from "../lib/supabase";
@@ -42,7 +43,8 @@
     <a class="kat card" href="#/akquise/{k.slug}" style="--c:{k.farbe}">
       <div class="kat__h">
         <span class="kat__ic"><Icon name={k.icon} size={22} /></span>
-        <span class="pill pill--plain" class:pill--gruen={k.aktiv}>{k.aktiv ? "Agent sucht" : "Pausiert"}</span>
+        <span class="kat__sw"><small class="muted">{k.aktiv ? "Agent sucht" : "Aus"}</small>
+          <Schalter an={k.aktiv} label="Akquise {k.name} {k.aktiv ? 'ausschalten' : 'einschalten'}" disabled={!auth.darf("akquise", true)} onchange={(v) => daten.schalten("kategorie", k.slug, v)} /></span>
       </div>
       <div class="kat__t"><h2>{k.name}</h2><p class="muted">{k.beschreibung ?? ""}</p></div>
       <dl class="kat__z">
@@ -60,6 +62,8 @@
   .kat { display: grid; gap: 16px; padding: 20px; transition: border-color .15s ease, transform .15s var(--ease); }
   @media (hover: hover) { .kat:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); } }
   .kat__h { display: flex; align-items: center; justify-content: space-between; }
+  .kat__sw { display: flex; align-items: center; gap: 10px; }
+  .kat__sw small { font-size: .8rem; }
   .kat__ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
   .kat__t { display: grid; gap: 4px; }
   .kat__t p { font-size: .88rem; min-height: 2.6em; }

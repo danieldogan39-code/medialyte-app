@@ -99,7 +99,7 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
 @media (hover: hover) { .table tbody tr:hover { background: var(--hover); } }
 .table td b { color: var(--text); font-weight: 500; }
 
-.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 100; padding: 10px 16px; border-radius: 999px;
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 100; padding: 10px 16px; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; border-radius: 999px;
   background: var(--text); color: var(--bg); font-weight: 500; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; } }

@@ -83,3 +83,26 @@ do $$ begin
 end $$;
 reset role;
 select public.kategorie_raten('Tischlerei') = 'handwerk' and public.kategorie_raten('Pizzeria Roma') = 'gastronomie' as kategorie_raten_ok;
+
+-- 8) Agenten-Schalter: Inhaber schaltet, Marketing nicht; nur „aktiv“ ist änderbar
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare n int; begin
+  update public.agenten set aktiv = false where schluessel = 'nachfass'; get diagnostics n = row_count;
+  if n <> 1 or (select geaendert_von from public.agenten where schluessel = 'nachfass') <> auth.uid() then raise exception 'Inhaber kann nicht schalten'; end if;
+  begin update public.agenten set name = 'x' where schluessel = 'nachfass'; raise exception 'Name änderbar';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Inhaber schaltet Agenten';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ declare n int; begin
+  if (select count(*) from public.agenten) = 0 then raise exception 'Marketing sieht Agenten nicht'; end if;
+  update public.agenten set aktiv = true; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Marketing durfte schalten'; end if;
+  raise notice 'OK Marketing sieht Agenten, schaltet nicht';
+end $$;
+reset role;
+do $$ begin
+  if (select count(*) from public.kategorien where aktiv) <> 1 then raise exception 'Kategorien-Start falsch'; end if;
+  raise notice 'OK nur Gastronomie startet aktiv';
+end $$;
