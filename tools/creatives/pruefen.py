@@ -19,7 +19,7 @@ for c in json.loads(body):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 h = dict(r.headers); erst = r.read(12)
-                print(p, "| info:", {k: info.get(k) for k in ("content_type", "size", "metadata")} if "fehler" not in info else info,
+                print("::notice::" + str(p), "| info:", {k: info.get(k) for k in ("content_type", "size", "metadata")} if "fehler" not in info else info,
                       "| Abruf:", r.status, h.get("Content-Type"), h.get("Content-Range"), h.get("Accept-Ranges"), "| Anfang:", erst[4:12])
         except urllib.error.HTTPError as e:
-            print(p, "| Abruf-Fehler", e.code, e.read()[:200])
+            print("::notice::" + str(p), "| Abruf-Fehler", e.code, e.read()[:200])
