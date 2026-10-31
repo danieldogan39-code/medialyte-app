@@ -3,6 +3,8 @@
 // (Lesen: PDFs; Schreiben: Abschließen, Senden …). Ohne Team-Recht (alte Rechnungs-App) gilt wie bisher das eigene Konto.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { buildInvoicePdf } from "./pdf.ts";
+import { zipSync, strToU8 } from "npm:fflate@0.8.2";
+import { gobdExport } from "./gobd.ts";
 import { addDays, addMonths, BILLING_SUFFIX, DEFAULTS, eur, fill, fmtDate, keepItem, positions, splitByBilling, today, totals } from "./util.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
     const { data: u, error } = await db.auth.getUser(token);
     if (error || !u?.user) return json({ error: "Bitte neu anmelden." }, 401);
     // Team-Rechte: mit dem Zugang des Nutzers prüfen (Zwei-Faktor gilt wie in der App)
-    const LESEN = new Set(["pdf", "quote_pdf"]);
+    const LESEN = new Set(["pdf", "quote_pdf", "gobd_export"]);
     const alsNutzer = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
       global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false, autoRefreshToken: false },
     });
@@ -79,27 +81,27 @@ Deno.serve(async (req) => {
     switch (action) {
       case "pdf": {
         const s = await getSettings(uid);
-        const { bytes, filename } = await renderPdf(await getInvoice(uid, body.id), s);
+        const { bytes, filename } = await belegPdf(uid, await getInvoice(uid, body.id), s);
         return new Response(new Uint8Array(bytes), {
           headers: { ...CORS, "Content-Type": "application/pdf", "Content-Disposition": `inline; filename="${filename}"` },
         });
       }
       case "issue":
-        return json(await issue(uid, body.id, !!body.send, { issueDate: body.issue_date, paidAt: body.paid_at, paid: !!body.paid }));
+        return json(await issue(uid, body.id, !!body.send, { issueDate: body.issue_date, paidAt: body.paid_at, paid: !!body.paid }, u.user.id));
       case "recurring_backfill": {
         const { data: r } = await db.from("recurring").select("*").eq("id", body.id).eq("user_id", uid).maybeSingle();
         if (!r) throw new UserError("Abo nicht gefunden.");
         return json(await backfillRecurring(r, body.mode === "open" ? "open" : "paid"));
       }
       case "send":
-        return json(await sendInvoice(uid, body.id));
+        return json(await sendInvoice(uid, body.id, undefined, u.user.id));
       case "remind": {
         const inv = await getInvoice(uid, body.id);
         if (inv.kind !== "invoice" || inv.status !== "open") throw new UserError("Erinnerungen gibt es nur für offene Rechnungen.");
-        return json(await sendInvoice(uid, body.id, "reminder"));
+        return json(await sendInvoice(uid, body.id, "reminder", u.user.id));
       }
       case "correct":
-        return json(await correct(uid, body.id, body.mode === "cancel" ? "cancel" : "replace"));
+        return json(await correct(uid, body.id, body.mode === "cancel" ? "cancel" : "replace", u.user.id));
       case "run_recurring": {
         const { data: r } = await db.from("recurring").select("*").eq("id", body.id).eq("user_id", uid).maybeSingle();
         if (!r) throw new UserError("Abo nicht gefunden.");
@@ -118,7 +120,12 @@ Deno.serve(async (req) => {
       case "quote_send":
         return json(await sendQuote(uid, body.id));
       case "import_invoice":
-        return json(await importInvoice(uid, body));
+        return json(await importInvoice(uid, body, u.user.id));
+      case "gobd_export": {
+        const s = await getSettings(uid);
+        const zip = await gobdExport({ db, uid, von: body.von, bis: body.bis, settings: s, belegPdf: (inv: Any) => belegPdf(uid, inv, s), zipSync, strToU8 });
+        return new Response(zip as unknown as BodyInit, { headers: { ...CORS, "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="GoBD-Export.zip"` } });
+      }
       case "test_mail":
         return json(await testMail(uid, u.user.email ?? ""));
       default:
@@ -211,7 +218,7 @@ function pastDate(v: unknown, label: string): string | null {
   return d;
 }
 
-async function issue(uid: string, id: string, send: boolean, opt: { issueDate?: string; paidAt?: string; paid?: boolean } = {}) {
+async function issue(uid: string, id: string, send: boolean, opt: { issueDate?: string; paidAt?: string; paid?: boolean } = {}, wer: string | null = null) {
   const inv = await getInvoice(uid, id);
   if (inv.status !== "draft") throw new UserError("Diese Rechnung ist bereits abgeschlossen.");
   const s = await getSettings(uid);
@@ -242,17 +249,21 @@ async function issue(uid: string, id: string, send: boolean, opt: { issueDate?: 
     net: t.net,
     vat: t.vat,
     gross: t.gross,
+    zuletzt_von: wer,
   }).eq("id", id).eq("user_id", uid).select().single();
   if (error) throw error;
+  // GoBD: Original-PDF so ablegen, wie die Rechnung ausgestellt wurde
+  // (klappt das ausnahmsweise nicht, wird es beim ersten Abruf nachgeholt und so gekennzeichnet)
+  try { await archivieren(uid, upd, s, false); } catch (e) { console.error("Beleg-Ablage", e); }
 
   let mail = null;
-  if (send) mail = await sendInvoice(uid, id);
+  if (send) mail = await sendInvoice(uid, id, undefined, wer);
   return { invoice: upd, mail };
 }
 
 // ---------- Korrektur / Storno ----------
 
-async function correct(uid: string, id: string, mode: "replace" | "cancel") {
+async function correct(uid: string, id: string, mode: "replace" | "cancel", wer: string | null = null) {
   const inv = await getInvoice(uid, id);
   if (inv.kind !== "invoice" || !["open", "paid"].includes(inv.status)) {
     throw new UserError("Nur offene oder bezahlte Rechnungen können korrigiert oder storniert werden.");
@@ -276,16 +287,18 @@ async function correct(uid: string, id: string, mode: "replace" | "cancel") {
     vat: t.vat,
     gross: t.gross,
     ref_invoice_id: inv.id,
+    zuletzt_von: wer,
   }).select().single();
   if (error) throw error;
-  const { error: e2 } = await db.from("invoices").update({ status: "cancelled" }).eq("id", inv.id);
+  try { await archivieren(uid, storno, s, false); } catch (e) { console.error("Beleg-Ablage", e); }
+  const { error: e2 } = await db.from("invoices").update({ status: "cancelled", zuletzt_von: wer }).eq("id", inv.id);
   if (e2) throw e2;
 
   if (mode === "cancel") {
     let mail = null;
     let mailError = null;
     try {
-      mail = await sendInvoice(uid, storno.id, "cancel");
+      mail = await sendInvoice(uid, storno.id, "cancel", wer);
     } catch (e) {
       mailError = e instanceof Error ? e.message : String(e);
     }
@@ -302,6 +315,7 @@ async function correct(uid: string, id: string, mode: "replace" | "cancel") {
     intro: inv.intro,
     notes: inv.notes,
     ref_invoice_id: inv.id,
+    zuletzt_von: wer,
   }).select().single();
   if (e3) throw e3;
   return { storno, draft };
@@ -324,9 +338,52 @@ async function renderPdf(inv: Any, s: Any) {
   return { bytes, filename };
 }
 
+// ---------- GoBD: Original-Belege ----------
+// Beim Abschließen wird das PDF einmal erzeugt und unveränderlich abgelegt (Bucket „belege“, Prüfsumme SHA-256).
+// Danach gibt es für diese Rechnung nur noch genau dieses PDF – auch nach Änderungen an Logo oder Firmendaten.
+const belegName = (inv: Any) => `${inv.kind === "storno" ? "Stornorechnung" : "Rechnung"}_${inv.number ?? "Entwurf"}.pdf`;
+async function sha256hex(bytes: Uint8Array) {
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as unknown as ArrayBuffer));
+  return [...h].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function archivieren(uid: string, inv: Any, s: Any, nachtraeglich: boolean) {
+  if (inv.status === "draft" || !inv.number) return null;
+  if (inv.beleg_pfad) return null;
+  const { bytes, filename } = await renderPdf(inv, s);
+  const year = String(inv.issue_date ?? "").slice(0, 4) || "ohne-datum";
+  const pfad = `${uid}/${year}/${String(inv.number).replace(/[^A-Za-z0-9._-]/g, "_")}_${String(inv.id).slice(0, 8)}.pdf`;
+  let daten = new Uint8Array(bytes);
+  const up = await db.storage.from("belege").upload(pfad, daten, { contentType: "application/pdf", upsert: false });
+  if (up.error) {
+    // schon vorhanden (z. B. zweiter Versuch): das abgelegte Original gilt
+    const ex = await db.storage.from("belege").download(pfad);
+    if (ex.error || !ex.data) throw new Error(`Beleg konnte nicht abgelegt werden: ${up.error.message}`);
+    daten = new Uint8Array(await ex.data.arrayBuffer());
+  }
+  const sha = await sha256hex(daten);
+  const { error } = await db.from("invoices").update({ beleg_pfad: pfad, beleg_sha256: sha, beleg_am: new Date().toISOString(), beleg_nachtraeglich: nachtraeglich })
+    .eq("id", inv.id).is("beleg_pfad", null);
+  if (error) throw error;
+  inv.beleg_pfad = pfad; inv.beleg_sha256 = sha;
+  return { bytes: daten, filename };
+}
+/** PDF einer Rechnung: abgelegtes Original; ältere Rechnungen ohne Original werden jetzt abgelegt (als nachträglich gekennzeichnet) */
+async function belegPdf(uid: string, inv: Any, s: Any | null) {
+  if (inv.beleg_pfad) {
+    const { data, error } = await db.storage.from("belege").download(inv.beleg_pfad);
+    if (!error && data) return { bytes: new Uint8Array(await data.arrayBuffer()), filename: belegName(inv) };
+  }
+  const set = s ?? await getSettings(uid);
+  if (inv.status !== "draft" && inv.number) {
+    const a = await archivieren(uid, inv, set, true);
+    if (a) return a;
+  }
+  return renderPdf(inv, set);
+}
+
 type MailType = "invoice" | "correction" | "cancel" | "reminder";
 
-async function sendInvoice(uid: string, id: string, forced?: MailType) {
+async function sendInvoice(uid: string, id: string, forced?: MailType, wer: string | null = null) {
   const inv = await getInvoice(uid, id);
   if (inv.status === "draft") throw new UserError("Entwürfe können nicht versendet werden.");
   const s = await getSettings(uid);
@@ -346,9 +403,9 @@ async function sendInvoice(uid: string, id: string, forced?: MailType) {
   if (type === "correction" && ref) {
     const { data: st } = await db.from("invoices").select("*").eq("kind", "storno").eq("ref_invoice_id", ref.id)
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (st) attachments.push(await renderPdf(st, s));
+    if (st) attachments.push(await belegPdf(uid, st, s));
   }
-  attachments.push(await renderPdf(inv, s));
+  attachments.push(await belegPdf(uid, inv, s));
 
   const vars: Record<string, string> = {
     nummer: inv.number ?? "",
@@ -376,9 +433,9 @@ async function sendInvoice(uid: string, id: string, forced?: MailType) {
   if (status === "error") throw new UserError(`Versand fehlgeschlagen: ${error}`);
 
   if (type === "reminder") {
-    await db.from("invoices").update({ reminders_sent: (inv.reminders_sent ?? 0) + 1, last_reminder_at: today() }).eq("id", inv.id);
+    await db.from("invoices").update({ reminders_sent: (inv.reminders_sent ?? 0) + 1, last_reminder_at: today(), zuletzt_von: wer }).eq("id", inv.id);
   } else {
-    await db.from("invoices").update({ sent_at: new Date().toISOString() }).eq("id", inv.id);
+    await db.from("invoices").update({ sent_at: new Date().toISOString(), zuletzt_von: wer }).eq("id", inv.id);
   }
   return { to, type };
 }
@@ -458,7 +515,7 @@ async function testMail(uid: string, userEmail: string) {
 
 // ---------- Bestehende Rechnung (z. B. aus Lexoffice) übernehmen ----------
 
-async function importInvoice(uid: string, b: Any) {
+async function importInvoice(uid: string, b: Any, wer: string | null = null) {
   const number = String(b.number ?? "").trim();
   if (!number) throw new UserError("Bitte die Rechnungsnummer angeben.");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(b.issue_date ?? ""))) throw new UserError("Bitte ein gültiges Rechnungsdatum angeben.");
@@ -492,8 +549,11 @@ async function importInvoice(uid: string, b: Any) {
     sent_at: new Date(b.issue_date + "T09:00:00Z").toISOString(),
     paid_at: paid && /^\d{4}-\d{2}-\d{2}/.test(String(b.paid_at ?? "")) ? new Date(String(b.paid_at).slice(0, 10) + "T12:00:00Z").toISOString() : null,
     imported: true,
+    zuletzt_von: wer,
   }).select().single();
   if (error) throw error;
+  // übernommene Rechnung: das Original stammt aus dem alten System; hier wird die Wiedergabe abgelegt und so gekennzeichnet
+  try { await archivieren(uid, data, s, true); } catch (e) { console.error("Beleg-Ablage", e); }
   return { invoice: data };
 }
 

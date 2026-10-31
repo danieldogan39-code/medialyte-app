@@ -11,6 +11,11 @@
   import { istProgramm } from "../../lib/push";
 
   const darf = $derived(auth.darf("rechnungen", true));
+  // GoBD-Export (Datenträgerüberlassung): Zeitraum, Standard = Vorjahr
+  const vj = Number(todayISO().slice(0, 4)) - 1;
+  let exVon = $state(`${vj}-01-01`), exBis = $state(`${vj}-12-31`), exLaeuft = $state(false);
+  const exJahre = $derived([...new Set([...R.alleRechnungen.map((i) => String(i.issue_date || "").slice(0, 4)).filter((y) => /^\d{4}$/.test(y)), todayISO().slice(0, 4)])].sort().reverse().slice(0, 9));
+  const exportieren = () => { if (exLaeuft) return; exLaeuft = true; versuche(async () => { const n = await R.gobdExport(exVon, exBis); daten.melden(`${n} erstellt`); }).finally(() => (exLaeuft = false)); };
   const TEXT = ["name", "owner", "street", "zip", "city", "phone", "email", "website", "tax_number", "vat_id", "register", "account_holder", "bank", "iban", "bic",
     "prefix", "number_digits", "number_start", "quote_prefix", "quote_valid_days", "quote_intro", "quote_closing", "payment_days", "intro", "closing", "accent",
     "sender_name", "sender_email", "reply_to", "reminder_interval", "max_reminders",
@@ -217,6 +222,17 @@
   </section>
 
   <section class="card">
+    <h3>Aufbewahrung &amp; Betriebsprüfung</h3>
+    <p class="hint">Ausgestellte Rechnungen sind unveränderbar und werden mit dem Original-PDF 8 Jahre aufbewahrt. Jede Änderung steht im Protokoll. Für eine Prüfung bekommst du hier alles als ein Paket: Daten im Prüferformat (GDPdU), Änderungsprotokoll und alle Rechnungs-PDFs.</p>
+    <div class="g2">
+      <label class="field"><span>Von</span><input class="input" type="date" bind:value={exVon} max={exBis}></label>
+      <label class="field"><span>Bis</span><input class="input" type="date" bind:value={exBis} min={exVon}></label>
+    </div>
+    <div class="jahre">{#each exJahre as y (y)}<button class="chip" class:on={exVon === `${y}-01-01` && exBis === `${y}-12-31`} onclick={() => { exVon = `${y}-01-01`; exBis = `${y}-12-31`; }}>{y}</button>{/each}</div>
+    <button class="btn btn--s" onclick={exportieren} disabled={exLaeuft || !exVon || !exBis || exBis < exVon}>{exLaeuft ? "Paket wird erstellt …" : "GoBD-Export herunterladen"}</button>
+  </section>
+
+  <section class="card">
     <h3>App</h3>
     <p class="hint">{istProgramm ? "Du nutzt die Medialyte-App. Alles, was du ohne Internet machst, wird auf dem Gerät gespeichert und automatisch abgeglichen." : "Die Rechnungen gibt es auch in der Medialyte-App für Mac, Windows und Android – mit Offline-Modus und automatischem Abgleich."}</p>
     {#if !istProgramm}<a class="btn btn--s" href="#/einstellungen">App herunterladen</a>{/if}
@@ -239,6 +255,9 @@
   h4 { margin: 6px 0 0; font-size: .95rem; color: var(--text); }
   .hint { margin: 0; color: var(--steel); font-size: .86rem; line-height: 1.5; }
   .hint b { color: var(--text); font-weight: 600; }
+  .jahre { display: flex; flex-wrap: wrap; gap: 6px; }
+  .jahre .chip { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font-size: .84rem; }
+  .jahre .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
   .klein { font-size: .86rem; margin: 0; }
   .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .g3 { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }

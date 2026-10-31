@@ -36,6 +36,7 @@
   const offenAnzahl = $derived(mitStatus.filter(([, s]) => ["open", "overdue"].includes(s.key)).length);
   const reListe = $derived.by(() => {
     const q = A.query.trim().toLowerCase();
+    if (A.filter === "hidden") return R.ausgeblendet.filter((i) => !q || `${i.number || ""} ${R.custName(i)} ${i.ausgeblendet_grund || ""}`.toLowerCase().includes(q));
     return mitStatus.filter(([i, s]) => (A.filter === "all" || s.key === A.filter || (A.filter === "open" && s.key === "overdue")) &&
       (!q || `${i.number || ""} ${R.custName(i)} ${R.customer(i.customer_id)?.number || ""} ${i.service_text || ""}`.toLowerCase().includes(q))).map(([i]) => i);
   });
@@ -140,7 +141,7 @@
     {/each}
   </div>
   <div class="bar">
-    <div class="chips" use:gleiter={{ sel: ".chip.on" }}>{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["overdue", "Überfällig"], ["paid", "Bezahlt"], ["cancelled", "Storniert"]] as [k, t]}<button class="chip" class:on={A.filter === k} onclick={() => (A.filter = k)}>{t}</button>{/each}</div>
+    <div class="chips" use:gleiter={{ sel: ".chip.on" }}>{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["overdue", "Überfällig"], ["paid", "Bezahlt"], ["cancelled", "Storniert"], ...(R.ausgeblendet.length || A.filter === "hidden" ? [["hidden", "Ausgeblendet"]] : [])] as [k, t]}<button class="chip" class:on={A.filter === k} onclick={() => (A.filter = k)}>{t}</button>{/each}</div>
     <label class="search"><Icon name="search" size={16} /><input class="input" type="search" placeholder="Suchen …" bind:value={A.query} aria-label="Rechnungen durchsuchen"></label>
   </div>
   {#if reListe.length}<Gruppen art="inv" docs={reListe} gefiltert={!!A.query.trim() || A.filter !== "all"} zeile={reZeile} zusammenfassung={reZusammen} neu={(k) => neueRechnung(k)} />

@@ -40,6 +40,15 @@ und werden erst beim nächsten Start aktiv.
 - **Schlüssel:** `tools/update/schluessel.sh` legt sie beim ersten Lauf an und hält sie in `private.update_schluessel`
   (Supabase). Im Repository steht keiner.
 
+## Rechnungen und GoBD
+
+- Ausgestellte Rechnungen sind unveränderbar (Datenbank-Regel, gilt auch für den Server). Korrekturen nur über Storno bzw. Storno + neue Rechnung.
+- Nichts Ausgestelltes wird gelöscht: Rechnungen und verschickte Angebote lassen sich nur ausblenden (mit Grund). Gelöscht werden können nur Entwürfe – auch beim Löschen eines Kontos.
+- Beim Abschließen legt der Server das PDF als Original-Beleg im privaten Speicher „belege“ ab (SHA-256-Prüfsumme). Danach wird immer genau dieses PDF ausgeliefert und verschickt. Ältere Rechnungen werden beim ersten Abruf nachträglich abgelegt und so gekennzeichnet.
+- `beleg_protokoll`: unveränderliches Protokoll aller Anlagen, Änderungen und Löschungen von Rechnungen, Angeboten, Kunden und Firmendaten (wer, wann, alt → neu).
+- Einstellungen → „Aufbewahrung & Betriebsprüfung“: GoBD-Export für einen Zeitraum (ZIP mit CSV, index.xml im GDPdU-Format, Protokoll, alle PDFs).
+- Organisatorisch dazu: Verfahrensdokumentation, Datensicherung, Eingangsrechnungen im Originalformat aufbewahren.
+
 ## Social Media (Creatives)
 
 Fertige Creatives landen auf der Seite „Social Media“ (Bilder, Karussells, Videos mit Titelbild und Text).

@@ -12,6 +12,8 @@
   import { oeffneAngebot, oeffneRechnung } from "../../lib/rechnungen/oeffnen";
   import RechnungEditor from "./RechnungEditor.svelte";
   import { auth } from "../../lib/auth.svelte";
+  import { sb } from "../../lib/supabase";
+  import { onMount } from "svelte";
 
   let { zu, inv }: { zu: () => void; inv: any } = $props();
   const i = $derived(R.invoice(inv.id) ?? inv);
@@ -27,15 +29,37 @@
   const tun = (k: string, fn: () => Promise<unknown>) => { if (laeuft) return; laeuft = k; versuche(fn).finally(() => (laeuft = "")); };
   const danach = async (t: string) => { zu(); await R.loadAll().catch(() => {}); if (t) daten.melden(t); };
   const springe = (x: any) => { zu(); setTimeout(() => oeffneRechnung(x), 180); };
-  // Jede Rechnung lässt sich löschen. Gehört eine Stornorechnung dazu, kann sie gleich mit weg.
-  const loeschen = () => tun("del", async () => {
-    const name = `${i.kind === "storno" ? "Stornorechnung" : "Rechnung"} ${i.number || ""}`.trim();
-    const hinweis = "Sie verschwindet endgültig aus der App, auch aus Umsatz und Auswertungen. Bereits verschickte E-Mails bleiben beim Kunden. Für echte Rechnungen ist Stornieren meist der richtige Weg.";
-    if (!(await frage(`${name} löschen?`, hinweis, "Endgültig löschen", true))) return;
-    const mitStorno = storno && (await frage(`Stornorechnung ${storno.number} auch löschen?`, `Sie gehört zu ${name}.`, "Auch löschen", true));
-    R.needsNet("Löschen");
-    for (const x of mitStorno ? [storno, i] : [i]) { const { error } = await R.write("invoices", "delete", undefined, [["id", x.id]]); if (error) throw error; }
-    await danach(mitStorno ? `${name} und Stornorechnung gelöscht` : `${name} gelöscht`);
+  // GoBD: Ausgestellte Rechnungen werden 8 Jahre aufbewahrt und nie gelöscht. „Ausblenden“ nimmt sie aus Listen und Umsatz,
+  // sie bleiben aber unverändert gespeichert, im Prüfer-Export und jederzeit wieder einblendbar.
+  const name = $derived(`${i.kind === "storno" ? "Stornorechnung" : "Rechnung"} ${i.number || ""}`.trim());
+  let blendAus = $state(false), grund = $state("");
+  const ausblenden = () => tun("hide", async () => {
+    const mitStorno = storno && !storno.ausgeblendet_am && (await frage(`Stornorechnung ${storno.number} auch ausblenden?`, `Sie gehört zu ${name}.`, "Auch ausblenden"));
+    const jetzt = new Date().toISOString(), g = grund.trim() || null;
+    for (const x of mitStorno ? [storno, i] : [i]) { const { error } = await R.write("invoices", "update", { ausgeblendet_am: jetzt, ausgeblendet_grund: g }, [["id", x.id]]); if (error) throw error; }
+    blendAus = false; grund = "";
+    await danach(mitStorno ? `${name} und Stornorechnung ausgeblendet` : `${name} ausgeblendet`);
+  });
+  const einblenden = () => tun("show", async () => {
+    const { error } = await R.write("invoices", "update", { ausgeblendet_am: null, ausgeblendet_grund: null }, [["id", i.id]]); if (error) throw error;
+    daten.melden(`${name} wieder eingeblendet`);
+  });
+
+  // Änderungsverlauf aus dem unveränderlichen Protokoll
+  const FELD: Record<string, string> = { status: "Status", paid_at: "Bezahlt am", sent_at: "Versendet", reminders_sent: "Erinnerungen", number: "Nummer",
+    ausgeblendet_am: "Ausgeblendet", ausgeblendet_grund: "Grund", beleg_pfad: "Original-PDF", issue_date: "Rechnungsdatum", due_date: "Fällig am",
+    items: "Positionen", customer: "Kunde", customer_id: "Kunde", gross: "Brutto", service_text: "Leistung", intro: "Einleitung", notes: "Hinweise" };
+  const STAT: Record<string, string> = { draft: "Entwurf", open: "offen", paid: "bezahlt", cancelled: "storniert" };
+  const wert = (k: string, v: any) => v === null || v === undefined || v === "" ? "–" : k === "status" ? STAT[v] ?? v
+    : /_at$|_date$/.test(k) ? fmtDate(String(v).slice(0, 10)) : k === "gross" ? eur(v) : k === "beleg_pfad" ? "abgelegt" : typeof v === "object" ? "geändert" : String(v);
+  type Eintrag = { id: number; zeit: string; aktion: string; wer: string | null; aenderungen: Record<string, any> };
+  let verlauf = $state<Eintrag[] | null>(null);
+  const zeilen = (e: Eintrag) => e.aktion !== "geaendert" ? [] : Object.entries(e.aenderungen)
+    .filter(([k]) => FELD[k] && k !== "customer_id")
+    .map(([k, v]) => (k === "items" || k === "customer" || k === "beleg_pfad" || k === "ausgeblendet_grund") ? `${FELD[k]} ${wert(k, v?.neu)}` : `${FELD[k]}: ${wert(k, v?.alt)} → ${wert(k, v?.neu)}`);
+  onMount(async () => {
+    const { data } = await sb.from("beleg_protokoll").select("id,zeit,aktion,wer,aenderungen").eq("datensatz", inv.id).order("id", { ascending: false }).limit(100);
+    verlauf = (data as Eintrag[]) ?? [];
   });
 </script>
 
@@ -60,7 +84,10 @@
     {#if i.paid_at}<dt>Bezahlt am</dt><dd>{fmtDate(String(i.paid_at).slice(0, 10))}</dd>{/if}
     {#if i.recurring_id}<dt>Herkunft</dt><dd>Abo</dd>{/if}
     {#if i.imported}<dt>Herkunft</dt><dd>Übernommen aus dem alten System</dd>{/if}
+    <dt>Original-PDF</dt><dd>{#if i.beleg_am}abgelegt am {fmtDateTime(i.beleg_am)}{i.beleg_nachtraeglich ? " (nachträglich)" : ""}<span class="hash" title="SHA-256-Prüfsumme">{i.beleg_sha256}</span>{:else}wird beim nächsten Öffnen abgelegt{/if}</dd>
+    {#if i.ausgeblendet_am}<dt>Ausgeblendet</dt><dd>{fmtDateTime(i.ausgeblendet_am)}{i.ausgeblendet_grund ? " · " + i.ausgeblendet_grund : ""}</dd>{/if}
   </dl>
+  {#if i.ausgeblendet_am}<div class="note">Ausgeblendet: Sie erscheint nicht in Listen und Umsatz, bleibt aber unverändert aufbewahrt und im GoBD-Export.</div>{/if}
   <div class="aktionen">
     <button class="btn" onclick={() => tun("pdf", () => R.openPdf(i))} disabled={!!laeuft}>{laeuft === "pdf" ? "PDF wird erstellt …" : "PDF ansehen / teilen"}</button>
     {#if darf}
@@ -81,7 +108,17 @@
           await danach(r.queued ? QUEUED_MSG : r.mailError ? `Storniert, aber Versand fehlgeschlagen: ${r.mailError}` : "Storniert und Stornorechnung versendet");
         })}>Stornieren</button>
       {/if}
-      <button class="btn del" onclick={loeschen} disabled={!!laeuft}>{laeuft === "del" ? "Wird gelöscht …" : "Rechnung löschen"}</button>
+      {#if i.ausgeblendet_am}
+        <button class="btn" onclick={einblenden} disabled={!!laeuft}>{laeuft === "show" ? "Wird eingeblendet …" : "Wieder einblenden"}</button>
+      {:else if blendAus}
+        <div class="aus">
+          <p class="klein">Rechnungen werden 8 Jahre aufbewahrt und lassen sich nicht löschen. Ausgeblendet erscheint sie nicht mehr in Listen und Umsatz, bleibt aber gespeichert. Für eine falsche Rechnung ist Stornieren der richtige Weg.</p>
+          <label class="field"><span>Grund (optional)</span><input class="input" bind:value={grund} maxlength="200" placeholder="z. B. Testrechnung"></label>
+          <div class="reihe"><button class="btn" onclick={() => { blendAus = false; grund = ""; }}>Abbrechen</button><button class="btn del" onclick={ausblenden} disabled={!!laeuft}>{laeuft === "hide" ? "Wird ausgeblendet …" : "Ausblenden"}</button></div>
+        </div>
+      {:else}
+        <button class="btn del" onclick={() => (blendAus = true)} disabled={!!laeuft}>Rechnung ausblenden</button>
+      {/if}
     {/if}
   </div>
   <h3>Positionen</h3>
@@ -93,6 +130,11 @@
   {#if logs.length}
     <ul class="liste">{#each logs as m (m.id)}<li>{fmtDateTime(m.sent_at)} · {TYPE_LABEL[m.type] || m.type} an {m.recipient} {#if m.status === "sent"}✓{:else}<span class="fehl">fehlgeschlagen: {m.error}</span>{/if}</li>{/each}</ul>
   {:else}<p class="muted klein">Noch keine E-Mails.</p>{/if}
+  <h3>Änderungsverlauf</h3>
+  {#if verlauf === null}<p class="muted klein">Wird geladen …</p>
+  {:else if verlauf.length}
+    <ul class="liste">{#each verlauf as e (e.id)}<li>{fmtDateTime(e.zeit)} · {e.aktion === "angelegt" ? "angelegt" : e.aktion === "geloescht" ? "gelöscht" : "geändert"}{#if e.wer} · {daten.name(e.wer) || "Team"}{:else} · automatisch{/if}{#each zeilen(e) as z}<br><span class="muted">{z}</span>{/each}</li>{/each}</ul>
+  {:else}<p class="muted klein">Noch keine Einträge (das Protokoll läuft seit dem Update zur GoBD-Ablage).</p>{/if}
 </Blatt>
 
 <style>
@@ -111,4 +153,7 @@
   .rab { color: #FF8080; }
   .fehl { color: #FF8080; }
   .klein { font-size: .86rem; margin: 0; }
+  .hash { display: block; font-size: .72rem; color: var(--steel); word-break: break-all; }
+  .aus { display: grid; gap: 10px; padding: 12px; border-radius: var(--radius-s); border: 1px solid var(--line-2); }
+  .reihe { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 </style>

@@ -7,7 +7,7 @@ import { DEFAULTS, totals, isOn, todayISO, positionsOf, type Posten } from "./ke
 
 const FN_URL = SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/rechnungen";
 const CACHE_KEY = "medialyte-rechnungen-cache-v1", OUTBOX_KEY = "medialyte-rechnungen-outbox-v1", FAILED_KEY = "medialyte-rechnungen-failed-v1";
-const TABLE_STATE: Record<string, string> = { customers: "customers", invoices: "invoices", quotes: "quotes", products: "products", recurring: "recurring", mail_log: "mail", kundenkategorien: "kategorien" };
+const TABLE_STATE: Record<string, string> = { customers: "customers", invoices: "alleRechnungen", quotes: "alleAngebote", products: "products", recurring: "recurring", mail_log: "mail", kundenkategorien: "kategorien" };
 const TABLE_LABEL: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", customers: "Kunde", products: "Standard-Position", recurring: "Abo", settings: "Einstellungen", kundenkategorien: "Kundenkategorie" };
 const OP_LABEL: Record<string, string> = { insert: "angelegt", update: "geändert", upsert: "gespeichert", delete: "gelöscht" };
 const FN_LABEL: Record<string, string> = { issue: "Rechnung abschließen", send: "Rechnung senden", remind: "Zahlungserinnerung senden", correct: "Rechnung stornieren", quote_issue: "Angebot abschließen",
@@ -33,7 +33,14 @@ const pdfStore = (() => {
 class Rechnungen {
   settings = $state<Record<string, any>>({ ...DEFAULTS });
   firmaId = $state<string | null>(null);
-  customers = $state<any[]>([]); invoices = $state<any[]>([]); quotes = $state<any[]>([]); products = $state<any[]>([]); recurring = $state<any[]>([]); mail = $state<any[]>([]);
+  // GoBD: ausgestellte Rechnungen und verschickte Angebote werden nie gelöscht, nur ausgeblendet.
+  // Die Listen der App zeigen nur Sichtbares; ausgeblendete bleiben gespeichert und erreichbar (Filter „Ausgeblendet“).
+  alleRechnungen = $state<any[]>([]); alleAngebote = $state<any[]>([]);
+  invoices = $derived(this.alleRechnungen.filter((r) => !r.ausgeblendet_am));
+  quotes = $derived(this.alleAngebote.filter((r) => !r.ausgeblendet_am));
+  ausgeblendet = $derived(this.alleRechnungen.filter((r) => r.ausgeblendet_am));
+  ausgeblendeteAngebote = $derived(this.alleAngebote.filter((r) => r.ausgeblendet_am));
+  customers = $state<any[]>([]); products = $state<any[]>([]); recurring = $state<any[]>([]); mail = $state<any[]>([]);
   kategorien = $state<{ id: string; name: string; farbe: string; sortierung: number }[]>([]);   // eigene Kundenkategorien
   outbox = $state<Op[]>(readLS(OUTBOX_KEY, [])); failed = $state<Op[]>(readLS(FAILED_KEY, []));
   offline = $state(false); loaded = $state(false); syncedAt = $state<number | null>(null);
@@ -60,12 +67,12 @@ class Rechnungen {
     this.#kanal.subscribe();
   }
   cacheSave() {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ settings: this.settings, firmaId: this.firmaId, customers: this.customers, invoices: this.invoices, quotes: this.quotes, products: this.products, recurring: this.recurring, mail: this.mail, kategorien: this.kategorien, at: Date.now(), syncedAt: this.syncedAt })); } catch { /* voll */ }
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ settings: this.settings, firmaId: this.firmaId, customers: this.customers, invoices: this.alleRechnungen, quotes: this.alleAngebote, products: this.products, recurring: this.recurring, mail: this.mail, kategorien: this.kategorien, at: Date.now(), syncedAt: this.syncedAt })); } catch { /* voll */ }
   }
   cacheLoad() {
     try {
       const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (!c) return false;
-      this.settings = { ...DEFAULTS, ...c.settings }; this.firmaId = c.firmaId ?? null; this.customers = c.customers ?? []; this.invoices = c.invoices ?? []; this.quotes = c.quotes ?? [];
+      this.settings = { ...DEFAULTS, ...c.settings }; this.firmaId = c.firmaId ?? null; this.customers = c.customers ?? []; this.alleRechnungen = c.invoices ?? []; this.alleAngebote = c.quotes ?? [];
       this.products = c.products ?? []; this.recurring = c.recurring ?? []; this.mail = c.mail ?? []; this.kategorien = c.kategorien ?? []; this.syncedAt = c.syncedAt ?? null; return true;
     } catch { return false; }
   }
@@ -91,7 +98,7 @@ class Rechnungen {
       const set = sets.find((x) => x.user_id === fid) ?? sets[0] ?? null;
       this.settings = { ...DEFAULTS, ...(set?.company || {}) };
       this.firmaId = (set?.user_id ?? fid ?? null) as string | null;
-      this.customers = q[1].data as any[]; this.invoices = q[2].data as any[]; this.recurring = q[3].data as any[]; this.quotes = q[4].data as any[];
+      this.customers = q[1].data as any[]; this.alleRechnungen = q[2].data as any[]; this.recurring = q[3].data as any[]; this.alleAngebote = q[4].data as any[];
       this.products = q[5].data as any[]; this.mail = q[6].data as any[];
       this.reapplyOutbox();
       this.offline = false; this.loaded = true; this.syncedAt = Date.now(); this.cacheSave();
@@ -236,8 +243,8 @@ class Rechnungen {
   kategorie(id?: string | null) { return this.kategorien.find((k) => k.id === id); }
   /** Kategorie „Website“ (für Website-Kunden aus dem Agenten automatisch) */
   get webKategorie() { return this.kategorien.find((k) => k.name.trim().toLowerCase() === "website") ?? null; }
-  invoice(id?: string | null) { return this.invoices.find((i) => i.id === id); }
-  quote(id?: string | null) { return this.quotes.find((q) => q.id === id); }
+  invoice(id?: string | null) { return this.alleRechnungen.find((i) => i.id === id); }
+  quote(id?: string | null) { return this.alleAngebote.find((q) => q.id === id); }
   custName(inv: any) { return inv.customer?.name || this.customer(inv.customer_id)?.name || "Ohne Kunde"; }
   invTotal(inv: any) { return inv.status === "draft" ? this.totals(inv.items).gross : +inv.gross; }
   quoteTotal(q: any) { return q.status === "draft" ? this.totals(q.items).gross : +q.gross; }
@@ -272,6 +279,26 @@ class Rechnungen {
     }
     if (this.pdf) URL.revokeObjectURL(this.pdf.url);
     this.pdf = { url: URL.createObjectURL(file), name };   // Ansicht in der App, mit Speichern und Drucken
+  }
+  /** GoBD-Export für den Betriebsprüfer: ZIP mit CSV-Daten, index.xml (GDPdU), Protokoll und Original-PDFs */
+  async gobdExport(von: string, bis: string) {
+    this.needsNet("Der GoBD-Export");
+    const blob: Blob = await this.fn("gobd_export", { von, bis }, true);
+    const name = `GoBD-Export_${von}_bis_${bis}.zip`;
+    if (NATIVE) {
+      const C = (window as any).Capacitor;
+      const plugin = (n: string) => C.Plugins[n] ||= C.registerPlugin(n);
+      const data = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
+      const w = await plugin("Filesystem").writeFile({ path: `export/${name}`, data, directory: "CACHE", recursive: true });
+      const Share = C.isPluginAvailable?.("Share") ? plugin("Share") : null;
+      if (!Share) throw new Error("Zum Speichern bitte die App einmal aktualisieren (neue Version installieren).");
+      try { await Share.share({ files: [w.uri], dialogTitle: "GoBD-Export speichern oder teilen" }); } catch (e: any) { if (!/cancel/i.test(String(e?.message || e))) throw e; }
+      return name;
+    }
+    const url = URL.createObjectURL(new File([blob], name, { type: "application/zip" }));
+    const a = document.createElement("a"); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    return name;
   }
 }
 function opTarget(o: Op) { return o.kind === "fn" ? o.payload?.id : (o.vals?.id || o.filters?.find((f) => f[0] === "id")?.[1]); }
