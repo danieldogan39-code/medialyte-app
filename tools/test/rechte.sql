@@ -302,7 +302,7 @@ reset role;
 
 -- Plattformen: nur bekannte Plätze erlaubt
 do $$ begin
-  update public.social_creatives set plattformen = array['ig-story', 'li'] where slug = 'test-a';
+  update public.social_creatives set plattformen = array['ig-story', 'li', 'gm-foto'] where slug = 'test-a';
   begin update public.social_creatives set plattformen = array['tiktok'] where slug = 'test-a'; raise exception 'unbekannte Plattform angenommen';
   exception when check_violation then null; end;
   raise notice 'OK Plattformen';

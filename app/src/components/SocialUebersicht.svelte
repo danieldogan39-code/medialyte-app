@@ -63,6 +63,7 @@
   .pk__glanz { position: absolute; inset: 0; z-index: -1; background: radial-gradient(420px 260px at 100% 100%, color-mix(in srgb, var(--p) 26%, transparent), transparent 70%),
     radial-gradient(300px 200px at 0% 0%, color-mix(in srgb, var(--p) 10%, transparent), transparent 70%); }
   .pk:active { transform: scale(.985); }
+  .pk:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .pk__kopf { display: flex; align-items: center; gap: 14px; }
   .pk__logo { width: 52px; height: 52px; flex: none; border-radius: 15px; display: grid; place-items: center; color: #fff; background: var(--fl);
     box-shadow: 0 12px 26px -12px var(--p), inset 0 1px 0 rgba(255, 255, 255, .3); }

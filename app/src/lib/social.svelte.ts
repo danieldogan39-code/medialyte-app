@@ -20,12 +20,13 @@ export const STATUS: Record<Creative["status"], { name: string; ton: string }> =
 export const ART: Record<Creative["art"], string> = { bild: "Einzelbild", karussell: "Karussell", video: "Video" };
 // Plattformen und was dort gepostet wird. Gespeichert wird je Creative, auf welchen Plätzen es läuft:
 // ig-beitrag, ig-story, fb-beitrag, fb-story, yt, li
-export type Typ = "story" | "video" | "beitrag" | "karussell" | "short";
+export type Typ = "story" | "video" | "beitrag" | "karussell" | "short" | "logo" | "titelbild" | "foto" | "leistung";
 export type Plattform = { key: string; name: string; kurz: string; icon: string; farbe: string; flaeche: string; typen: Typ[] };
 export const PLATTFORMEN: Plattform[] = [
   { key: "instagram", name: "Instagram", kurz: "ig", icon: "instagram", farbe: "#E4405F", flaeche: "linear-gradient(135deg, #FEDA75 0%, #F58529 22%, #DD2A7B 52%, #8134AF 78%, #515BD4 100%)", typen: ["story", "video", "beitrag", "karussell"] },
   { key: "facebook", name: "Facebook", kurz: "fb", icon: "facebook", farbe: "#1877F2", flaeche: "linear-gradient(135deg, #3B95FF, #1877F2 55%, #0B5BD3)", typen: ["story", "video", "beitrag", "karussell"] },
   { key: "linkedin", name: "LinkedIn", kurz: "li", icon: "linkedin", farbe: "#0A66C2", flaeche: "linear-gradient(135deg, #2D8CE8, #0A66C2 55%, #064C93)", typen: ["video", "beitrag", "karussell"] },
+  { key: "google", name: "Google Maps", kurz: "gm", icon: "pin", farbe: "#34A853", flaeche: "linear-gradient(135deg, #5BB974, #34A853 50%, #1E8E3E)", typen: ["foto", "beitrag", "leistung", "titelbild", "logo"] },
   { key: "youtube", name: "YouTube", kurz: "yt", icon: "youtube", farbe: "#FF0033", flaeche: "linear-gradient(135deg, #FF4D5E, #FF0033 55%, #C4001F)", typen: ["short", "video"] },
 ];
 export const TYPEN: Record<Typ, { name: string; mehr: string; icon: string }> = {
@@ -34,12 +35,18 @@ export const TYPEN: Record<Typ, { name: string; mehr: string; icon: string }> = 
   beitrag: { name: "Beitrag", mehr: "Beiträge", icon: "image" },
   karussell: { name: "Mehrseitiger Beitrag", mehr: "Mehrseitige Beiträge", icon: "stapel" },
   short: { name: "Shorts", mehr: "Shorts", icon: "story" },
+  foto: { name: "Foto", mehr: "Fotos", icon: "image" },
+  leistung: { name: "Leistung", mehr: "Leistungen", icon: "layers" },
+  titelbild: { name: "Titelbild", mehr: "Titelbilder", icon: "image" },
+  logo: { name: "Logo", mehr: "Logos", icon: "sparkles" },
 };
 /** Plätze zum Ankreuzen auf der Detailseite */
 export const PLAETZE: { key: string; plattform: string; name: string }[] = [
   { key: "ig-beitrag", plattform: "instagram", name: "Beitrag" }, { key: "ig-story", plattform: "instagram", name: "Story" },
   { key: "fb-beitrag", plattform: "facebook", name: "Beitrag" }, { key: "fb-story", plattform: "facebook", name: "Story" },
   { key: "li", plattform: "linkedin", name: "Beitrag" }, { key: "yt", plattform: "youtube", name: "Video" },
+  { key: "gm-foto", plattform: "google", name: "Foto" }, { key: "gm-beitrag", plattform: "google", name: "Beitrag" },
+  { key: "gm-leistung", plattform: "google", name: "Leistung" }, { key: "gm-titel", plattform: "google", name: "Titelbild" }, { key: "gm-logo", plattform: "google", name: "Logo" },
 ];
 export const plattform = (key: string) => PLATTFORMEN.find((p) => p.key === key);
 const hochkant = (c: Creative) => { const d = c.dateien.find((x) => x.art === "video" || x.art === "bild"); return d?.b && d?.h ? d.h > d.b * 1.3 : true; };
@@ -52,6 +59,10 @@ export function typenVon(c: Creative, p: Plattform): Typ[] {
     if (pl.includes(p.kurz + "-beitrag")) r.push(artTyp(c));
   } else if (p.kurz === "li" && pl.includes("li")) r.push(artTyp(c));
   else if (p.kurz === "yt" && pl.includes("yt") && c.art === "video") r.push(hochkant(c) ? "short" : "video");
+  else if (p.kurz === "gm") {
+    const m: [string, Typ][] = [["gm-foto", "foto"], ["gm-beitrag", "beitrag"], ["gm-leistung", "leistung"], ["gm-titel", "titelbild"], ["gm-logo", "logo"]];
+    for (const [k, t] of m) if (pl.includes(k)) r.push(c.art === "video" && t === "foto" ? "video" : t);
+  }
   return r;
 }
 

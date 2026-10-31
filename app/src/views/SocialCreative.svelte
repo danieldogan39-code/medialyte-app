@@ -151,7 +151,7 @@
               <div class="pl__z" style="--p: {p.farbe}">
                 <span class="pl__n"><span class="pl__l"><Icon2 name={p.icon} size={15} /></span>{p.name}</span>
                 <span class="pl__k">{#each plaetze as x (x.key)}
-                  <button class:on={c.plattformen?.includes(x.key)} aria-pressed={c.plattformen?.includes(x.key)} disabled={!schreiben} onclick={() => platzUmschalten(x.key)}>{x.key === "yt" ? (c.dateien.some((d) => d.art === "video" && (d.h ?? 0) > (d.b ?? 0)) ? "Shorts" : "Video") : x.key.endsWith("beitrag") || x.key === "li" ? (c.art === "video" ? "Video" : c.art === "karussell" ? "Mehrseitig" : "Beitrag") : x.name}</button>
+                  <button class:on={c.plattformen?.includes(x.key)} aria-pressed={c.plattformen?.includes(x.key)} disabled={!schreiben} onclick={() => platzUmschalten(x.key)}>{x.key === "yt" ? (c.dateien.some((d) => d.art === "video" && (d.h ?? 0) > (d.b ?? 0)) ? "Shorts" : "Video") : (x.key.endsWith("beitrag") && !x.key.startsWith("gm")) || x.key === "li" ? (c.art === "video" ? "Video" : c.art === "karussell" ? "Mehrseitig" : "Beitrag") : x.name}</button>
                 {/each}</span>
               </div>
             {/if}
