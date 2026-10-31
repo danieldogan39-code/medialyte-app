@@ -2,7 +2,7 @@
   // Einstieg: je Plattform eine große Kachel; ein Tipp öffnet die Plattform mit ihren Inhaltstypen
   import Icon from "./Icon.svelte";
   import PlattformLogo from "./PlattformLogo.svelte";
-  import { social, PLATTFORMEN, TYPEN, typName, typenVon, type Creative, type Plattform } from "../lib/social.svelte";
+  import { social, PLATTFORMEN, TYPEN, typName, typenVon, offen, type Creative, type Plattform } from "../lib/social.svelte";
   import { fly } from "svelte/transition";
   import { federKurve, ruhig } from "../lib/bewegung";
 
@@ -13,6 +13,10 @@
   const freigabe = $derived(aktiv.filter((c) => c.status === "pruefen"));
   const ohne = $derived(aktiv.filter((c) => !PLATTFORMEN.some((p) => typenVon(c, p).length)));
   const bild = (c: Creative) => (c.vorschau ? social.bild[c.vorschau] : "");
+  const favoriten = $derived(social.liste.filter((c) => c.favorit));
+  // die nächsten in der Posting-Reihenfolge (Nummer 1 zuerst)
+  const naechste = $derived(aktiv.filter(offen).slice(0, 8));
+  const wo = (c: Creative) => PLATTFORMEN.filter((p) => typenVon(c, p).length).slice(0, 3);
 </script>
 
 <div class="kacheln">
@@ -37,8 +41,30 @@
   {/each}
 </div>
 
-{#if freigabe.length || ohne.length}
+{#if naechste.length}
+  <section class="naechste" aria-labelledby="sn-t">
+    <div class="naechste__k"><h3 id="sn-t">Als Nächstes posten</h3><a href="#/social/bibliothek">Ganze Reihenfolge<Icon name="right" size={14} /></a></div>
+    <ol class="reihe">
+      {#each naechste as c, i (c.id)}
+        <li><a href="#/social/c/{c.slug}" class="nx">
+          <span class="nx__b">{#if bild(c)}<img src={bild(c)} alt="" draggable="false" loading="lazy">{/if}<span class="nx__nr num">{i + 1}</span>{#if c.favorit}<span class="nx__st"><Icon name="star" size={12} fill /></span>{/if}</span>
+          <span class="nx__t">{c.titel}</span>
+          <span class="nx__p">{#each wo(c) as p (p.key)}<PlattformLogo name={p.key} size={16} rund={0.3} />{/each}</span>
+        </a></li>
+      {/each}
+    </ol>
+  </section>
+{/if}
+
+{#if freigabe.length || ohne.length || favoriten.length}
   <div class="neben">
+    {#if favoriten.length}
+      <a class="nk card" href="#/social/k/favoriten">
+        <span class="nk__i nk__i--stern"><Icon name="star" size={18} fill /></span>
+        <span><b>Favoriten</b><small class="muted">{favoriten.length} {favoriten.length === 1 ? "Creative" : "Creatives"} mit Stern</small></span>
+        <Icon name="right" size={16} />
+      </a>
+    {/if}
     {#if freigabe.length}
       <a class="nk card" href="#/social/k/freigabe">
         <span class="nk__i nk__i--gelb"><Icon name="check" size={18} /></span>
@@ -92,9 +118,30 @@
   .nk > span:nth-child(2) { display: grid; gap: 2px; flex: 1; }
   .nk b { font-weight: 600; color: var(--text); }
   .nk small { font-size: .8rem; }
-  .nk :global(svg:last-child) { color: var(--steel); }
+  .nk > :global(svg:last-child) { color: var(--steel); }
   .nk__i { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--panel-2); color: var(--text-2); }
   .nk__i--gelb { background: rgba(231, 185, 74, .15); color: #EBC56B; }
+  .nk__i--stern { background: rgba(247, 198, 94, .14); color: #F7C65E; }
+  .naechste { margin-top: 22px; display: grid; gap: 10px; }
+  .naechste__k { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .naechste__k h3 { font-size: 1.05rem; font-weight: 600; }
+  .naechste__k a { display: inline-flex; align-items: center; gap: 2px; color: var(--steel); font-size: .86rem; }
+  .naechste__k a:hover { color: var(--text); }
+  .reihe { list-style: none; margin: 0; padding: 2px 2px 6px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(118px, 1fr); gap: 10px; overflow-x: auto;
+    scroll-snap-type: x proximity; scrollbar-width: none; }
+  .reihe::-webkit-scrollbar { display: none; }
+  .reihe li { scroll-snap-align: start; min-width: 0; }
+  .nx { display: grid; gap: 6px; color: inherit; }
+  .nx__b { position: relative; display: block; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background: var(--panel-2); border: 1px solid var(--line);
+    transition: transform .45s var(--feder-schnell), border-color .25s ease; }
+  .nx:active .nx__b { transform: scale(.97); }
+  .nx__b img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .nx__nr { position: absolute; left: 6px; top: 6px; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; display: grid; place-items: center;
+    background: var(--text); color: var(--bg); font-weight: 700; font-size: .84rem; box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .7); }
+  .nx__st { position: absolute; right: 6px; top: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #F7C65E; background: rgba(10, 18, 32, .7); }
+  .nx__t { font-size: .82rem; color: var(--text); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+  .nx__p { display: flex; gap: 3px; }
+  @media (hover: hover) and (pointer: fine) { .nx:hover .nx__b { border-color: var(--line-2); } }
   @media (max-width: 700px) {
     .kacheln { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .pk { min-height: 168px; padding: 18px; }

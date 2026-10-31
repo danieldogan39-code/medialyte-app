@@ -289,7 +289,7 @@ reset role;
 -- Social Media: Marketing sieht und ändert Creatives, Buchhaltung sieht nichts, ohne Zwei-Faktor nichts; Anlegen nur per Server
 insert into public.social_creatives (slug, titel, art, status) values ('test-a', 'Test A', 'bild', 'pruefen'), ('test-b', 'Test B', 'video', 'freigegeben');
 do $$ begin
-  if (select position from public.social_creatives where slug = 'test-b') >= (select position from public.social_creatives where slug = 'test-a') then raise exception 'neues Creative nicht oben'; end if;
+  if (select position from public.social_creatives where slug = 'test-b') <= (select position from public.social_creatives where slug = 'test-a') then raise exception 'neues Creative stellt sich nicht hinten an'; end if;
   if (select count(*) from storage.buckets where id = 'creatives' and not public) <> 1 then raise exception 'Speicher fehlt oder öffentlich'; end if;
   raise notice 'OK Creatives: Reihenfolge und privater Speicher';
 end $$;
@@ -301,15 +301,26 @@ do $$ begin
   if (select status from public.social_creatives where slug = 'test-a') <> 'freigegeben' then raise exception 'Marketing kann nicht freigeben'; end if;
   update public.social_plan set inhalt = inhalt || '{"idee":"x"}'::jsonb where id = 1;
   if (select inhalt->>'idee' from public.social_plan) <> 'x' then raise exception 'Plan nicht änderbar'; end if;
-  begin insert into public.social_creatives (slug, titel, art) values ('x', 'x', 'bild'); raise exception 'Marketing durfte anlegen';
+  begin insert into public.social_creatives (slug, titel, art) values ('x', 'x', 'bild'); raise exception 'Marketing durfte ohne Kennzeichen anlegen';
   exception when insufficient_privilege then null; end;
-  raise notice 'OK Social für Marketing';
+  begin insert into public.social_creatives (slug, titel, art, eigen, hochgeladen_von) values ('y', 'y', 'bild', true, '00000000-0000-0000-0000-0000000000f1'); raise exception 'fremder Hochlader angenommen';
+  exception when insufficient_privilege then null; end;
+  insert into public.social_creatives (slug, titel, art, eigen, hochgeladen_von) values ('eigen-1', 'Eigenes', 'bild', true, '00000000-0000-0000-0000-0000000000a1');
+  update public.social_creatives set favorit = true where slug = 'eigen-1';
+  if not (select favorit from public.social_creatives where slug = 'eigen-1') then raise exception 'Favorit nicht gesetzt'; end if;
+  insert into storage.objects (bucket_id, name) values ('creatives', 'eigene/eigen-1/01.jpg');
+  begin insert into storage.objects (bucket_id, name) values ('creatives', 'auto/x.jpg'); raise exception 'Upload außerhalb von eigene/ erlaubt';
+  exception when insufficient_privilege then null; end;
+  delete from public.social_creatives where slug = 'eigen-1';
+  raise notice 'OK Social für Marketing (Favoriten, eigene Uploads)';
 end $$;
 select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
 do $$ begin
   if exists (select 1 from public.social_creatives) or exists (select 1 from public.social_plan) then raise exception 'Buchhaltung sieht Social'; end if;
   update public.social_creatives set status = 'verworfen';
   if exists (select 1 from public.social_creatives where status = 'verworfen') then raise exception 'Buchhaltung konnte ändern'; end if;
+  begin insert into public.social_creatives (slug, titel, art, eigen, hochgeladen_von) values ('z', 'z', 'bild', true, '00000000-0000-0000-0000-0000000000f1'); raise exception 'Buchhaltung durfte hochladen';
+  exception when insufficient_privilege then null; end;
   raise notice 'OK Social nicht für Buchhaltung';
 end $$;
 select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
@@ -342,3 +353,5 @@ update public.social_creatives set plattformen = array['gm-foto', 'tt-video'] wh
 \ir ../../supabase/migrations/118_social_google.sql
 \ir ../../supabase/migrations/119_social_tiktok.sql
 do $$ begin raise notice 'OK Migrationen wiederholbar'; end $$;
+\ir ../../supabase/migrations/121_social_bibliothek.sql
+do $$ begin raise notice 'OK Bibliothek wiederholbar'; end $$;

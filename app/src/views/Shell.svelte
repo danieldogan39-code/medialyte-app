@@ -228,7 +228,7 @@
     {:else if t[0] === "akquise"}{@const C = holen("akquise")}{#if C}<C />{/if}
     {:else if t[0] === "nachfassen"}{@const C = holen("nachfassen")}{#if C}<C slug={t[1]} />{/if}
     {:else if t[0] === "social" && t[1] === "c" && t[2] && auth.darf("social")}{@const C = holen("socialc")}{#if C}<C slug={t[2]} />{/if}
-    {:else if t[0] === "social" && auth.darf("social")}{@const C = holen("social")}{#if C}<C tab={t[1] === "plan" ? "plan" : "creatives"} kanal={t[1] === "k" ? t[2] ?? "" : ""} typ={t[1] === "k" ? t[3] ?? "" : ""} />{/if}
+    {:else if t[0] === "social" && auth.darf("social")}{@const C = holen("social")}{#if C}<C tab={t[1] === "plan" ? "plan" : t[1] === "bibliothek" ? "bibliothek" : "creatives"} kanal={t[1] === "k" ? t[2] ?? "" : ""} typ={t[1] === "k" ? t[3] ?? "" : ""} />{/if}
     {:else if t[0] === "team"}{@const C = holen("team")}{#if C}<C />{/if}
     {:else if t[0] === "kunden" && t[1] === "r" && t[2]}{@const C = holen("rkunde")}{#if C}<C id={t[2]} />{/if}
     {:else if t[0] === "kunden" && t[1]}{@const C = holen("kunde")}{#if C}<C slug={t[1]} />{/if}

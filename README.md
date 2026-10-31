@@ -56,7 +56,15 @@ Einspielen: `python3 tools/creatives/hochladen.py <ordner> …` – jeder Ordner
 (titel, art = bild|karussell|video, serie, text, format, saeule, optional status/position/geplant) und die Dateien
 (`01.jpg …` bzw. `video.mp4` + `titelbild.jpg`, je höchstens 50 MB). Das Skript verschlüsselt alles mit
 `tools/creatives/schluessel.pub` und legt es im Zweig `creatives-eingang` ab; „Creatives einspielen“ lädt es in den
-privaten Speicher, trägt es ein und löscht den Zweig wieder. Neue Creatives erscheinen oben mit Status „Zur Freigabe“.
+privaten Speicher, trägt es ein und löscht den Zweig wieder. Neue Creatives stellen sich hinten in der Reihenfolge an
+(Status „Zur Freigabe“).
+
+- Reihenfolge = Posting-Reihenfolge: Die Nummer auf jeder Kachel zeigt, was als Nächstes dran ist (1 zuerst). Umsortieren per Ziehen;
+  gepostete und verworfene stehen ohne Nummer dahinter. Die Übersicht zeigt die nächsten unter „Als Nächstes posten“.
+- Bibliothek (`#/social/bibliothek`): alle Creatives mit Suche und Filtern (Favoriten, Eigene, Bilder, Karussells, Videos, Gepostet).
+- Favoriten: Stern auf der Kachel oder der Detailseite (Spalte `favorit`).
+- Eigene Uploads: „Hochladen“ in der App legt Bilder (eins = Einzelbild, mehrere = Karussell) oder ein Video im Ordner `eigene/`
+  des Speichers ab und trägt es mit `eigen = true` ein (Recht „social“ schreiben).
 
 ## Rollen
 

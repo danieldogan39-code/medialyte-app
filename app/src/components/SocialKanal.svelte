@@ -23,11 +23,12 @@
     const l = social.sortiert();
     if (p) return l.filter((c) => typenVon(c, p).length);
     if (kanal === "ohne") return l.filter((c) => !PLATTFORMEN.some((x) => typenVon(c, x).length));
+    if (kanal === "favoriten") return l.filter((c) => c.favorit);
     return l;
   });
   const typen = $derived(p ? p.typen.map((t) => ({ t, l: basis.filter((c) => c.status !== "verworfen" && typenVon(c, p).includes(t)) })) : []);
   const liste = $derived(basis.filter((c) => passtStatus(c) && (!p || !typ || typenVon(c, p).includes(typ as Typ))));
-  const titel = $derived(p ? p.name : kanal === "freigabe" ? "Zur Freigabe" : "Ohne Plattform");
+  const titel = $derived(p ? p.name : kanal === "freigabe" ? "Zur Freigabe" : kanal === "favoriten" ? "Favoriten" : "Ohne Plattform");
   const bild = (c: Creative) => (c.vorschau ? social.bild[c.vorschau] : "");
   const leerText = $derived(p && typ ? `Noch keine ${typName(p, typ as Typ, true)} für ${p.name}.` : p ? `Noch nichts für ${p.name}.` : "Hier ist gerade nichts.");
 </script>
@@ -35,7 +36,7 @@
 <div class="kopf" style="--p: {p?.farbe ?? 'var(--bereich)'}; --fl: {p?.flaeche ?? 'var(--bereich)'}">
   <a class="zurueck" href="#/social"><Icon name="left" size={16} />Alle Plattformen</a>
   <div class="kopf__z">
-    {#if p}<PlattformLogo name={p.key} size={46} />{:else}<span class="logo"><Icon name={kanal === "freigabe" ? "check" : "image"} size={24} /></span>{/if}
+    {#if p}<PlattformLogo name={p.key} size={46} />{:else}<span class="logo"><Icon name={kanal === "freigabe" ? "check" : kanal === "favoriten" ? "star" : "image"} size={24} fill={kanal === "favoriten"} /></span>{/if}
     <h2>{titel}</h2>
     <span class="muted zahl">{basis.filter((c) => c.status !== "verworfen").length} Creatives</span>
   </div>
@@ -68,8 +69,8 @@
 </div>
 
 {#if liste.length}
-  {#key kanal + typ + status}<CreativeGitter {liste} {schreiben} plattform={p?.key ?? ""} />{/key}
-  {#if schreiben && liste.length > 1}<p class="tipp muted"><Icon name="stapel" size={14} />Zum Sortieren ziehen{matchMedia("(pointer: coarse)").matches ? " (kurz gedrückt halten)" : ""}.</p>{/if}
+  {#key kanal + typ + status}<CreativeGitter {liste} {schreiben} plattform={p?.key ?? ""} global={!p} />{/key}
+  {#if schreiben && liste.length > 1}<p class="tipp muted"><Icon name="stapel" size={14} />Die Nummer ist die Reihenfolge zum Posten: 1 kommt als Nächstes. Zum Umsortieren ziehen{matchMedia("(pointer: coarse)").matches ? " (kurz gedrückt halten)" : ""}.</p>{/if}
 {:else}
   <div class="card empty"><Icon name={p?.icon ?? "image"} size={26} /><b>{leerText}</b><p>Sag Claude, was du brauchst. Neue Creatives erscheinen hier automatisch.</p></div>
 {/if}

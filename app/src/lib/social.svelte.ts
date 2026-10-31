@@ -9,7 +9,12 @@ export type Creative = {
   id: string; slug: string; titel: string; art: "bild" | "karussell" | "video"; serie: string | null; text: string; format: string | null;
   status: "pruefen" | "freigegeben" | "gepostet" | "verworfen"; saeule: string | null; dateien: Datei[]; vorschau: string | null;
   position: number | null; geplant: string | null; notiz: string | null; erstellt: string; geaendert: string; plattformen: string[];
+  favorit?: boolean; eigen?: boolean; hochgeladen_von?: string | null;
 };
+/** Noch zu posten (bekommt eine Nummer in der Reihenfolge) */
+export const offen = (c: Creative) => c.status === "pruefen" || c.status === "freigegeben";
+/** Für die Suche in der Bibliothek */
+export const suchtext = (c: Creative) => `${c.titel} ${c.text} ${c.serie ?? ""} ${c.notiz ?? ""} ${c.slug}`.toLowerCase();
 export type Saeule = { id: string; name: string; farbe: string; text: string };
 export type Plan = { idee?: string; faden?: string; zielgruppe?: string; ton?: string; rhythmus?: string; saeulen?: Saeule[] };
 
@@ -87,6 +92,7 @@ class Social {
   private kanal: ReturnType<typeof sb.channel> | null = null;
 
   get zurFreigabe() { return this.liste.filter((c) => c.status === "pruefen").length; }
+  get favoriten() { return this.liste.filter((c) => c.favorit).length; }
   sortiert() { return [...this.liste].sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || b.erstellt.localeCompare(a.erstellt)); }
   saeule(id: string | null | undefined) { return (this.plan.saeulen ?? []).find((s) => s.id === id); }
 
@@ -138,6 +144,60 @@ class Social {
     const pos = v == null && n == null ? 0 : v == null ? (n as number) - 1 : n == null ? v + 1 : (v + n) / 2;
     await this.setzen(id, { position: pos });
   }
+  async favorit(c: Creative) { return this.setzen(c.id, { favorit: !c.favorit }); }
+
+  // ---------- Eigene Creatives aus der App hochladen (Ordner „eigene/“ im privaten Speicher)
+  async hochladen(e: { dateien: File[]; titel: string; text: string; plattformen: string[]; saeule: string | null; status: Creative["status"] },
+    onFortschritt?: (t: string) => void) {
+    const MAX = 50 * 1024 * 1024;
+    const video = e.dateien.find((f) => f.type.startsWith("video/"));
+    if (!e.dateien.length) throw new Error("Bitte mindestens eine Datei wählen.");
+    if (video && e.dateien.length > 1) throw new Error("Ein Video bitte einzeln hochladen.");
+    if (e.dateien.some((f) => !f.type.startsWith("image/") && !f.type.startsWith("video/"))) throw new Error("Nur Bilder und Videos.");
+    const zuGross = e.dateien.find((f) => f.size > MAX);
+    if (zuGross) throw new Error(`„${zuGross.name}“ ist größer als 50 MB.`);
+    const { data: u } = await sb.auth.getUser();
+    const uid = u.user?.id; if (!uid) throw new Error("Bitte neu anmelden.");
+    const slug = `eigen-${new Date().toISOString().slice(0, 10)}-${Math.random().toString(36).slice(2, 8)}`;
+    const ordner = `eigene/${slug}`, hoch: string[] = [];
+    const sauber = (n: string) => n.normalize("NFKD").replace(/[^\w.-]+/g, "-").replace(/-+/g, "-").slice(-80) || "datei";
+    try {
+      const dateien: Datei[] = [];
+      let i = 0;
+      for (const f of e.dateien) {
+        onFortschritt?.(e.dateien.length > 1 ? `Lädt ${i + 1} von ${e.dateien.length} …` : "Lädt hoch …");
+        const mass = await abmessen(f);
+        const pfad = `${ordner}/${String(++i).padStart(2, "0")}-${sauber(f.name)}`;
+        const { error } = await sb.storage.from("creatives").upload(pfad, f, { contentType: f.type, upsert: false });
+        if (error) throw new Error(error.message);
+        hoch.push(pfad);
+        dateien.push({ name: f.name, pfad, art: f.type.startsWith("video/") ? "video" : "bild", groesse: f.size, typ: f.type, ...mass });
+      }
+      onFortschritt?.("Vorschau …");
+      let vorschau: string | null = null;
+      const bild = await vorschaubild(e.dateien[0]).catch(() => null);
+      if (bild) {
+        const pfad = `${ordner}/vorschau.jpg`;
+        const { error } = await sb.storage.from("creatives").upload(pfad, bild, { contentType: "image/jpeg", upsert: false });
+        if (!error) { vorschau = pfad; hoch.push(pfad); }
+      }
+      const erste = dateien[0];
+      const zeile = {
+        slug, titel: e.titel.trim() || e.dateien[0].name.replace(/\.[^.]+$/, ""), art: video ? "video" : dateien.length > 1 ? "karussell" : "bild",
+        text: e.text, format: erste.b && erste.h ? `${erste.b} × ${erste.h}` : null, status: e.status, saeule: e.saeule, dateien, vorschau,
+        plattformen: e.plattformen, eigen: true, hochgeladen_von: uid,
+      };
+      const { data, error } = await sb.from("social_creatives").insert(zeile).select().single();
+      if (error) throw new Error(error.message);
+      this.liste = merk("social:creatives", [...this.liste.filter((x) => x.id !== data.id), data as Creative]);
+      await this.vorschauen();
+      return data as Creative;
+    } catch (err) {
+      if (hoch.length) await sb.storage.from("creatives").remove(hoch).catch(() => {});
+      throw err;
+    } finally { onFortschritt?.(""); }
+  }
+
   async loeschen(c: Creative) {
     const pfade = [...c.dateien.map((d) => d.pfad), ...(c.vorschau ? [c.vorschau] : [])];
     const { error } = await sb.from("social_creatives").delete().eq("id", c.id);
@@ -202,3 +262,40 @@ class Social {
 export const social = new Social();
 
 export const groesse = (b?: number) => (b == null ? "" : b > 1e6 ? (b / 1e6).toLocaleString("de-DE", { maximumFractionDigits: 1 }) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB");
+
+// Breite, Höhe (und Länge bei Videos) einer Datei auf dem Gerät
+function abmessen(f: File): Promise<{ b?: number; h?: number; dauer?: number }> {
+  const url = URL.createObjectURL(f);
+  return new Promise<{ b?: number; h?: number; dauer?: number }>((res) => {
+    const fertig = (m: { b?: number; h?: number; dauer?: number }) => { URL.revokeObjectURL(url); res(m); };
+    if (f.type.startsWith("video/")) {
+      const v = document.createElement("video"); v.preload = "metadata"; v.muted = true;
+      v.onloadedmetadata = () => fertig({ b: v.videoWidth, h: v.videoHeight, dauer: Math.round(v.duration * 10) / 10 });
+      v.onerror = () => fertig({}); v.src = url;
+    } else {
+      const i = new Image(); i.onload = () => fertig({ b: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => fertig({}); i.src = url;
+    }
+  });
+}
+// Kleines JPEG fürs Gitter: erstes Bild bzw. ein Bild aus dem Video (nach einer halben Sekunde)
+function vorschaubild(f: File): Promise<Blob | null> {
+  const url = URL.createObjectURL(f);
+  const zeichnen = (q: CanvasImageSource, w: number, h: number) => {
+    const s = Math.min(1, 720 / Math.max(w, 1)), c = document.createElement("canvas");
+    c.width = Math.round(w * s); c.height = Math.round(h * s);
+    c.getContext("2d")!.drawImage(q, 0, 0, c.width, c.height);
+    return new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.82));
+  };
+  return new Promise<Blob | null>((res, rej) => {
+    const ende = (b: Blob | null) => { URL.revokeObjectURL(url); res(b); };
+    const fehler = () => { URL.revokeObjectURL(url); rej(new Error("Keine Vorschau")); };
+    if (f.type.startsWith("video/")) {
+      const v = document.createElement("video"); v.preload = "auto"; v.muted = true; v.playsInline = true;
+      v.onloadeddata = () => { v.currentTime = Math.min(0.5, (v.duration || 1) / 2); };
+      v.onseeked = () => zeichnen(v, v.videoWidth, v.videoHeight).then(ende, fehler);
+      v.onerror = fehler; v.src = url;
+    } else {
+      const i = new Image(); i.onload = () => zeichnen(i, i.naturalWidth, i.naturalHeight).then(ende, fehler); i.onerror = fehler; i.src = url;
+    }
+  });
+}

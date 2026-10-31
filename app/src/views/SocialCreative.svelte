@@ -6,7 +6,7 @@
   import { frage } from "../lib/frage.svelte";
   import { router } from "../lib/router.svelte";
   import { haptik } from "../lib/haptik";
-  import { social, STATUS, ART, PLATTFORMEN, PLAETZE, groesse, type Creative, type Datei } from "../lib/social.svelte";
+  import { social, STATUS, ART, PLATTFORMEN, PLAETZE, groesse, offen, type Creative, type Datei } from "../lib/social.svelte";
   import PlattformLogo from "../components/PlattformLogo.svelte";
   import { istAndroidApp } from "../lib/appupdate.svelte";
 
@@ -14,6 +14,7 @@
   const schreiben = $derived(auth.darf("social", true));
   $effect(() => { if (!social.liste.length) social.laden(); return social.live(); });
   const c = $derived(social.liste.find((x) => x.slug === slug));
+  const nr = $derived(c && offen(c) ? social.sortiert().filter(offen).findIndex((x) => x.id === c.id) + 1 : 0);
 
   const bilder = $derived((c?.dateien ?? []).filter((d) => d.art === "bild"));
   const video = $derived((c?.dateien ?? []).find((d) => d.art === "video"));
@@ -91,6 +92,9 @@
 {:else}
   <Head titel={c.titel} text={[c.serie, ART[c.art], c.format].filter(Boolean).join(" · ")} zurueck={social.zuletzt || "#/social"}>
     <span class="pill pill--{STATUS[c.status].ton}">{STATUS[c.status].name}</span>
+    {#if nr}<span class="pill pill--plain" title="Posting-Reihenfolge">Nr. {nr}</span>{/if}
+    {#if schreiben}<button class="btn btn--s stern" class:an={c.favorit} aria-pressed={!!c.favorit} onclick={() => setzen({ favorit: !c.favorit }, c.favorit ? "Aus Favoriten entfernt" : "Zu Favoriten hinzugefügt")}><Icon name="star" size={15} fill={!!c.favorit} />{c.favorit ? "Favorit" : "Favorisieren"}</button>
+    {:else if c.favorit}<span class="pill pill--plain"><Icon name="star" size={12} fill />Favorit</span>{/if}
   </Head>
 
   <div class="lage">
@@ -245,4 +249,5 @@
     .vorschau { position: static; }
   }
   @media (max-width: 420px) { .seg { grid-template-columns: 1fr 1fr; } .zwei { grid-template-columns: 1fr; } }
+  .stern.an { color: #F7C65E; border-color: rgba(247, 198, 94, .4); }
 </style>
