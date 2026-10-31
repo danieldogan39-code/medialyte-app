@@ -25,6 +25,15 @@ Dieselbe Oberfläche läuft im Browser (app.medialyte.de), als Programm auf Mac 
   aus einem vorhandenen Secret abgeleitet und landet nie im Repository.
 - **Datensparsam.** Anfragen ohne Auftrag werden nach 12 Monaten gelöscht; Google-Daten eines Betriebs nur, solange seine Demo online ist.
 
+## Social Media (Creatives)
+
+Fertige Creatives landen auf der Seite „Social Media“ (Bilder, Karussells, Videos mit Titelbild und Text).
+Einspielen: `python3 tools/creatives/hochladen.py <ordner> …` – jeder Ordner enthält `creative.json`
+(titel, art = bild|karussell|video, serie, text, format, saeule, optional status/position/geplant) und die Dateien
+(`01.jpg …` bzw. `video.mp4` + `titelbild.jpg`, je höchstens 50 MB). Das Skript verschlüsselt alles mit
+`tools/creatives/schluessel.pub` und legt es im Zweig `creatives-eingang` ab; „Creatives einspielen“ lädt es in den
+privaten Speicher, trägt es ein und löscht den Zweig wieder. Neue Creatives erscheinen oben mit Status „Zur Freigabe“.
+
 ## Rollen
 
 | Rolle | Standard |
