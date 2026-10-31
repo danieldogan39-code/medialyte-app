@@ -202,6 +202,33 @@ do $$ declare n int; c uuid; begin
   exception when insufficient_privilege then null; end;
   raise notice 'OK Rechnungen für Buchhaltung';
 end $$;
+-- 14b) Einzelne Rechnungen löschen: Entwurf, offene Rechnung und Original mit Storno/Ersatzrechnung
+reset role;
+do $$ declare c uuid; o uuid; begin
+  select id into c from public.customers where name = 'Testkunde';
+  insert into public.invoices (user_id, customer_id, status, number, issue_date) values ('00000000-0000-0000-0000-00000000000d', c, 'open', 'L-1', current_date);
+  insert into public.invoices (user_id, customer_id, status, number, issue_date) values ('00000000-0000-0000-0000-00000000000d', c, 'cancelled', 'L-2', current_date) returning id into o;
+  insert into public.invoices (user_id, customer_id, status, kind, number, issue_date, ref_invoice_id) values ('00000000-0000-0000-0000-00000000000d', c, 'paid', 'storno', 'L-3', current_date, o);
+  insert into public.invoices (user_id, customer_id, status, number, issue_date, ref_invoice_id) values ('00000000-0000-0000-0000-00000000000d', c, 'open', 'L-4', current_date, o);
+  insert into public.invoices (user_id, customer_id, status) values ('00000000-0000-0000-0000-00000000000d', c, 'draft');
+end $$;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ declare n int; begin
+  delete from public.invoices where number like 'L-%'; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Marketing konnte Rechnungen löschen'; end if;
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare n int; begin
+  delete from public.invoices where number = 'L-1'; get diagnostics n = row_count; if n <> 1 then raise exception 'offene Rechnung nicht gelöscht'; end if;
+  delete from public.invoices where number = 'L-2'; get diagnostics n = row_count; if n <> 1 then raise exception 'stornierte Rechnung nicht gelöscht'; end if;
+  if (select ref_invoice_id from public.invoices where number = 'L-4') is not null then raise exception 'Bezug der Ersatzrechnung nicht geleert'; end if;
+  delete from public.invoices where number = 'L-3'; get diagnostics n = row_count; if n <> 1 then raise exception 'Stornorechnung nicht gelöscht'; end if;
+  delete from public.invoices where status = 'draft'; get diagnostics n = row_count; if n < 1 then raise exception 'Entwurf nicht gelöscht'; end if;
+  begin update public.invoices set notes = 'x' where number = 'L-4'; raise exception 'ausgestellte Rechnung geändert';
+  exception when raise_exception then if sqlerrm not like 'Ausgestellte%' then raise; end if; end;
+  raise notice 'OK einzelne Rechnungen löschen';
+end $$;
 select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
 do $$ declare n int; begin
   select count(*) into n from public.customers; if n <> 0 then raise exception 'Marketing sieht Rechnungskunden'; end if;

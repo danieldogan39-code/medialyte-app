@@ -1,7 +1,7 @@
 {
   "name": "medialyte-mobile",
   "private": true,
-  "version": "1.8.2",
+  "version": "1.8.3",
   "description": "Medialyte als Android-App (Capacitor, gleiche Oberfläche wie app/)",
   "dependencies": {
     "@capacitor-community/file-opener": "8.0.1",

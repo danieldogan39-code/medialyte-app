@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
     if (e.aktion === "push_test") {
       const r = await fetch(`${basis}/melden`, { method: "POST", headers: h, body: JSON.stringify({ titel: "Benachrichtigungen sind an",
         text: "Du erfährst jetzt sofort, wenn jemand seine Demo öffnet, um Rückruf bittet oder ein Gast im Tischbuch wartet.", url: "./", tag: "probe" }) });
-      return json(r.ok ? 200 : 502, { ok: r.ok });
+      const j = r.ok ? await r.json().catch(() => ({})) : {};
+      return json(r.ok ? 200 : 502, { ok: r.ok, gesendet: j.gesendet ?? null, geraete: j.geraete ?? null, fehler: j.fehler ?? [], error: r.ok ? undefined : "Zähler-Dienst nicht erreichbar" });
     }
     return json(400, { ok: false });
   }

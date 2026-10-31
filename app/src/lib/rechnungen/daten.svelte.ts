@@ -109,9 +109,14 @@ class Rechnungen {
     let q: any = sb.from(o.t!);
     q = o.op === "insert" ? q.insert(o.vals) : o.op === "update" ? q.update(o.vals) : o.op === "upsert" ? q.upsert(o.vals) : q.delete();
     for (const [c, v] of o.filters || []) q = q.eq(c, v);
-    if (o.op !== "delete") q = q.select();
+    q = o.op === "delete" ? q.select("id") : q.select();
     const { data, error } = await q;
     if (error) throw error;
+    // Ohne Recht löscht die Datenbank still nichts – das soll nicht wie ein Erfolg aussehen
+    if (o.op === "delete" && !data?.length) {
+      const weg = (o.filters || []).some(([c, v]) => c === "id" && !(this as any)[TABLE_STATE[o.t!]]?.some?.((r: any) => r.id === v));
+      if (!weg) throw new Error("Konnte nicht gelöscht werden: Dafür fehlt dir das Recht, oder der Eintrag ist schon weg.");
+    }
     return data;
   }
   applyLocal(o: Op, rows?: any[]) {

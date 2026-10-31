@@ -219,7 +219,7 @@
   <section class="card">
     <h3>App</h3>
     <p class="hint">{istProgramm ? "Du nutzt die Medialyte-App. Alles, was du ohne Internet machst, wird auf dem Gerät gespeichert und automatisch abgeglichen." : "Die Rechnungen gibt es auch in der Medialyte-App für Mac, Windows und Android – mit Offline-Modus und automatischem Abgleich."}</p>
-    {#if !istProgramm}<a class="btn btn--s" href="https://github.com/danieldogan39-code/medialyte-app/releases/latest" target="_blank" rel="noopener">App herunterladen</a>{/if}
+    {#if !istProgramm}<a class="btn btn--s" href="#/einstellungen">App herunterladen</a>{/if}
     <p class="muted klein">Angemeldet als {auth.ich?.email || auth.session?.user?.email || "–"}</p>
   </section>
 </div>

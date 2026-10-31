@@ -27,6 +27,16 @@
   const tun = (k: string, fn: () => Promise<unknown>) => { if (laeuft) return; laeuft = k; versuche(fn).finally(() => (laeuft = "")); };
   const danach = async (t: string) => { zu(); await R.loadAll().catch(() => {}); if (t) daten.melden(t); };
   const springe = (x: any) => { zu(); setTimeout(() => oeffneRechnung(x), 180); };
+  // Jede Rechnung lässt sich löschen. Gehört eine Stornorechnung dazu, kann sie gleich mit weg.
+  const loeschen = () => tun("del", async () => {
+    const name = `${i.kind === "storno" ? "Stornorechnung" : "Rechnung"} ${i.number || ""}`.trim();
+    const hinweis = "Sie verschwindet endgültig aus der App, auch aus Umsatz und Auswertungen. Bereits verschickte E-Mails bleiben beim Kunden. Für echte Rechnungen ist Stornieren meist der richtige Weg.";
+    if (!(await frage(`${name} löschen?`, hinweis, "Endgültig löschen", true))) return;
+    const mitStorno = storno && (await frage(`Stornorechnung ${storno.number} auch löschen?`, `Sie gehört zu ${name}.`, "Auch löschen", true));
+    R.needsNet("Löschen");
+    for (const x of mitStorno ? [storno, i] : [i]) { const { error } = await R.write("invoices", "delete", undefined, [["id", x.id]]); if (error) throw error; }
+    await danach(mitStorno ? `${name} und Stornorechnung gelöscht` : `${name} gelöscht`);
+  });
 </script>
 
 <Blatt titel={`${i.kind === "storno" ? "Stornorechnung" : "Rechnung"} ${i.number}`} {zu}>
@@ -71,6 +81,7 @@
           await danach(r.queued ? QUEUED_MSG : r.mailError ? `Storniert, aber Versand fehlgeschlagen: ${r.mailError}` : "Storniert und Stornorechnung versendet");
         })}>Stornieren</button>
       {/if}
+      <button class="btn del" onclick={loeschen} disabled={!!laeuft}>{laeuft === "del" ? "Wird gelöscht …" : "Rechnung löschen"}</button>
     {/if}
   </div>
   <h3>Positionen</h3>

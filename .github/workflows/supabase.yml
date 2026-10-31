@@ -58,6 +58,11 @@ jobs:
             jq -n --arg q "select '$t' as tabelle, count(*) from public.$t" '{query: $q}' > /tmp/q.json
             curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/q.json | jq -c '.[]?' || true
           done
+          for q in "select 'rechnungen' as t, status, kind, (user_id = public.firma_id()) as firma, count(*) from public.invoices group by 2,3,4 order by 2,3" \
+                   "select 'settings' as t, count(*) from public.settings"; do
+            jq -n --arg q "$q" '{query: $q}' > /tmp/q.json
+            curl -sS -X POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" --data @/tmp/q.json | jq -c '.[]?' || true
+          done
 
       - name: Anmeldung absichern (keine Registrierung von außen, Zwei-Faktor an, App-Adressen erlaubt)
         run: |

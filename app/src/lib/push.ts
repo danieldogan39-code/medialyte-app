@@ -84,11 +84,9 @@ async function nativStarten() {
   pn.addListener("registrationError", (e: { error?: string }) => { tokenFehler?.(new Error(e?.error || "Anmeldung bei Google fehlgeschlagen")); warteAufToken = null; tokenFehler = null; });
   // Tippen auf eine Nachricht: an die passende Stelle der App
   pn.addListener("pushNotificationActionPerformed", (a: any) => { const u = a?.notification?.data?.url; if (u) location.hash = ziel(u); });
-  // Nachricht, während die App offen ist: als Hinweis oben zeigen
-  pn.addListener("pushNotificationReceived", async (n: any) => {
-    const { daten } = await import("./daten.svelte");
-    daten.melden([n?.title, n?.body].filter(Boolean).join(": ") || "Neue Benachrichtigung");
-  });
+  // Nachricht, während die App offen ist: Android zeigt sie trotzdem als echte Benachrichtigung (presentationOptions),
+  // die Seite holt sich zusätzlich den neuen Stand
+  pn.addListener("pushNotificationReceived", () => { dispatchEvent(new Event("ml:anfragen")); });
   // schon eingeschaltet: Token auffrischen (Google tauscht ihn ab und zu aus)
   if (gemerkt()) { const p = await pn.checkPermissions().catch(() => null); if (p?.receive === "granted") pn.register().catch(() => {}); }
 }
@@ -108,7 +106,6 @@ async function nativAn(): Promise<string | null> {
   const info = await pushInfo().catch(() => null);
   if (info && info.fcm === false) return "Die App ist angemeldet, aber der Server kann noch keine Android-Nachrichten schicken. Das richte ich gerade ein.";
   await rufen({ aktion: "push_an", fcm: token, geraet: geraet() });
-  await rufen({ aktion: "push_test" }).catch(() => {});
   return null;
 }
 
@@ -121,7 +118,6 @@ export async function pushAn(): Promise<string | null> {
   const r = await registrierung(); if (!r) return "Der Hintergrunddienst ließ sich nicht starten.";
   const s = (await r.pushManager.getSubscription()) ?? (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(info.vapid) }));
   await rufen({ aktion: "push_an", abo: s.toJSON(), geraet: geraet() });
-  await rufen({ aktion: "push_test" }).catch(() => {});
   return null;
 }
 export async function pushAus() {
@@ -137,4 +133,17 @@ export async function pushAus() {
   const ep = s.endpoint; await s.unsubscribe();
   await rufen({ aktion: "push_aus", endpoint: ep }).catch(() => {});
 }
-export const pushTest = () => rufen({ aktion: "push_test" });
+/** Probe: dieses Gerät zur Sicherheit neu anmelden, dann an alle Geräte senden; Ergebnis in klaren Worten */
+export async function pushProbe(): Promise<string> {
+  try {
+    if (istAndroid) { const t = gemerkt(); if (t) await rufen({ aktion: "push_an", fcm: t, geraet: geraet() }); }
+    else { const s = await (await registrierung())?.pushManager.getSubscription(); if (s) await rufen({ aktion: "push_an", abo: s.toJSON(), geraet: geraet() }); }
+  } catch { /* Probe trotzdem versuchen */ }
+  const r = await pushTest();
+  const f: string[] = r.fehler ?? [];
+  if (r.gesendet == null) return "Probe abgeschickt.";
+  if (!r.geraete) return "Es ist kein Gerät angemeldet. Schalte die Benachrichtigungen aus und wieder ein.";
+  const kurz = `Probe an ${r.gesendet} von ${r.geraete} ${r.geraete === 1 ? "Gerät" : "Geräten"} zugestellt.`;
+  return f.length ? `${kurz} Problem: ${f[0]}` : r.gesendet ? `${kurz} Kommt nichts an, prüfe die Benachrichtigungs-Erlaubnis in den Einstellungen des Geräts.` : kurz;
+}
+export const pushTest = (): Promise<{ gesendet: number | null; geraete: number | null; fehler?: string[] }> => rufen({ aktion: "push_test" });

@@ -8,6 +8,8 @@
   import { sb, fehler } from "../lib/supabase";
   import { datumZeit, vor } from "../lib/format";
   import { ANFRAGE_STATUS, FORMATE } from "../lib/status";
+  import { R } from "../lib/rechnungen/daten.svelte";
+  import { oeffneKunde } from "../lib/rechnungen/oeffnen";
 
   let { id }: { id?: string } = $props();
   let liste = $state<any[]>([]), sicht = $state<"offen" | "alle" | "gewonnen" | "zu">("offen"), laedt = $state(true);
@@ -34,6 +36,24 @@
   }
   let vl: any = $state();
   const darf = $derived(auth.darf("anfragen", true));
+  // Anfrage → Kunde: Kundenformular mit den Angaben aus der Anfrage; nach dem Speichern ist die Anfrage gewonnen
+  const darfKunde = $derived(darf && auth.darf("rechnungen", true));
+  const kunde = $derived(a?.customer_id ? R.customer(a.customer_id) : null);
+  function alsKunde() {
+    R.starten();
+    const web = String(a.website || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
+    const vorlage: Record<string, string> = { name: a.firma || a.name || "", contact: a.firma && a.name ? a.name : "", email: a.email || "", website: web, city: a.ort || "" };
+    const doppelt = a.email && R.customers.find((c) => String(c.email || "").toLowerCase() === String(a.email).toLowerCase());
+    if (doppelt) { verknuepfen(doppelt, true); return; }
+    oeffneKunde(null, (k: any) => { if (k?.id) verknuepfen(k, false); }, { vorlage });
+  }
+  async function verknuepfen(k: any, schonDa: boolean) {
+    const { error } = await sb.from("anfragen").update({ customer_id: k.id, ...(["gewonnen"].includes(a.status) ? {} : { status: "gewonnen" }) }).eq("id", a.id);
+    if (error) { daten.melden(fehler(error)); return; }
+    await sb.from("verlauf").insert({ bezug: "anfrage", bezug_id: a.id, art: "kunde", text: `Als Kunde aufgenommen: ${k.name}` });
+    daten.melden(schonDa ? `${k.name} ist schon Kunde – Anfrage verknüpft` : `${k.name} ist jetzt Kunde`);
+    await eine(); laden(); daten.zaehlen(); vl?.neu();
+  }
   const tel = (t: string) => t.replace(/[^+\d]/g, "").replace(/^00/, "+").replace(/^0/, "+49");
 </script>
 
@@ -79,6 +99,8 @@
             <a class="btn btn--s" href="https://wa.me/{tel(a.telefon).replace('+', '')}" target="_blank" rel="noopener"><Icon name="whatsapp" size={15} />WhatsApp</a>{/if}
           {#if a.email}<a class="btn btn--s" href="mailto:{a.email}?subject={encodeURIComponent('Ihre Anfrage bei Medialyte')}"><Icon name="mail" size={15} />E-Mail</a>{/if}
           {#if a.website}<a class="btn btn--s" href={/^https?:/.test(a.website) ? a.website : "https://" + a.website} target="_blank" rel="noopener"><Icon name="globe" size={15} />Website</a>{/if}
+          {#if a.customer_id}<a class="btn btn--s kd" href="#/kunden/r/{a.customer_id}"><Icon name="users" size={15} />{kunde?.name ? `Kunde: ${kunde.name}` : "Zum Kunden"}</a>
+          {:else if darfKunde}<button class="btn btn--s btn--primary" onclick={alsKunde}><Icon name="plus" size={15} />Als Kunde aufnehmen</button>{/if}
         </div>
 
         <dl class="dl">

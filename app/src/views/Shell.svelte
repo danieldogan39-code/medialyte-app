@@ -78,7 +78,7 @@
   <button class="scrim" class:is-open={offen} aria-label="Menü schließen" tabindex={offen ? 0 : -1} aria-hidden={!offen} onclick={() => (offen = false)}></button>
 
   <main class="main" style="--bereich: {bereichVon(router.pfad).farbe}">
-    {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} verfügbar. Einfach herunterladen und über die alte installieren – deine Daten bleiben erhalten.</span><a class="btn btn--s btn--primary" href={appUpdate.neu.url} target="_blank" rel="noopener">Herunterladen</a><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
+    {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} ist da. Mit einem Tipp installieren – deine Daten bleiben erhalten.</span><button class="btn btn--s btn--primary" disabled={appUpdate.fortschritt != null} onclick={async () => { const f = await appUpdate.installieren().catch((e) => String(e?.message || e)); if (f) daten.melden(f); }}>{appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : "Jetzt aktualisieren"}</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
     {#key seite}
     <div class="seite" in:fly={{ y: ruhig() ? 0 : 14, duration: ruhig() ? 0 : rein.ms, easing: rein.easing, opacity: 0 }}>
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
