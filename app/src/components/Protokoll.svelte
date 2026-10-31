@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   // Protokoll: jeder Lauf des Agenten mit Dauer, Ergebnis und vollständigem Log; der letzte fehlgeschlagene ist offen
   import { LAUF_STATUS } from "../lib/agent.svelte";
   import { sb } from "../lib/supabase";
@@ -6,10 +7,10 @@
   import type { Kategorie } from "../lib/daten.svelte";
 
   let { kat }: { kat: Kategorie } = $props();
-  let laeufe = $state<any[]>([]), geladen = $state(false), offen = $state<Record<string, boolean>>({});
+  let laeufe = $state<any[]>(lies("protokoll:" + kat.slug, [])), geladen = $state(hat("protokoll:" + kat.slug)), offen = $state<Record<string, boolean>>({});
   async function laden() {
     const { data } = await sb.from("laeufe").select("*").eq("kategorie", kat.slug).order("start", { ascending: false }).limit(30);
-    laeufe = data ?? []; geladen = true;
+    if (data) laeufe = merk("protokoll:" + kat.slug, data); geladen = true;
     if (laeufe[0]?.status === "fehler" && offen[laeufe[0].id] === undefined) offen[laeufe[0].id] = true;
   }
   $effect(() => { kat.slug; laden(); });

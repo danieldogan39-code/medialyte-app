@@ -4,18 +4,20 @@ import { auth } from "./auth.svelte";
 import { agent } from "./agent.svelte";
 import { nachfassDaten, einschaetzen } from "./nachfass";
 import { tischbuecher, wartet } from "./kunden";
+import { lies, merk } from "./speicher";
 
 export type Kategorie = { slug: string; name: string; beschreibung: string | null; icon: string; farbe: string; sortierung: number; aktiv: boolean; suche: any };
 export type Agent = { schluessel: string; name: string; beschreibung: string | null; rhythmus: string | null; icon: string; sortierung: number; aktiv: boolean; geaendert: string; geaendert_von: string | null };
 export type Mitglied = { user_id: string; name: string; email: string; rolle: string; aktiv: boolean };
 
 class Daten {
-  kategorien = $state<Kategorie[]>([]);
-  team = $state<Mitglied[]>([]);
-  agenten = $state<Agent[]>([]);
-  neueAnfragen = $state(0);
-  nachfassHeute = $state(0);      // Zähler im Menü: heute dran (auch ohne die Seite zu öffnen)
-  tischbuchWartet = $state(0);    // Restaurants, bei denen ein Gast seit über einer Stunde wartet
+  // Startwerte aus dem Gerätespeicher: Menü, Kategorien und Zähler stehen sofort da
+  kategorien = $state<Kategorie[]>(lies("kategorien", []));
+  team = $state<Mitglied[]>(lies("team", []));
+  agenten = $state<Agent[]>(lies("agenten", []));
+  neueAnfragen = $state(lies("z:anfragen", 0));
+  nachfassHeute = $state(lies("z:nachfass", 0));      // Zähler im Menü: heute dran (auch ohne die Seite zu öffnen)
+  tischbuchWartet = $state(lies("z:tischbuch", 0));   // Restaurants, bei denen ein Gast seit über einer Stunde wartet
   befehle = $state<any[]>([]);      // offene/laufende Aufträge an den Agenten
   laufend = $state<Record<string, any>>({});   // laufender Lauf je Kategorie (Live-Stand)
   toast = $state("");
@@ -28,12 +30,12 @@ class Daten {
     if (!auth.darf("akquise")) return;
     try {
       const d = await nachfassDaten(), tage = agent.c.einstellungen?.nachfass_tage ?? 6;
-      this.nachfassHeute = d.faelle.map((x) => einschaetzen(x, d.eintraege[x.slug], d.aufrufe[x.kurz ?? ""] ?? [], d.anfragen[x.slug] ?? [], tage))
-        .filter((n) => (n.g === "heiss" || n.g === "heute") && n.st !== "kunde").length;
+      this.nachfassHeute = merk("z:nachfass", d.faelle.map((x) => einschaetzen(x, d.eintraege[x.slug], d.aufrufe[x.kurz ?? ""] ?? [], d.anfragen[x.slug] ?? [], tage))
+        .filter((n) => (n.g === "heiss" || n.g === "heute") && n.st !== "kunde").length);
     } catch { /* Zähler ist nur ein Hinweis */ }
     if (auth.darf("kunden")) {
       const t = await tischbuecher().catch(() => null);
-      if (t?.lokale) this.tischbuchWartet = Object.values(t.lokale).filter((l) => !l.demo && wartet(l)).length;
+      if (t?.lokale) this.tischbuchWartet = merk("z:tischbuch", Object.values(t.lokale).filter((l) => !l.demo && wartet(l)).length);
     }
   }
 
@@ -43,9 +45,9 @@ class Daten {
       sb.from("mitglieder").select("user_id,name,email,rolle,aktiv").order("name"),
       sb.from("agenten").select("*").order("sortierung"),
     ]);
-    this.kategorien = (k.data as Kategorie[]) ?? [];
-    this.agenten = (a.data as Agent[]) ?? [];
-    this.team = (t.data as Mitglied[]) ?? [];
+    if (!k.error) this.kategorien = merk("kategorien", (k.data as Kategorie[]) ?? []);
+    if (!a.error) this.agenten = merk("agenten", (a.data as Agent[]) ?? []);
+    if (!t.error) this.team = merk("team", (t.data as Mitglied[]) ?? []);
     await this.zaehlen();
     await this.agentStand();
     agent.laden();
@@ -86,7 +88,7 @@ class Daten {
   async zaehlen() {
     if (!auth.darf("anfragen")) return;
     const { count } = await sb.from("anfragen").select("id", { count: "exact", head: true }).eq("status", "neu");
-    this.neueAnfragen = count ?? 0;
+    this.neueAnfragen = merk("z:anfragen", count ?? 0);
   }
   /** Agent oder Kategorie (Akquise) an- und ausschalten; sofort sichtbar, bei Fehler zurück */
   async schalten(art: "agent" | "kategorie", id: string, an: boolean): Promise<boolean> {

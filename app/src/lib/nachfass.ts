@@ -120,6 +120,9 @@ export function wiederFuer(status: string, bisher: string | null): string | null
 
 // ---------- Daten laden (Nachfass-Seite und Zähler im Menü)
 import { sb } from "./supabase";
+import { lies, merk } from "./speicher";
+/** Zuletzt geladener Stand (für sofortige Anzeige) */
+export const nachfassGemerkt = () => lies<NfDaten | null>("nachfass", null);
 export type NfDaten = { faelle: Fall[]; eintraege: Record<string, Eintrag>; aufrufe: Record<string, Aufruf[]>; anfragen: Record<string, Anfrage[]> };
 export async function nachfassDaten(): Promise<NfDaten> {
   const [br, nf, z] = await Promise.all([
@@ -141,7 +144,9 @@ export async function nachfassDaten(): Promise<NfDaten> {
     for (const d of (data ?? []) as any[]) if (!d.geloescht) map[d.slug] = { slug: d.slug, name: d.betriebe?.name ?? d.slug, branche: d.betriebe?.branche, ort: d.betriebe?.ort,
       telefon: d.betriebe?.telefon, url: d.url, kurz: d.kurz, betriebId: d.betriebe?.id, verschickt: null };
   }
-  return { faelle: Object.values(map), eintraege: Object.fromEntries(((nf.data ?? []) as Eintrag[]).map((e) => [e.slug, e])), aufrufe, anfragen };
+  const d = { faelle: Object.values(map), eintraege: Object.fromEntries(((nf.data ?? []) as Eintrag[]).map((e) => [e.slug, e])), aufrufe, anfragen };
+  if (!br.error && !nf.error && !z.error) merk("nachfass", d);
+  return d;
 }
 /** Letzte Aktivität (Aufruf oder Rückrufwunsch) für die Sortierung der heißen Fälle */
 export const letzteAktivitaet = (n: Einschaetzung) => Math.max(n.auf.length ? Date.parse(n.auf[0].z) : 0, n.anfNeu ? Date.parse(n.anfNeu.zeit) : 0);

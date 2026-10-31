@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
+  import { untrack } from "svelte";
   import { gleiter, federKurve, ruhig } from "../lib/bewegung";
   import { fly } from "svelte/transition";
   const tabF = federKurve(0.45, 0);
@@ -20,18 +22,23 @@
   let { slug, tab }: { slug: string; tab: string } = $props();
   const kat = $derived(daten.kat(slug));
 
-  let betriebe = $state<any[]>([]), zahlen = $state<any[]>([]), laedt = $state(true);
+  const bk = () => `betriebe:${slug}:${filter}`;
+  let betriebe = $state<any[]>(lies(`betriebe:${slug}:`, [])), zahlen = $state<any[]>(lies("akquise_zahlen", []).filter((x: any) => x.kategorie === slug)), laedt = $state(!hat(`betriebe:${slug}:`));
   const agentBranche = $derived(slug === "gastronomie");  // der Agent arbeitet bisher nur hier (Suchgebiete, Einstellungen aus config.yaml)
   let filter = $state(""), suche = $state("");
 
   async function laden() {
-    laedt = true;
+    const ohneSuche = !suche.trim(), k = bk();
+    if (ohneSuche && hat(k)) betriebe = lies(k, untrack(() => betriebe));   // Filterwechsel: gemerkten Stand sofort zeigen
+    laedt = !(ohneSuche && hat(k));
     let q = sb.from("betriebe").select("id,name,branche,ort,gebiet,bewertung,anzahl_bewertungen,status,geaendert,demos(slug,url,geloescht)")
       .eq("kategorie", slug).order("geaendert", { ascending: false }).limit(300);
     if (filter) q = q.eq("status", filter);
     if (suche.trim()) q = q.or(`name.ilike.%${suche.trim().replace(/[%,()]/g, "")}%,ort.ilike.%${suche.trim().replace(/[%,()]/g, "")}%`);
     const [b, z] = await Promise.all([q, sb.rpc("akquise_zahlen")]);
-    betriebe = b.data ?? []; zahlen = (z.data ?? []).filter((x: any) => x.kategorie === slug); laedt = false;
+    if (!b.error) betriebe = ohneSuche ? merk(k, b.data ?? []) : b.data ?? [];
+    if (!z.error) zahlen = merk("akquise_zahlen", z.data ?? []).filter((x: any) => x.kategorie === slug);
+    laedt = false;
   }
   $effect(() => { slug; filter; laden(); });
   let st: number;

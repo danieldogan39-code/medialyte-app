@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   // Akquise-Board einer Kategorie: Kandidaten → Website bauen → Demo online, dazu Aussortiert (wie im Cockpit).
   // Karten ziehen (Maus) oder per Knopf verschieben; jede Entscheidung lässt sich rückgängig machen.
   // Eine Entscheidung steht sofort in der App und geht als Befehl an den Agenten (data/entscheidungen.json).
@@ -13,7 +14,7 @@
   let { kat }: { kat: Kategorie } = $props();
   type B = any;
   type Sp = "kandidaten" | "bauen" | "online" | "aus";
-  let alle = $state<B[]>([]), laedt = $state(true), suche = $state(""), branche = $state(""), km = $state(""), offenId = $state("");
+  let alle = $state<B[]>(lies("board:" + kat.slug, [])), laedt = $state(!hat("board:" + kat.slug)), suche = $state(""), branche = $state(""), km = $state(""), offenId = $state("");
   let stufen = $state<Record<string, boolean>>({ A: false, B: false, C: false });
   let mehr = $state<Record<string, boolean>>({});
   let demoAuf = $state(lesen("medialyte-board-demos") !== "zu");
@@ -24,7 +25,7 @@
   async function laden() {
     const { data } = await sb.from("betriebe").select("id,place_id,name,branche,ort,gebiet,punkte,stufe,entfernung_km,status,entscheidung,maps_url,daten,geaendert,demos(slug,url,geloescht,loescht_am)")
       .eq("kategorie", kat.slug).order("punkte", { ascending: false, nullsFirst: false }).limit(600);
-    alle = data ?? []; laedt = false;
+    if (data) alle = merk("board:" + kat.slug, data); laedt = false;
   }
   $effect(() => { kat.slug; laden(); });
   $effect(() => { const f = () => laden(); addEventListener("ml:laeufe", f); return () => removeEventListener("ml:laeufe", f); });

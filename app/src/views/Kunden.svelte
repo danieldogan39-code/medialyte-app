@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Zahl from "../components/Zahl.svelte";
@@ -22,9 +23,9 @@
   const fk = federKurve(0.5, 0.06);
 
   type Neu = { slug: string; name: string; ort?: string; branche?: string };
-  let kunden = $state<Kunde[]>([]), neue = $state<Neu[]>([]), laedt = $state(true);
+  let kunden = $state<Kunde[]>(lies("kunden", [])), neue = $state<Neu[]>(lies("kunden:neu", [])), laedt = $state(!hat("kunden"));
   let ansicht = $state<"" | "beispiel" | "demo">("");
-  let lokale = $state<Record<string, Lage> | null>(null), tbFehler = $state("");
+  let lokale = $state<Record<string, Lage> | null>(lies("tischbuecher", null)), tbFehler = $state("");
 
   const webDarf = $derived(auth.darf("kunden")), reDarf = $derived(auth.darf("rechnungen"));
   let suche = $state(""), filter = $state("alle");   // "alle" | "web" | "offen" | "k:<Kategorie>"
@@ -35,7 +36,8 @@
       auth.darf("akquise") ? sb.from("nachfass").select("slug").eq("status", "kunde") : Promise.resolve({ data: [] as any[] }),
       auth.darf("akquise") ? sb.from("betriebe").select("name,ort,branche,demos(slug,geloescht)").eq("status", "kunde") : Promise.resolve({ data: [] as any[] }),
     ]);
-    kunden = (k.data as Kunde[]) ?? [];
+    if (k.error) { laedt = false; return; }
+    kunden = merk("kunden", (k.data as Kunde[]) ?? []);
     const da = new Set(kunden.map((x) => x.slug)), map: Record<string, Neu> = {};
     for (const b of (bt.data ?? []) as any[]) for (const d of b.demos ?? []) if (!d.geloescht) map[d.slug] = { slug: d.slug, name: b.name, ort: b.ort, branche: b.branche };
     const ohne = ((nf.data ?? []) as any[]).map((x) => x.slug).filter((s) => !map[s]);
@@ -43,10 +45,10 @@
       const { data } = await sb.from("demos").select("slug,geloescht,betriebe(name,ort,branche)").in("slug", ohne);
       for (const d of (data ?? []) as any[]) if (!d.geloescht) map[d.slug] = { slug: d.slug, name: d.betriebe?.name ?? d.slug, ort: d.betriebe?.ort, branche: d.betriebe?.branche };
     }
-    neue = Object.values(map).filter((x) => !da.has(x.slug)).sort((a, b) => a.name.localeCompare(b.name, "de"));
+    neue = merk("kunden:neu", Object.values(map).filter((x) => !da.has(x.slug)).sort((a, b) => a.name.localeCompare(b.name, "de")));
     laedt = false;
     const t = await tischbuecher();
-    lokale = t.lokale; tbFehler = t.fehler ?? "";
+    if (t.lokale) lokale = merk("tischbuecher", t.lokale); tbFehler = t.fehler ?? "";
   }
   $effect(() => {
     laden();

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   // Live-Demos einer Kategorie: ansehen, bewerten (Daumen, Kommentar), neu generieren lassen, Favoriten, löschen
   import Icon from "./Icon.svelte";
   import { auth } from "../lib/auth.svelte";
@@ -11,7 +12,8 @@
   import { GERAET } from "../lib/nachfass";
 
   let { kat }: { kat: Kategorie } = $props();
-  let demos = $state<any[]>([]), bew = $state<Record<string, any>>({}), aufrufe = $state<Record<string, any[]>>({}), laedt = $state(true);
+  const dk = "demos:" + kat.slug, dg = lies<any>(dk, null);   // letzter Stand: Galerie steht sofort
+  let demos = $state<any[]>(dg?.demos ?? []), bew = $state<Record<string, any>>(dg?.bew ?? {}), aufrufe = $state<Record<string, any[]>>(dg?.aufrufe ?? {}), laedt = $state(!dg);
   // Filter, Sortierung und Ort bleiben auf diesem Gerät gespeichert (wie im Cockpit)
   const MERK = "medialyte-demos-filter";
   const gemerkt = (() => { try { return JSON.parse(localStorage.getItem(MERK) ?? "{}"); } catch { return {}; } })();
@@ -29,7 +31,9 @@
       sb.functions.invoke("zaehler", { body: { aktion: "stand" } }),
       sb.from("gedaechtnis").select("daten").eq("kategorie", kat.slug).maybeSingle(),
     ]).then((r) => { gelernt = (r[3] as any).data?.daten?.verarbeitet ?? {}; return r; });
-    demos = d.data ?? []; bew = Object.fromEntries((b.data ?? []).map((x: any) => [x.slug, x])); aufrufe = z.data?.aufrufe ?? {}; laedt = false;
+    if (d.error) { laedt = false; return; }
+    demos = d.data ?? []; bew = Object.fromEntries((b.data ?? []).map((x: any) => [x.slug, x])); if (z.data?.aufrufe) aufrufe = z.data.aufrufe; laedt = false;
+    merk(dk, { demos: d.data ?? [], bew: $state.snapshot(bew), aufrufe: $state.snapshot(aufrufe) });
   }
   $effect(() => { kat.slug; laden(); });
   $effect(() => { const f = () => laden(); addEventListener("ml:laeufe", f); return () => removeEventListener("ml:laeufe", f); });

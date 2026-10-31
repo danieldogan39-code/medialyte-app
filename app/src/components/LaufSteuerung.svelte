@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   // Lauf des Akquise-Agenten einer Kategorie: Stand, „Lauf starten“, „Abbrechen“, Live-Anzeige mit Protokoll
   import Icon from "./Icon.svelte";
   import { auth } from "../lib/auth.svelte";
@@ -32,10 +33,10 @@
   });
 
   // Zustand des letzten Laufs (wie der Punkt oben im Cockpit)
-  let letzter = $state<any>(null);
+  let letzter = $state<any>(lies("letzter:" + kat.slug, null));
   async function letzterLaden() {
     const { data } = await sb.from("laeufe").select("id,start,ende,status,daten").eq("kategorie", kat.slug).neq("status", "laeuft").order("start", { ascending: false }).limit(5);
-    letzter = (data ?? []).find((r: any) => !r.daten?.probe) ?? (data ?? [])[0] ?? null;
+    if (data) letzter = merk("letzter:" + kat.slug, data.find((r: any) => !r.daten?.probe) ?? data[0] ?? null);
   }
   $effect(() => { kat.slug; letzterLaden(); });
   $effect(() => { const f = () => letzterLaden(); addEventListener("ml:laeufe", f); return () => removeEventListener("ml:laeufe", f); });

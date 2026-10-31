@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Schalter from "../components/Schalter.svelte";
@@ -9,8 +10,8 @@
   import { BETRIEB_STATUS } from "../lib/status";
   import { ICONS } from "../lib/icons";
 
-  let zahlen = $state<any[]>([]), neu = $state(false), name = $state(""), icon = $state("store"), farbe = $state("#7C8CF5");
-  $effect(() => { sb.rpc("akquise_zahlen").then((r) => (zahlen = r.data ?? [])); });
+  let zahlen = $state<any[]>(lies("akquise_zahlen", [])), neu = $state(false), name = $state(""), icon = $state("store"), farbe = $state("#7C8CF5");
+  $effect(() => { sb.rpc("akquise_zahlen").then((r) => { if (!r.error) zahlen = merk("akquise_zahlen", r.data ?? []); }); });
   const z = (k: string, st?: string) => zahlen.filter((x) => x.kategorie === k && (!st || x.status === st)).reduce((a, x) => a + Number(x.anzahl), 0);
   const online = (k: string) => zahlen.filter((x) => x.kategorie === k).reduce((a, x) => a + Number(x.demos_online), 0);
   const KAT_ICONS = ["utensils", "hammer", "stethoscope", "scale", "sparkles", "shopping-bag", "car", "dumbbell", "briefcase", "store", "home", "globe"].filter((i) => ICONS[i]);

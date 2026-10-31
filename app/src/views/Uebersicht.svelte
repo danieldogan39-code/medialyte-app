@@ -11,20 +11,21 @@
   import { sb } from "../lib/supabase";
   import { datumZeit, vor, zahl } from "../lib/format";
   import { ANFRAGE_STATUS, FORMATE } from "../lib/status";
+  import { lies, merk } from "../lib/speicher";
 
-  let termine = $state<any[]>([]), neu = $state<any[]>([]), zahlen = $state<any[]>([]), laeufe = $state<any[]>([]);
+  let termine = $state<any[]>(lies("ue:termine", [])), neu = $state<any[]>(lies("ue:neu", [])), zahlen = $state<any[]>(lies("akquise_zahlen", [])), laeufe = $state<any[]>(lies("ue:laeufe", []));
 
   async function laden() {
     const jobs: PromiseLike<any>[] = [];
     if (auth.darf("anfragen")) {
       jobs.push(sb.from("anfragen").select("id,firma,name,termin,format,status").gte("termin", new Date(Date.now() - 3600e3).toISOString())
-        .not("status", "in", "(verloren,spam)").order("termin").limit(5).then((r) => (termine = r.data ?? [])));
+        .not("status", "in", "(verloren,spam)").order("termin").limit(5).then((r) => { if (!r.error) termine = merk("ue:termine", r.data ?? []); }));
       jobs.push(sb.from("anfragen").select("id,firma,name,eingang,anliegen,status").eq("status", "neu").order("eingang", { ascending: false }).limit(5)
-        .then((r) => (neu = r.data ?? [])));
+        .then((r) => { if (!r.error) neu = merk("ue:neu", r.data ?? []); }));
     }
     if (auth.darf("akquise")) {
-      jobs.push(sb.rpc("akquise_zahlen").then((r) => (zahlen = r.data ?? [])));
-      jobs.push(sb.from("laeufe").select("id,kategorie,art,start,status,zahlen").order("start", { ascending: false }).limit(5).then((r) => (laeufe = r.data ?? [])));
+      jobs.push(sb.rpc("akquise_zahlen").then((r) => { if (!r.error) zahlen = merk("akquise_zahlen", r.data ?? []); }));
+      jobs.push(sb.from("laeufe").select("id,kategorie,art,start,status,zahlen").order("start", { ascending: false }).limit(5).then((r) => { if (!r.error) laeufe = merk("ue:laeufe", r.data ?? []); }));
     }
     await Promise.all(jobs);
   }

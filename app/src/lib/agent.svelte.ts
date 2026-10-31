@@ -2,6 +2,7 @@
 // Zahlen. Kommt als Zeile „cockpit“ in agent_daten (vom Agenten geschrieben) und aktualisiert sich live.
 import { sb } from "./supabase";
 import { auth } from "./auth.svelte";
+import { lies, merk } from "./speicher";
 
 export type Gebiet = { name: string; index: number; zuletzt?: string; restaurants?: number; ohne_website?: number; durchlaeufe?: number };
 export type Cockpit = {
@@ -23,16 +24,16 @@ export type Cockpit = {
 };
 
 class Agent {
-  c = $state<Cockpit>({});
-  geladen = $state(false);
+  c = $state<Cockpit>(lies("cockpit", {}));
+  geladen = $state(Object.keys(lies("cockpit", {})).length > 0);
   #kanal: ReturnType<typeof sb.channel> | null = null;
 
   async laden() {
     if (!auth.darf("akquise")) return;
     const { data } = await sb.from("agent_daten").select("daten").eq("name", "cockpit").maybeSingle();
-    this.c = (data?.daten as Cockpit) ?? {}; this.geladen = true;
+    this.c = merk("cockpit", (data?.daten as Cockpit) ?? {}); this.geladen = true;
     if (!this.#kanal) this.#kanal = sb.channel("agent-daten")
-      .on("postgres_changes", { event: "*", schema: "public", table: "agent_daten" }, (p: any) => { if (p.new?.name === "cockpit") this.c = p.new.daten ?? {}; })
+      .on("postgres_changes", { event: "*", schema: "public", table: "agent_daten" }, (p: any) => { if (p.new?.name === "cockpit") this.c = merk("cockpit", p.new.daten ?? {}); })
       .subscribe();
   }
 }

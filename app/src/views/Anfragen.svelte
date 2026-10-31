@@ -9,11 +9,17 @@
   import { datumZeit, vor } from "../lib/format";
   import { ANFRAGE_STATUS, FORMATE } from "../lib/status";
   import { R } from "../lib/rechnungen/daten.svelte";
+  import { hat, lies, merk } from "../lib/speicher";
+  import { untrack } from "svelte";
+  import { fly } from "svelte/transition";
+  import { federKurve, ruhig } from "../lib/bewegung";
+  const rein = federKurve(0.5, 0);
   import { oeffneKunde } from "../lib/rechnungen/oeffnen";
 
   let { id }: { id?: string } = $props();
-  let liste = $state<any[]>([]), sicht = $state<"offen" | "alle" | "gewonnen" | "zu">("offen"), laedt = $state(true);
-  let a = $state<any>(null);
+  let sicht = $state<"offen" | "alle" | "gewonnen" | "zu">("offen");
+  let liste = $state<any[]>(lies("anfragen:offen", [])), laedt = $state(!hat("anfragen:offen"));
+  let a = $state<any>(id ? lies("anfrage:" + id, null) : null);
 
   const OFFEN = ["neu", "in_arbeit", "termin", "angebot"];
   async function laden() {
@@ -21,11 +27,17 @@
     if (sicht === "offen") q = q.in("status", OFFEN);
     if (sicht === "gewonnen") q = q.eq("status", "gewonnen");
     if (sicht === "zu") q = q.in("status", ["verloren", "spam"]);
-    const { data } = await q; liste = data ?? []; laedt = false;
+    const k = "anfragen:" + sicht, { data, error } = await q;
+    if (!error) liste = merk(k, data ?? []); laedt = false;
   }
-  async function eine() { a = id ? (await sb.from("anfragen").select("*").eq("id", id).maybeSingle()).data : null; }
-  $effect(() => { sicht; laden(); });
-  $effect(() => { id; eine(); });
+  async function eine() {
+    if (!id) { a = null; return; }
+    const k = "anfrage:" + id, { data, error } = await sb.from("anfragen").select("*").eq("id", id).maybeSingle();
+    if (!error) a = merk(k, data);
+  }
+  // Wechsel des Filters oder der Anfrage: gemerkten Stand sofort zeigen, dann auffrischen
+  $effect(() => { const k = "anfragen:" + sicht; untrack(() => { liste = lies(k, liste); laedt = !hat(k); laden(); }); });
+  $effect(() => { const i = id; untrack(() => { if (i) a = lies("anfrage:" + i, a?.id === i ? a : null); eine(); }); });
   $effect(() => { const f = () => { laden(); eine(); }; addEventListener("ml:anfragen", f); return () => removeEventListener("ml:anfragen", f); });
 
   async function setzen(feld: string, wert: any, notiz?: string) {
@@ -81,7 +93,8 @@
   </div>
 
   {#if id && a}
-    <section class="detail">
+    {#key id}
+    <section class="detail" in:fly={{ x: ruhig() ? 0 : 26, duration: ruhig() ? 0 : rein.ms, easing: rein.easing, opacity: 0 }}>
       <a class="back muted" href="#/anfragen">← Alle Anfragen</a>
       <div class="card d">
         <div class="d__h">
@@ -121,6 +134,7 @@
       </div>
       <Verlauf bind:this={vl} bezug="anfrage" id={a.id} schreiben={darf} />
     </section>
+    {/key}
   {/if}
 </div>
 
@@ -159,8 +173,11 @@
   @media (max-width: 1000px) {
     .wrap.has-detail { display: block; }
     .wrap.has-detail .listen { display: none; }
+    .wrap:not(.has-detail) .listen { animation: liste-zurueck .5s var(--feder) backwards; }
     .detail { position: static; }
     .back { display: inline; }
   }
+  @keyframes liste-zurueck { from { opacity: 0; transform: translateX(-22px); } }
+  @media (prefers-reduced-motion: reduce) { .listen { animation: none !important; } }
   @media (max-width: 520px) { .dl { grid-template-columns: minmax(0, 1fr); } }
 </style>

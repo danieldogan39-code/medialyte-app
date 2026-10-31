@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import { auth } from "../lib/auth.svelte";
@@ -24,6 +25,11 @@
   let markieren = $state(false), sendet = $state(false), formGeladen = "";
   let ansicht = $state(false);
   let tb = $state<{ lokal?: Lage; anfragen?: any[]; heute?: string; fehler?: string } | null>(null);
+  // Letzter Stand dieses Kunden: Seite steht sofort, frische Daten kommen im Hintergrund
+  const gk = () => "kunde:" + slug;
+  const gemerkt = lies<any>(gk(), null);
+  if (gemerkt) { k = gemerkt.k; demo = gemerkt.demo; link = gemerkt.link; befehle = gemerkt.befehle ?? []; info = gemerkt.info ?? null; tb = gemerkt.tb ?? null; geladen = true; }
+  const merken = () => merk(gk(), $state.snapshot({ k, demo, link, befehle, info, tb }));
 
   async function befehleLaden() {
     const { data } = await sb.from("befehle").select("id,art,ziel,daten,status,ergebnis,erstellt").in("art", ["kunde", "kunde_agent_zurueck"]).eq("ziel", slug)
@@ -37,9 +43,11 @@
       darf ? sb.from("kunden_zugang").select("tischbuch").eq("slug", slug).maybeSingle() : Promise.resolve({ data: null }),
       befehleLaden(),
     ]);
+    if (a.error) { geladen = true; return; }
     k = (a.data as Kunde) ?? null; demo = d.data; link = (z.data as any)?.tischbuch ?? null; geladen = true;
     if (formGeladen !== slug) await formular();
     if (s.vorschau || s.stand === "live") tb = await tischbuch(slug);
+    merken();
   }
   /** Formular aus den gespeicherten Angaben, sonst mit Vorschlägen aus Betrieb und Demo */
   async function formular() {
@@ -55,7 +63,8 @@
       bilder = neu;
     }
     if (demo?.url) {
-      info = await demoLesen(demo.url);
+      const frisch = await demoLesen(demo.url);
+      if (!(frisch.fehler && info && !info.fehler)) info = frisch;   // ohne Verbindung den gemerkten Stand behalten
       if (!imp.strasse && info.adresse.strasse) imp.strasse = info.adresse.strasse;
       if (!imp.plz_ort && info.adresse.plz_ort) imp.plz_ort = info.adresse.plz_ort;
       if (!ds) ds = await datenschutzVorlage(info);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import { auth } from "../lib/auth.svelte";
@@ -7,7 +8,7 @@
   import { BEREICHE, ROLLEN } from "../lib/status";
   import { frage } from "../lib/frage.svelte";
 
-  let rechte = $state<any[]>([]), einladen = $state(false), name = $state(""), email = $state(""), rolle = $state("marketing");
+  let rechte = $state<any[]>(lies("rechte", [])), einladen = $state(false), name = $state(""), email = $state(""), rolle = $state("marketing");
   let link = $state(""), linkFuer = $state(""), laeuft = $state(false);
   const darf = $derived(auth.darf("team", true));
   const binInhaber = $derived(auth.ich?.rolle === "inhaber");
@@ -15,7 +16,7 @@
   const aenderbar = (m: any) => darf && m.user_id !== auth.ich?.user_id && m.rolle !== "inhaber";
   const rollen = $derived(Object.entries(ROLLEN).filter(([k]) => k !== "inhaber" || binInhaber));
 
-  async function laden() { rechte = (await sb.from("rechte").select("*")).data ?? []; await daten.laden(); }
+  async function laden() { const r = await sb.from("rechte").select("*"); if (!r.error) rechte = merk("rechte", r.data ?? []); await daten.laden(); }
   $effect(() => { laden(); });
 
   async function team(body: any) {

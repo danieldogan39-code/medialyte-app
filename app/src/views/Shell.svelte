@@ -22,6 +22,8 @@
   import Ebenen from "../components/rechnungen/Ebenen.svelte";
   import RechnungsKunde from "./RechnungsKunde.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
+  import { agent } from "../lib/agent.svelte";
+  import { haptik } from "../lib/haptik";
   import { bereichVon, BEREICHE } from "../lib/bereiche";
   const farbe = (p: string) => BEREICHE.find((b) => b.pfad === p)?.farbe ?? "#8B98AD";
   import { fly, fade } from "svelte/transition";
@@ -93,6 +95,29 @@
   const mehrAktiv = $derived(!reiter.some((b) => aktiv(b.pfad)));
   const mehrBadge = $derived(REIHE.filter((p) => !reiter.some((b) => b.pfad === p)).reduce((n, p) => n + (badge(p) || 0), 0));
 
+  // Herunterziehen zum Aktualisieren (Handy): ganz oben nach unten ziehen, loslassen lädt die Seite frisch
+  let neuNr = $state(0), stumm = false, kreis: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!matchMedia("(pointer: coarse)").matches) return;
+    let start = -1, weg = 0, laedt = false;
+    const setz = (d: number) => { if (!kreis) return; const p = Math.min(1, d / 80); kreis.style.opacity = String(p);
+      kreis.style.transform = `translateY(${Math.min(d, 110) * 0.6 - 46}px) scale(${0.6 + p * 0.4}) rotate(${d * 2}deg)`; kreis.classList.toggle("bereit", d > 80); };
+    const an = (e: TouchEvent) => { if (laedt || scrollY > 0 || offen || document.querySelector("dialog[open]") || e.touches.length > 1) { start = -1; return; } start = e.touches[0].clientY; weg = 0; kreis?.classList.remove("zurueck"); };
+    const zug = (e: TouchEvent) => { if (start < 0) return; weg = Math.max(0, (e.touches[0].clientY - start) * 0.55); if (scrollY > 0) { start = -1; weg = 0; } setz(weg); };
+    const los = async () => {
+      if (start < 0) return; start = -1;
+      kreis?.classList.add("zurueck");
+      if (weg <= 80) { setz(0); return; }
+      laedt = true; kreis?.classList.add("laedt"); haptik("leicht");
+      if (kreis) { kreis.style.opacity = "1"; kreis.style.transform = "translateY(0) scale(1)"; }
+      stumm = true; neuNr++; setTimeout(() => (stumm = false), 80);
+      await Promise.allSettled([daten.laden(), agent.laden(), auth.darf("rechnungen") ? R.loadAll() : null]);
+      setTimeout(() => { laedt = false; kreis?.classList.remove("laedt", "bereit"); setz(0); }, 350);
+    };
+    addEventListener("touchstart", an, { passive: true }); addEventListener("touchmove", zug, { passive: true }); addEventListener("touchend", los); addEventListener("touchcancel", los);
+    return () => { removeEventListener("touchstart", an); removeEventListener("touchmove", zug); removeEventListener("touchend", los); removeEventListener("touchcancel", los); };
+  });
+
   // „Mehr“-Blatt: nach unten wischen schließt es
   let blatt: HTMLElement | undefined = $state(), zieh: { y: number; t: number } | null = null;
   function ziehStart(e: PointerEvent) { if (!blatt || innerWidth > 900) return; zieh = { y: e.clientY, t: performance.now() }; (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); blatt.style.transition = "none"; }
@@ -114,7 +139,16 @@
   });
 
   const t = $derived(router.teile);
-  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t.slice(0, 3).join("/"));
+  // Welche Teile des Pfads eine neue Seite sind (Unterreiter, gewählte Anfrage oder Nachfass-Karte bleiben dieselbe Seite)
+  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" ? t[0] : t.slice(0, 3).join("/"));
+  // Die alte Seite bleibt beim Wechsel kurz stehen und gleitet weg (statt schlagartig zu verschwinden)
+  function raus(node: HTMLElement) {
+    const dy = scrollY, r = richtung;
+    node.style.pointerEvents = "none";
+    if (ruhig() || stumm) return { duration: 0 };
+    return { duration: r ? 240 : 180, easing: (x: number) => 1 - Math.pow(1 - x, 3),
+      css: (t: number, u: number) => `opacity: ${t}; transform: translate(${-r * u * 22}px, ${-dy}px)` };
+  }
   // Richtung des Seitenwechsels wie in nativen Apps: tiefer = von rechts, zurück = von links, Bereichswechsel = nur einblenden
   let richtung = $state(0), tiefeVorher = router.teile.length, bereichVorher = router.teile[0] ?? "";
   $effect.pre(() => {
@@ -168,8 +202,9 @@
 
   <main class="main" style="--bereich: {bereichVon(router.pfad).farbe}">
     {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} ist da. Mit einem Tipp installieren – deine Daten bleiben erhalten.</span><button class="btn btn--s btn--primary" disabled={appUpdate.fortschritt != null} onclick={async () => { const f = await appUpdate.installieren().catch((e) => String(e?.message || e)); if (f) daten.melden(f); }}>{appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : "Jetzt aktualisieren"}</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
-    {#key seite}
-    <div class="seite" in:fly={{ x: ruhig() ? 0 : richtung * 28, y: ruhig() || richtung ? 0 : 8, duration: ruhig() ? 0 : richtung ? rein.ms : 260, easing: rein.easing, opacity: 0 }}>
+    <div class="buehne">
+    {#key seite + "#" + neuNr}
+    <div class="seite" in:fly={{ x: ruhig() || stumm ? 0 : richtung * 28, y: ruhig() || richtung ? 0 : 8, duration: ruhig() ? 0 : richtung ? rein.ms : 260, easing: rein.easing, opacity: 0 }} out:raus>
     {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
     {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
     {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}<DemoWeiter slug={t[2]} />
@@ -186,16 +221,20 @@
     {:else}<Uebersicht />{/if}
     </div>
     {/key}
+    </div>
   </main>
 </div>
 
 {#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} role="status" in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
+<div class="ziehen" bind:this={kreis} aria-hidden="true"><Icon name="refresh" size={18} /></div>
 <Ebenen />
 <Rueckfrage />
 
 <style>
   .upd { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .12); color: #C4D9F7; font-size: .9rem; }
   .upd span { flex: 1 1 260px; }
+  .buehne { display: grid; min-width: 0; }
+  .buehne > :global(.seite) { grid-area: 1 / 1; min-width: 0; }
   .shell { min-height: 100dvh; display: grid; grid-template-columns: var(--side) minmax(0, 1fr); }
   .top { display: none; }
   .brand { display: inline-flex; align-items: center; gap: 9px; }

@@ -1986,7 +1986,7 @@ dependencies = [
 
 [[package]]
 name = "medialyte"
-version = "0.9.4"
+version = "0.9.5"
 dependencies = [
  "serde",
  "serde_json",

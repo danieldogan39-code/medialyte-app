@@ -1,6 +1,7 @@
 // Anmeldezustand: Sitzung, Zwei-Faktor-Stufe und meine Rolle mit Rechten
 import type { Session } from "@supabase/supabase-js";
 import { sb, startHash } from "./supabase";
+import { leeren, lies, merk } from "./speicher";
 
 export type Recht = "lesen" | "schreiben";
 export type Ich = { user_id: string; name: string; email: string; rolle: string; aktiv: boolean; rechte: Record<string, Recht> };
@@ -33,8 +34,12 @@ class Auth {
     const { data: a } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
     this.stufe = (a?.currentLevel as any) ?? "aal1";
     this.hatFaktor = a?.nextLevel === "aal2";
-    const { data: ich } = await sb.rpc("ich");
-    this.ich = (ich as Ich) ?? null;
+    // Rolle und Rechte: gemerkten Stand sofort nehmen (App startet ohne Warten), im Hintergrund auffrischen.
+    // Die Datenbank prüft jede Abfrage ohnehin selbst – der gemerkte Stand steuert nur, was angezeigt wird.
+    const k = "ich:" + s.user.id, gemerkt = lies<Ich | null>(k, null);
+    const frisch = Promise.resolve(sb.rpc("ich")).then(({ data, error }) => { if (error) return; this.ich = merk(k, (data as Ich) ?? null); }).catch(() => {});
+    if (gemerkt && this.stufe === "aal2") { this.ich = gemerkt; return; }
+    await frisch;
   }
 
   darf(bereich: string, schreiben = false): boolean {
@@ -42,7 +47,7 @@ class Auth {
     return !!r && (!schreiben || r === "schreiben");
   }
 
-  async abmelden() { try { localStorage.removeItem("medialyte-rechnungen-cache-v1"); } catch {} await sb.auth.signOut(); this.session = null; this.ich = null; this.stufe = null; }
+  async abmelden() { try { localStorage.removeItem("medialyte-rechnungen-cache-v1"); } catch {} leeren(); await sb.auth.signOut(); this.session = null; this.ich = null; this.stufe = null; }
 }
 
 export const auth = new Auth();

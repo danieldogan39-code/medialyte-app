@@ -8,13 +8,15 @@
   import { frage } from "../lib/frage.svelte";
   import { sb, fehler } from "../lib/supabase";
   import { NF_STATUS, einschaetzen, grund, skript, verlauf, wiederFuer, tagHeute, tagPlus, werktag, tagText, zeitFmt, datumLang,
-    nachfassDaten, letzteAktivitaet, type Fall, type Eintrag, type Anfrage, type Aufruf, type Einschaetzung } from "../lib/nachfass";
+    nachfassDaten, nachfassGemerkt, letzteAktivitaet, type Fall, type Eintrag, type Anfrage, type Aufruf, type Einschaetzung } from "../lib/nachfass";
+  import { lies, merk } from "../lib/speicher";
   import { agent } from "../lib/agent.svelte";
   import { STAND } from "../lib/kunden";
 
   let { slug: ziel }: { slug?: string } = $props();
-  let faelle = $state<Fall[]>([]), eintraege = $state<Record<string, Eintrag>>({}), aufrufe = $state<Record<string, Aufruf[]>>({}),
-    anfragen = $state<Record<string, Anfrage[]>>({}), kunden = $state<Record<string, any>>({}), laedt = $state(true), offen = $state<Record<string, boolean>>({}), zeigeErledigt = $state(false);
+  const g = nachfassGemerkt();   // letzter Stand: Liste steht sofort, frische Zahlen kommen im Hintergrund
+  let faelle = $state<Fall[]>(g?.faelle ?? []), eintraege = $state<Record<string, Eintrag>>(g?.eintraege ?? {}), aufrufe = $state<Record<string, Aufruf[]>>(g?.aufrufe ?? {}),
+    anfragen = $state<Record<string, Anfrage[]>>(g?.anfragen ?? {}), kunden = $state<Record<string, any>>(lies("nf:kunden", {})), laedt = $state(!g), offen = $state<Record<string, boolean>>({}), zeigeErledigt = $state(false);
   const darf = $derived(auth.darf("akquise", true));
 
   async function laden() {
@@ -23,7 +25,7 @@
     laedt = false;
     if (ziel && !offen[ziel]) { offen[ziel] = true; setTimeout(() => document.getElementById("nf-" + ziel)?.scrollIntoView({ block: "center", behavior: "smooth" }), 100); }
     const k = await sb.from("kunden").select("slug,stand");
-    kunden = Object.fromEntries(((k.data ?? []) as any[]).map((x) => [x.slug, x.stand ?? {}]));
+    if (!k.error) kunden = merk("nf:kunden", Object.fromEntries(((k.data ?? []) as any[]).map((x) => [x.slug, x.stand ?? {}])));
   }
   $effect(() => { laden(); const t = setInterval(laden, 120000); const k = sb.channel("nachfass-live")
     .on("postgres_changes", { event: "*", schema: "public", table: "nachfass" }, (p: any) => { if (p.new?.slug) eintraege[p.new.slug] = p.new; }).subscribe();

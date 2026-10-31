@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   import { gleiter } from "../lib/bewegung";
   // Design-Gedächtnis: was der Agent aus deinen Bewertungen gelernt hat – je Stilwelt und als Handwerk für alle
   import { auth } from "../lib/auth.svelte";
@@ -8,10 +9,10 @@
   import { vor } from "../lib/format";
 
   let { kat }: { kat: Kategorie } = $props();
-  let g = $state<any>(null), reiter = $state<"welten" | "handwerk">("welten"), welt = $state(""), alle = $state<Record<string, boolean>>({});
+  let g = $state<any>(lies("ged:" + kat.slug, null)), reiter = $state<"welten" | "handwerk">("welten"), welt = $state(""), alle = $state<Record<string, boolean>>({});
   let verworfen = $state<Set<string>>(new Set()), bilder = $state<Record<string, string>>({}), warten = $state(0);
   $effect(() => { sb.from("gedaechtnis").select("*").eq("kategorie", kat.slug).maybeSingle().then(async ({ data }) => {
-    g = data?.daten ?? null; verworfen = new Set(g?.verworfen_ids ?? []); if (g?.welten?.length && !welt) welt = g.welten[0].key;
+    g = merk("ged:" + kat.slug, data?.daten ?? null); verworfen = new Set(g?.verworfen_ids ?? []); if (g?.welten?.length && !welt) welt = g.welten[0].key;
     // Vorschaubilder der bewerteten Demos (privater Speicher)
     const ids = [...new Set((g?.welten ?? []).flatMap((w: any) => [...w.vorbilder, ...w.abgelehnt]).map((v: any) => v.bild).filter(Boolean))] as string[];
     if (ids.length) {

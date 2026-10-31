@@ -1,13 +1,14 @@
 <script lang="ts">
+  import { hat, lies, merk } from "../lib/speicher";
   import { sb, fehler } from "../lib/supabase";
   import { daten } from "../lib/daten.svelte";
   import { vor } from "../lib/format";
   let { bezug, id, schreiben = false }: { bezug: "betrieb" | "anfrage" | "kunde"; id: string; schreiben?: boolean } = $props();
-  let liste = $state<any[]>([]), text = $state(""), laeuft = $state(false);
+  let liste = $state<any[]>(lies(`verlauf:${bezug}:${id}`, [])), text = $state(""), laeuft = $state(false);
 
   async function laden() {
     const { data } = await sb.from("verlauf").select("*").eq("bezug", bezug).eq("bezug_id", id).order("zeit", { ascending: false }).limit(100);
-    liste = data ?? [];
+    if (data) liste = merk(`verlauf:${bezug}:${id}`, data);
   }
   $effect(() => { id; laden(); });
 

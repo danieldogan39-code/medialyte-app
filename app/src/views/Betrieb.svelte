@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
   import Verlauf from "../components/Verlauf.svelte";
@@ -12,11 +13,12 @@
   import { agent } from "../lib/agent.svelte";
 
   let { id }: { id: string } = $props();
-  let b = $state<any>(null), fehlt = $state(false);
+  let b = $state<any>(lies("betrieb:" + id, null)), fehlt = $state(false);
 
   async function laden() {
-    const { data } = await sb.from("betriebe").select("*, demos(*), briefe(*)").eq("id", id).maybeSingle();
-    b = data; fehlt = !data;
+    const { data, error } = await sb.from("betriebe").select("*, demos(*), briefe(*)").eq("id", id).maybeSingle();
+    if (error) return;
+    b = merk("betrieb:" + id, data); fehlt = !data;
   }
   $effect(() => { id; laden(); });
 

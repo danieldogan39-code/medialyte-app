@@ -6,16 +6,18 @@
   import { sb } from "../lib/supabase";
   import { datum, zahl } from "../lib/format";
   import type { Kategorie } from "../lib/daten.svelte";
+  import { lies, merk } from "../lib/speicher";
 
   let { kat }: { kat: Kategorie } = $props();
-  let laeufe = $state<any[]>([]), online = $state(0);
+  let laeufe = $state<any[]>(lies("ub:laeufe:" + kat.slug, [])), online = $state(onl(lies("akquise_zahlen", [])));
+  function onl(z: any[]) { return (z ?? []).filter((x) => x.kategorie === kat.slug).reduce((a, x) => a + Number(x.demos_online ?? 0), 0); }
   async function laden() {
     const [l, z] = await Promise.all([
       sb.from("laeufe").select("id,start,ende,status,zahlen,daten").eq("kategorie", kat.slug).order("start", { ascending: true }).limit(60),
       sb.rpc("akquise_zahlen"),
     ]);
-    laeufe = l.data ?? [];
-    online = ((z.data ?? []) as any[]).filter((x) => x.kategorie === kat.slug).reduce((a, x) => a + Number(x.demos_online ?? 0), 0);
+    if (!l.error) laeufe = merk("ub:laeufe:" + kat.slug, l.data ?? []);
+    if (!z.error) online = onl(merk("akquise_zahlen", (z.data ?? []) as any[]));
   }
   $effect(() => { kat.slug; laden(); });
   $effect(() => { const f = () => laden(); addEventListener("ml:laeufe", f); return () => removeEventListener("ml:laeufe", f); });
