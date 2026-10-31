@@ -42,6 +42,16 @@
     const { error } = await R.write("customers", "update", { kunde_slug: null }, [["id", c.id]]); if (error) throw error;
     daten.melden("Verknüpfung gelöst");
   });
+  const kundeLoeschen = () => versuche(async () => {
+    const ab = R.recurring.filter((r) => r.customer_id === c.id);
+    const text = `${c.name} wird aus deinen Kunden gelöscht.${ab.length ? ` ${ab.length === 1 ? "Sein Abo wird" : `Seine ${ab.length} Abos werden`} beendet und gelöscht.` : ""} Ausgestellte Rechnungen und Angebote bleiben erhalten.${slug ? " Die Website bleibt davon unberührt." : ""}`;
+    if (!(await frage(`${c.name} löschen?`, text, "Kunde löschen", true))) return;
+    const { id, name } = c;   // nach dem Löschen ist der Kunde hier nicht mehr da
+    for (const r of ab) { const { error } = await R.write("recurring", "delete", undefined, [["id", r.id]]); if (error) throw error; }
+    const { error } = await R.write("customers", "delete", undefined, [["id", id]]); if (error) throw error;
+    daten.melden(`${name} gelöscht`);
+    if (!slug) location.hash = "#/kunden";
+  });
   const anlegen = () => oeffneKunde(null, (k) => { if (!slug && k?.id) location.hash = "#/kunden/r/" + k.id; }, { vorlage, kundeSlug: slug });
 </script>
 
@@ -117,7 +127,10 @@
         {:else}<p class="muted klein">Keine Abos.</p>{/each}
       {/if}
     </div>{/key}
-    {#if slug && darf}<button class="lnk" onclick={loesen}>Verknüpfung mit der Website lösen</button>{/if}
+    {#if darf}<div class="ende">
+      {#if slug}<button class="lnk" onclick={loesen}>Verknüpfung mit der Website lösen</button>{/if}
+      <button class="lnk rot" onclick={kundeLoeschen}>{slug ? "Rechnungskunden löschen" : "Kunde löschen"}</button>
+    </div>{/if}
   </section>
 {/if}
 
@@ -154,6 +167,8 @@
   .r { display: grid; justify-items: end; gap: 4px; flex: none; }
   .r b { color: var(--text); font-weight: 600; }
   .klein { font-size: .86rem; margin: 6px 10px; }
+  .ende { display: flex; gap: 18px; flex-wrap: wrap; }
+  .lnk.rot { color: #FF8080; }
   .lnk { justify-self: start; border: 0; background: none; color: var(--steel); text-decoration: underline; cursor: pointer; font: inherit; font-size: .84rem; padding: 0; }
   @media (max-width: 520px) { .zahlen b { font-size: 1rem; } .zahlen > div { padding: 8px; } }
 </style>

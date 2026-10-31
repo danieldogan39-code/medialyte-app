@@ -57,9 +57,13 @@ export async function modalZu(dlg: HTMLDialogElement | undefined, art: "blatt" |
   const a = dlg.animate(unten ? [{ transform: "translateY(0)" }, { transform: "translateY(100%)" }]
                               : [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(8px) scale(.975)" }],
     { duration: unten ? 300 : 190, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" });
-  try { dlg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: unten ? 300 : 190, easing: "ease-in", pseudoElement: "::backdrop", fill: "forwards" }); } catch { /* egal */ }
+  let hg: Animation | null = null;
+  try { hg = dlg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: unten ? 300 : 190, easing: "ease-in", pseudoElement: "::backdrop", fill: "forwards" }); } catch { /* egal */ }
   await a.finished.catch(() => {});
-  delete dlg.dataset.zu; dlg.close();
+  delete dlg.dataset.zu;
+  // Wurde das Fenster während des Schließens schon wieder gebraucht (z. B. die nächste Rückfrage)? Dann offen lassen.
+  if (dlg.dataset.halten) { delete dlg.dataset.halten; a.cancel(); hg?.cancel(); modalAuf(dlg, art); return; }
+  dlg.close(); a.cancel(); hg?.cancel();
 }
 /** Escape und Klick daneben schließen das Fenster weich (statt hart) */
 export function modalSanft(dlg: HTMLDialogElement, art: "blatt" | "voll" = "blatt") {

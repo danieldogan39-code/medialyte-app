@@ -10,6 +10,7 @@
   import KundeAkte from "../components/KundeAkte.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
   import { datum, datumKurz, vor } from "../lib/format";
+  import { kundeAufheben } from "../lib/kunden";
   import { IMPRESSUM, STAND, datenschutzVorlage, demoLesen, domainPruefen, domainVorschlag, fotoHochladen, hinweise, personen, standMit, tischbuch,
     type DemoInfo, type Impressum, type Kunde, type Lage } from "../lib/kunden";
 
@@ -131,6 +132,24 @@
     const text = `Guten Tag, hier ist Ihr Tischbuch für ${name}: ${link}\nEinmal öffnen, „Zum Startbildschirm hinzufügen“ und Benachrichtigungen einschalten. Neue Tischanfragen bestätigen Sie dann mit einem Tipp. Viele Grüße, ${auth.ich?.name ?? "Daniel"}, Medialyte`;
     try { if (navigator.share && matchMedia("(pointer: coarse)").matches) { await navigator.share({ text }); return; } } catch { return; }
     kopieren(text, "Nachricht mit dem Tischbuch-Link");
+  }
+  // Kunde ganz löschen: Website abbauen (Agent), Tischbuch weg, aus dem Kundenmenü; auf Wunsch auch den Rechnungskunden
+  async function loeschen() {
+    const live = s.stand === "live" || s.stand === "wartet";
+    if (!(await frage(`${name} löschen?`, `${live ? `Die Website unter www.${s.domain} geht offline` : s.vorschau ? "Die Vorschau wird gelöscht" : "Die Übernahme wird verworfen"}, das Tischbuch samt Reservierungen wird gelöscht und ${name} verschwindet aus deinen Kunden. Die Domain selbst bleibt bei dir. Das lässt sich nicht rückgängig machen.`,
+      "Endgültig löschen", true, live ? name : undefined))) return;
+    sendet = true;
+    const ok = k ? await befehl("kunde_loeschen", { slug, name }, slug, `${name} wird gelöscht – die Website wird in ein paar Minuten abgebaut.`) : true;
+    if (ok) await kundeAufheben(slug).catch(() => {});
+    sendet = false;
+    if (!ok) return;
+    const rkx = rk;
+    if (rkx && auth.darf("rechnungen", true) && (await frage(`Rechnungskunde ${rkx.name} auch löschen?`, "Ausgestellte Rechnungen und Angebote bleiben erhalten, Abos werden beendet.", "Auch löschen", true))) {
+      for (const r of R.recurring.filter((r) => r.customer_id === rkx.id)) await R.write("recurring", "delete", undefined, [["id", r.id]]);
+      await R.write("customers", "delete", undefined, [["id", rkx.id]]);
+    }
+    if (!k) daten.melden(`${name} ist nicht mehr bei deinen Kunden`);
+    location.hash = "#/kunden";
   }
   // Rechnungen dieses Kunden (gleicher Kunde im Rechnungsteil, verknüpft über den Slug)
   const rk = $derived(R.customers.find((x) => x.kunde_slug === slug) ?? null);
@@ -286,10 +305,19 @@
       {/if}
     </div>
   </div>
+  {#if darf}
+    <section class="weg">
+      <div><b>Kunde löschen</b><p class="muted klein">Baut die Website und das Tischbuch ab und entfernt {name} aus deinen Kunden. Die Domain bleibt bei dir.</p></div>
+      <button class="btn btn--gefahr btn--s" onclick={loeschen} disabled={sendet || baut}><Icon name="trash" size={15} />Kunde löschen</button>
+    </section>
+  {/if}
 {/if}
 {#if ansicht}<TischbuchAnsicht art="ansicht" {slug} {name} {link} onclose={() => (ansicht = false)} />{/if}
 
 <style>
+  .weg { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 22px; padding: 16px 18px; border-radius: var(--radius); border: 1px solid rgba(242, 74, 74, .3); background: rgba(242, 74, 74, .05); }
+  .weg b { color: var(--text); }
+  .weg p { margin: 2px 0 0; }
   .tbk { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
   .tbk h3 { margin: 0 !important; }
   .lage { padding: 16px 20px; display: grid; gap: 10px; margin-bottom: 14px; }

@@ -6,6 +6,9 @@
   import TischbuchAnsicht from "../components/TischbuchAnsicht.svelte";
   import { sb } from "../lib/supabase";
   import { vor } from "../lib/format";
+  import { kundeAufheben } from "../lib/kunden";
+  import { frage } from "../lib/frage.svelte";
+  import { daten } from "../lib/daten.svelte";
   import { STAND, hinweise, personen, tischbuecher, wartet, dauer, type Kunde, type Lage } from "../lib/kunden";
   import { R } from "../lib/rechnungen/daten.svelte";
   import { invStatus } from "../lib/rechnungen/status";
@@ -76,6 +79,11 @@
         || a.name.localeCompare(b.name, "de"));
   });
   const offenSumme = $derived(R.invoices.filter((i) => ["open", "overdue"].includes(invStatus(i).key)).reduce((a, i) => a + +i.gross, 0));
+  async function neuEntfernen(x: Neu) {
+    if (!(await frage(`${x.name} entfernen?`, `${x.name} ist dann nicht mehr als gewonnener Kunde markiert (im Nachfassen: „Kein Interesse“). Die Demo bleibt, bis sie regulär abläuft.`, "Entfernen", true))) return;
+    await kundeAufheben(x.slug, "Doch kein Kunde").catch(() => {});
+    neue = neue.filter((y) => y.slug !== x.slug); daten.melden(`${x.name} entfernt`);
+  }
   const neuerKunde = () => oeffneKunde(null, (k) => { if (k?.id) location.hash = "#/kunden/r/" + k.id; });
 </script>
 
@@ -104,10 +112,13 @@
     <p class="muted">Aus der Demo wird ihre echte Website: Domain, Impressum und Fotos eintragen, Vorschau bauen, live schalten.</p>
     <div class="grid">
       {#each neue as x (x.slug)}
-        <a class="card neu" href="#/kunden/{x.slug}">
-          <span><b>{x.name}</b><small class="muted">{[x.branche, x.ort].filter(Boolean).join(" · ")}</small></span>
-          <span class="btn btn--s btn--primary">Website übernehmen</span>
-        </a>
+        <div class="card neu">
+          <a class="neu__a" href="#/kunden/{x.slug}"><b>{x.name}</b><small class="muted">{[x.branche, x.ort].filter(Boolean).join(" · ")}</small></a>
+          <span class="neu__k">
+            <a class="btn btn--s btn--primary" href="#/kunden/{x.slug}">Website übernehmen</a>
+            {#if auth.darf("akquise", true)}<button class="btn btn--s btn--quiet btn--icon" title="Doch kein Kunde – entfernen" aria-label="{x.name} entfernen" onclick={() => neuEntfernen(x)}><Icon name="x" size={15} /></button>{/if}
+          </span>
+        </div>
       {/each}
     </div>
   </section>
@@ -178,7 +189,8 @@
   .sek > p { margin-top: -6px; font-size: .9rem; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
   .neu { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; color: inherit; }
-  .neu > span:first-child { display: grid; gap: 2px; min-width: 0; }
+  .neu__a { display: grid; gap: 2px; min-width: 0; color: inherit; flex: 1; }
+  .neu__k { display: flex; gap: 4px; align-items: center; }
   .neu b, .kk b { color: var(--text); font-weight: 600; }
   .kk { display: grid; gap: 8px; padding: 16px; color: inherit; align-content: start; }
   .kk__h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

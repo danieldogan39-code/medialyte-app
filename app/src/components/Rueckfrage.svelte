@@ -7,6 +7,7 @@
   const frei = $derived(!rueckfrage.offen?.tippen || eingabe.trim().toLowerCase() === rueckfrage.offen.tippen.toLowerCase());
   $effect(() => {
     if (!dlg) return;
+    if (rueckfrage.offen && dlg.dataset.zu) { eingabe = ""; dlg.dataset.halten = "1"; }
     if (rueckfrage.offen && !dlg.open) { eingabe = ""; modalAuf(dlg, "voll"); if (!rueckfrage.offen.tippen) okBtn?.focus(); }
     if (!rueckfrage.offen && dlg.open) modalZu(dlg, "voll");
   });

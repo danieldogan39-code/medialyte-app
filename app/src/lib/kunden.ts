@@ -121,3 +121,13 @@ export function standMit(k: Kunde | null, befehle: any[]): Stand & { art?: strin
   if (f?.status === "fehler" && (!s.aktualisiert || Date.parse(f.erstellt) > Date.parse(s.aktualisiert))) return { ...s, stand: "fehler", fehler: String(f.ergebnis ?? "").replace(/^Fehler:\s*/, "") };
   return s;
 }
+
+/** Gewonnenen Kunden wieder aus dem Kundenmenü nehmen: im Nachfassen „Kein Interesse“, der Betrieb ist nicht mehr „Kunde“ */
+export async function kundeAufheben(slug: string, grund = "Kunde gelöscht") {
+  const { data: nf } = await sb.from("nachfass").select("*").eq("slug", slug).maybeSingle();
+  const zeit = new Date().toISOString();
+  const verlauf = [...(((nf as any)?.verlauf ?? []) as any[]), { zeit, status: "kein_interesse", notiz: grund }].slice(-50);
+  await sb.from("nachfass").upsert({ slug, status: "kein_interesse", wieder: null, notiz: (nf as any)?.notiz ?? "", verlauf, zeit });
+  const { data: d } = await sb.from("demos").select("betrieb_id").eq("slug", slug).maybeSingle();
+  if ((d as any)?.betrieb_id) await sb.from("betriebe").update({ status: "abgelehnt" }).eq("id", (d as any).betrieb_id).eq("status", "kunde");
+}
