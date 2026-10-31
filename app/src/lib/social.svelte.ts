@@ -247,27 +247,43 @@ class Social {
     const C = (window as any).Capacitor;
     const plugin = (n: string) => C.Plugins[n] ||= C.registerPlugin(n);
     const Filesystem = plugin("Filesystem");
+    // Der Ordner muss existieren: das native Herunterladen legt ihn nicht selbst an (daran scheiterte es)
+    await Filesystem.mkdir({ path: "creatives", directory: "CACHE", recursive: true }).catch(() => {});
     const uris: string[] = [];
     let i = 0;
     for (const d of dateien) {
       onFortschritt?.(dateien.length > 1 ? `Lädt ${++i} von ${dateien.length} …` : "Lädt …");
-      const { data } = await sb.storage.from("creatives").createSignedUrl(d.pfad, 600);
-      if (!data?.signedUrl) throw new Error("Kein Link");
-      const pfad = `creatives/${d.name}`;
+      const { data, error } = await sb.storage.from("creatives").createSignedUrl(d.pfad, 600);
+      if (!data?.signedUrl) throw new Error(error?.message || "Kein Link zur Datei");
+      // eindeutiger, lesbarer Name (z. B. „k1-01.jpg“), damit Galerie und Teilen-Menü nicht nur „01.jpg“ zeigen
+      const name = `Medialyte-${d.pfad.replace(/^eigene\//, "").replace(/\//g, "-")}`.replace(/[^\w.-]+/g, "-");
+      const pfad = `creatives/${name}`;
       await Filesystem.deleteFile({ path: pfad, directory: "CACHE" }).catch(() => {});
-      const r = await Filesystem.downloadFile({ url: data.signedUrl, path: pfad, directory: "CACHE", recursive: true });
-      uris.push(r?.path ? (String(r.path).startsWith("file:") ? r.path : "file://" + r.path) : (await Filesystem.getUri({ path: pfad, directory: "CACHE" })).uri);
+      let uri = "";
+      try {
+        const r = await Filesystem.downloadFile({ url: data.signedUrl, path: pfad, directory: "CACHE", recursive: true });
+        if (r?.path) uri = String(r.path).startsWith("file:") ? r.path : "file://" + r.path;
+      } catch (e) {
+        // Ersatzweg: über die Oberfläche laden und schreiben (für sehr große Videos zu schwer)
+        if ((d.groesse ?? 0) > 30 * 1024 * 1024) throw e;
+        const blob = await (await fetch(data.signedUrl)).blob();
+        const b64 = await new Promise<string>((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(",")[1]); f.onerror = rej; f.readAsDataURL(blob); });
+        await Filesystem.writeFile({ path: pfad, data: b64, directory: "CACHE", recursive: true });
+      }
+      if (!uri) uri = (await Filesystem.getUri({ path: pfad, directory: "CACHE" })).uri;
+      uris.push(uri);
     }
     onFortschritt?.("");
-    const Share = C.Plugins.Share || (C.isPluginAvailable?.("Share") ? plugin("Share") : null);
+    const Share = C.isPluginAvailable?.("Share") ? plugin("Share") : null;
     if (Share) {
       try { await Share.share({ files: uris, dialogTitle: "Speichern oder teilen" }); return; }
-      catch (e: any) { if (/cancel/i.test(String(e?.message || e))) return; }
+      catch (e: any) { if (/cancel|abgebrochen/i.test(String(e?.message || e))) return; if (uris.length > 1) throw e; }
     }
-    // ältere App-Version ohne Teilen-Menü: im passenden Programm öffnen (dort speichern/teilen)
+    // ohne Teilen-Menü: im passenden Programm öffnen (dort speichern oder teilen)
     const FileOpener = plugin("FileOpener");
-    await FileOpener.open({ filePath: uris[0], contentType: dateien[0].typ || "application/octet-stream", openWithDefault: true });
+    await FileOpener.open({ filePath: uris[0], contentType: dateien[0].typ || (dateien[0].art === "video" ? "video/mp4" : "image/jpeg"), openWithDefault: true });
   }
+
 }
 
 export const social = new Social();
