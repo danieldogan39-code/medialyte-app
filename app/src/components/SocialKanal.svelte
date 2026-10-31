@@ -1,7 +1,8 @@
 <script lang="ts">
   // Eine Plattform: oben die Inhaltstypen als Kacheln (Story, Video, Beitrag, mehrseitig), darunter die Creatives
   import Icon from "./Icon.svelte";
-  import CreativeGitter from "./CreativeGitter.svelte";
+  import CreativeAnsicht from "./CreativeAnsicht.svelte";
+  import AnsichtSchalter from "./AnsichtSchalter.svelte";
   import PlattformLogo from "./PlattformLogo.svelte";
   import { auth } from "../lib/auth.svelte";
   import { social, STATUS, TYPEN, PLATTFORMEN, plattform, typName, typenVon, type Creative, type Typ } from "../lib/social.svelte";
@@ -61,6 +62,7 @@
 
 <div class="leiste">
   <h3>{p && typ ? typName(p, typ as Typ, true) : "Alle Creatives"} <span class="muted">{liste.length}</span></h3>
+  <AnsichtSchalter />
   <label class="st"><span class="sr">Status</span>
     <select class="input" bind:value={status}>
       <option value="aktiv">Alle außer verworfen</option>
@@ -69,8 +71,7 @@
 </div>
 
 {#if liste.length}
-  {#key kanal + typ + status}<CreativeGitter {liste} {schreiben} plattform={p?.key ?? ""} global={!p} />{/key}
-  {#if schreiben && liste.length > 1}<p class="tipp muted"><Icon name="stapel" size={14} />Die Nummer ist die Reihenfolge zum Posten: 1 kommt als Nächstes. Zum Umsortieren ziehen{matchMedia("(pointer: coarse)").matches ? " (kurz gedrückt halten)" : ""}.</p>{/if}
+  {#key kanal + typ + status}<CreativeAnsicht {liste} {schreiben} plattform={p?.key ?? ""} global={!p} />{/key}
 {:else}
   <div class="card empty"><Icon name={p?.icon ?? "image"} size={26} /><b>{leerText}</b><p>Sag Claude, was du brauchst. Neue Creatives erscheinen hier automatisch.</p></div>
 {/if}
@@ -98,15 +99,28 @@
   .tk__bilder { position: absolute; right: 10px; top: 12px; display: flex; }
   .tk__bilder img { width: 30px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; margin-left: -12px; box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .8), 0 0 0 1.5px var(--panel); }
   @media (hover: hover) and (pointer: fine) { .tk:hover { border-color: color-mix(in srgb, var(--p) 40%, var(--line)); } }
-  .leiste { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .leiste { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .leiste h3 { flex: 1; min-width: 0; }
   h3 { font-size: 1.05rem; font-weight: 600; }
   h3 .muted { font-weight: 400; margin-left: 4px; }
   .st select { min-height: 36px; font-size: .86rem; width: auto; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .tipp { display: flex; align-items: center; gap: 6px; font-size: .8rem; margin-top: 12px; }
+  /* Handy: Inhaltstypen als waagerecht wischbare Leiste statt großer Kacheln */
+  @media (max-width: 700px) {
+    .typen { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 22px; padding: 2px 16px; scroll-padding-inline: 16px; scroll-snap-type: x proximity; }
+    .typen::-webkit-scrollbar { display: none; }
+    .tk { flex: none; min-height: 0; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 14px; scroll-snap-align: start; }
+    .tk__i { width: 32px; height: 32px; border-radius: 10px; }
+    .tk__t { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+    .tk__t b { font-size: .9rem; }
+    .tk__bilder { display: none; }
+    .kopf { margin-bottom: 14px; }
+    h2 { font-size: 1.35rem; }
+  }
   @media (max-width: 520px) {
-    .typen { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .tk { min-height: 96px; padding: 12px; }
-    .tk__bilder img { width: 24px; }
+    .leiste { flex-wrap: wrap; }
+    .leiste h3 { flex-basis: 100%; }
+    .st { flex: 1; }
+    .st select { width: 100%; }
   }
 </style>

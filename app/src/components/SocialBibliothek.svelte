@@ -2,7 +2,8 @@
   // Bibliothek: alle Creatives an einem Ort, durchsuchbar, mit Favoriten und eigenen Uploads.
   // Die Nummern sind die Posting-Reihenfolge über alle Plattformen.
   import Icon from "./Icon.svelte";
-  import CreativeGitter from "./CreativeGitter.svelte";
+  import CreativeAnsicht from "./CreativeAnsicht.svelte";
+  import AnsichtSchalter from "./AnsichtSchalter.svelte";
   import { auth } from "../lib/auth.svelte";
   import { social, suchtext, type Creative } from "../lib/social.svelte";
 
@@ -32,19 +33,24 @@
 
 <div class="leiste">
   <label class="suche"><Icon name="search" size={16} /><input class="input" type="search" placeholder="Titel, Text, Hashtag …" bind:value={suche} aria-label="Creatives durchsuchen"></label>
-  {#if schreiben}<button class="btn btn--primary" onclick={hochladen}><Icon name="upload" size={16} />Hochladen</button>{/if}
+  <span class="as-oben"><AnsichtSchalter /></span>
+  {#if schreiben}<button class="btn btn--primary hoch" onclick={hochladen} aria-label="Hochladen"><Icon name="upload" size={16} /><span>Hochladen</span></button>{/if}
 </div>
-<div class="chips" role="group" aria-label="Filter">
-  {#each FILTER as [k, t] (k)}
-    {@const n = zahl(k)}
-    {#if n || k === "alle" || k === "favoriten" || filter === k}
-      <button class="chip" class:on={filter === k} aria-pressed={filter === k} onclick={() => (filter = k)}>{#if k === "favoriten"}<Icon name="star" size={13} fill={filter === k} />{/if}{t}<span class="n num">{n}</span></button>
-    {/if}
-  {/each}
+<div class="leiste2">
+  <div class="chips" role="group" aria-label="Filter">
+    {#each FILTER as [k, t] (k)}
+      {@const n = zahl(k)}
+      {#if n || k === "alle" || k === "favoriten" || filter === k}
+        <button class="chip" class:on={filter === k} aria-pressed={filter === k} onclick={() => (filter = k)}>{#if k === "favoriten"}<Icon name="star" size={13} fill={filter === k} />{/if}{t}<span class="n num">{n}</span></button>
+      {/if}
+    {/each}
+  </div>
+  <span class="as-unten"><AnsichtSchalter /></span>
 </div>
 
+
 {#if liste.length}
-  {#key filter}<CreativeGitter {liste} {schreiben} global sortierbar={!suche.trim()} />{/key}
+  {#key filter}<CreativeAnsicht {liste} {schreiben} global sortierbar={!suche.trim()} />{/key}
 {:else if filter === "favoriten" && !suche.trim()}
   <div class="card empty"><Icon name="star" size={26} /><b>Noch keine Favoriten</b><p>Tipp bei einem Creative auf den Stern, dann findest du es hier wieder.</p></div>
 {:else if filter === "eigene" && !suche.trim()}
@@ -59,7 +65,11 @@
   .suche { flex: 1; position: relative; display: flex; align-items: center; }
   .suche :global(svg) { position: absolute; left: 12px; color: var(--steel); pointer-events: none; }
   .suche input { padding-left: 36px; width: 100%; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px 18px; padding: 2px; }
+  .as-oben { display: none; }
+  @media (max-width: 520px) { .as-oben { display: contents; } }
+  .leiste2 { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .chips { flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 24px), transparent); }
   .chips::-webkit-scrollbar { display: none; }
   .chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent;
     color: var(--text-2); cursor: pointer; font-size: .86rem; white-space: nowrap; flex: none; }
@@ -67,5 +77,11 @@
   .chip .n { font-size: .76rem; opacity: .6; }
   .empty { display: grid; justify-items: center; gap: 8px; text-align: center; }
   .empty .btn { margin-top: 4px; }
-  @media (max-width: 520px) { .leiste .btn { padding: 0 14px; } }
+  @media (max-width: 520px) {
+    .leiste { gap: 8px; }
+    .hoch { width: 44px; padding: 0; justify-content: center; flex: none; }
+    .hoch span { display: none; }
+    .chips { margin-right: -16px; padding-right: 16px; }
+    .as-unten { display: none; }
+  }
 </style>

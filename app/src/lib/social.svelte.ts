@@ -13,6 +13,14 @@ export type Creative = {
 };
 /** Noch zu posten (bekommt eine Nummer in der Reihenfolge) */
 export const offen = (c: Creative) => c.status === "pruefen" || c.status === "freigegeben";
+/** Nummern (Posting-Reihenfolge) für eine Liste in ihrer aktuellen Reihenfolge.
+ *  global: die Liste ist ein Ausschnitt (Filter, Favoriten) – sie behält ihre Plätze in der Gesamt-Reihenfolge und verteilt sie neu. */
+export function raenge(teil: Creative[], global: boolean, gesamt?: Creative[]): Map<string, number> {
+  if (!global || !gesamt) return new Map(teil.map((c, i) => [c.id, i + 1]));
+  const pos = new Map(gesamt.filter(offen).map((c, i) => [c.id, i + 1]));
+  const plaetze = teil.map((c) => pos.get(c.id) ?? 0).sort((a, b) => a - b);
+  return new Map(teil.map((c, i) => [c.id, plaetze[i]]));
+}
 /** Für die Suche in der Bibliothek */
 export const suchtext = (c: Creative) => `${c.titel} ${c.text} ${c.serie ?? ""} ${c.notiz ?? ""} ${c.slug}`.toLowerCase();
 export type Saeule = { id: string; name: string; farbe: string; text: string };
@@ -93,6 +101,9 @@ class Social {
 
   get zurFreigabe() { return this.liste.filter((c) => c.status === "pruefen").length; }
   get favoriten() { return this.liste.filter((c) => c.favorit).length; }
+  /** Kacheln zum Stöbern oder Reihenfolge zum Sortieren (je Gerät gemerkt) */
+  ansicht = $state<"kacheln" | "reihe">(lies("social:ansicht", "kacheln"));
+  ansichtSetzen(a: "kacheln" | "reihe") { this.ansicht = merk("social:ansicht", a); }
   sortiert() { return [...this.liste].sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || b.erstellt.localeCompare(a.erstellt)); }
   saeule(id: string | null | undefined) { return (this.plan.saeulen ?? []).find((s) => s.id === id); }
 

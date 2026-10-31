@@ -6,7 +6,7 @@ import { ruhig } from "./bewegung";
 
 export type ZiehOpt = {
   aus?: boolean;
-  start?: () => void;
+  start?: (kopie: HTMLElement) => void;   // kopie: die schwebende Kopie (z. B. um ihre Nummer mitzuzählen)
   bewegt?: (x: number, y: number, unter: HTMLElement | null) => void;
   ende?: (x: number, y: number, unter: HTMLElement | null, abgebrochen: boolean) => void;
 };
@@ -36,7 +36,7 @@ export function ziehbar(node: HTMLElement, opt: ZiehOpt) {
     node.classList.add("zieh-quelle");
     document.documentElement.classList.add("am-ziehen");
     haptik("mittel");
-    o.start?.();
+    o.start?.(kopie);
     rollen();
   }
   // am oberen/unteren Rand mitscrollen

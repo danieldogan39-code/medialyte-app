@@ -51,14 +51,17 @@
   let titel = $state(""), kompakt = $state(false);
   $effect(() => {
     router.pfad; kompakt = false;
-    let io: IntersectionObserver | null = null;
-    const t = setTimeout(() => {
+    let io: IntersectionObserver | null = null, t = 0, versuche = 0;
+    // erst suchen, wenn die alte Seite fertig ausgeblendet ist (sonst erwischt man ihre Überschrift)
+    const finden = () => {
+      if (document.querySelectorAll("main .seite").length > 1 && ++versuche < 25) { t = setTimeout(finden, 40) as unknown as number; return; }
       const h = [...document.querySelectorAll<HTMLElement>("main .seite h1, main .seite h2")].find((x) => x.getClientRects().length);
       titel = h?.textContent?.trim() || bereichVon(router.pfad).name;
       if (!h) return;
-      io = new IntersectionObserver(([e]) => { kompakt = !e.isIntersecting && e.boundingClientRect.top < 80; }, { rootMargin: "-60px 0px 0px 0px" });
+      io = new IntersectionObserver(([e]) => { kompakt = e.target.isConnected && !e.isIntersecting && e.boundingClientRect.top < 80; }, { rootMargin: "-60px 0px 0px 0px" });
       io.observe(h);
-    }, 60);
+    };
+    t = setTimeout(finden, 60) as unknown as number;
     return () => { clearTimeout(t); io?.disconnect(); };
   });
   // Zurück oben links: zur übergeordneten Seite; kam man von dort, per Verlauf (dann stimmt auch die Scrollposition)

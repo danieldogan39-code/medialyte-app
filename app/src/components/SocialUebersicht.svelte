@@ -19,10 +19,11 @@
   const wo = (c: Creative) => PLATTFORMEN.filter((p) => typenVon(c, p).length).slice(0, 3);
 </script>
 
+<div class="ue">
 <div class="kacheln">
   {#each PLATTFORMEN as p, i (p.key)}
     {@const l = auf(p)}
-    <a class="pk" href="#/social/k/{p.key}" style="--p: {p.farbe}; --fl: {p.flaeche}"
+    <a class="pk" class:leer={!l.length} href="#/social/k/{p.key}" style="--p: {p.farbe}; --fl: {p.flaeche}"
       in:fly={{ y: ruhig() ? 0 : 16, duration: ruhig() ? 0 : fk.ms, delay: ruhig() ? 0 : i * 50, easing: fk.easing, opacity: 0 }}>
       <span class="pk__glanz" aria-hidden="true"></span>
       <span class="pk__kopf">
@@ -43,7 +44,7 @@
 
 {#if naechste.length}
   <section class="naechste" aria-labelledby="sn-t">
-    <div class="naechste__k"><h3 id="sn-t">Als Nächstes posten</h3><a href="#/social/bibliothek">Ganze Reihenfolge<Icon name="right" size={14} /></a></div>
+    <div class="naechste__k"><h3 id="sn-t">Als Nächstes posten</h3><a href="#/social/bibliothek" onclick={() => social.ansichtSetzen("reihe")}>Ganze Reihenfolge<Icon name="right" size={14} /></a></div>
     <ol class="reihe">
       {#each naechste as c, i (c.id)}
         <li><a href="#/social/c/{c.slug}" class="nx">
@@ -81,6 +82,7 @@
     {/if}
   </div>
 {/if}
+</div>
 
 <style>
   .kacheln { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -92,8 +94,6 @@
   .pk:active { transform: scale(.985); }
   .pk:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .pk__kopf { display: flex; align-items: center; gap: 14px; }
-  .pk__logo { width: 52px; height: 52px; flex: none; border-radius: 15px; display: grid; place-items: center; color: #fff; background: var(--fl);
-    box-shadow: 0 12px 26px -12px var(--p), inset 0 1px 0 rgba(255, 255, 255, .3); }
   .pk__name { display: grid; gap: 2px; flex: 1; min-width: 0; }
   .pk__name b { font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; }
   .pk__name small { color: var(--steel); font-size: .84rem; }
@@ -142,10 +142,20 @@
   .nx__t { font-size: .82rem; color: var(--text); line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
   .nx__p { display: flex; gap: 3px; }
   @media (hover: hover) and (pointer: fine) { .nx:hover .nx__b { border-color: var(--line-2); } }
+  .ue { display: flex; flex-direction: column; }
+  /* Handy: zuerst was als Nächstes dran ist, dann Freigabe/Favoriten, dann kompakte Plattform-Kacheln (zwei nebeneinander) */
   @media (max-width: 700px) {
-    .kacheln { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-    .pk { min-height: 168px; padding: 18px; }
-    .pk__typen { max-width: 60%; }
-    .pk__faecher { right: 8px; bottom: -34px; transform: scale(.85); transform-origin: 100% 100%; }
+    .naechste { order: -2; margin: 0 0 6px; }
+    .neben { order: -1; margin: 10px 0 22px; gap: 8px; }
+    .kacheln { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .pk { min-height: 132px; padding: 14px; gap: 0; border-radius: 18px; }
+    .pk.leer { opacity: .72; }
+    .pk__kopf { display: grid; gap: 10px; justify-items: start; }
+    .pk__pfeil, .pk__typen { display: none; }
+    .pk__name b { font-size: 1.05rem; }
+    .pk__name small { font-size: .78rem; }
+    .pk__faecher { right: -14px; bottom: -58px; transform: scale(.52); transform-origin: 100% 100%; }
+    .reihe { margin: 0 -16px; padding: 2px 16px 6px; scroll-padding-inline: 16px; grid-auto-columns: 112px; }
+    .naechste__k a { font-size: .82rem; }
   }
 </style>

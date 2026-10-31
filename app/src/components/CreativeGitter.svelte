@@ -1,11 +1,12 @@
 <script lang="ts">
-  // Kacheln der Creatives, per Ziehen sortierbar (Maus: ziehen · Finger: kurz halten, dann ziehen)
+  // Kacheln der Creatives, mit der Maus per Ziehen sortierbar (am Handy wird in der Reihenfolge-Ansicht sortiert).
+  // Beim Ziehen zeigt eine gestrichelte Lücke mit Nummer, wo die Kachel landet; alle Nummern zählen live mit.
   // Die Nummer ist die Posting-Reihenfolge: 1 kommt als Nächstes dran. Gepostete und verworfene stehen ohne Nummer dahinter.
   import Icon from "./Icon.svelte";
   import PlattformLogo from "./PlattformLogo.svelte";
   import { daten } from "../lib/daten.svelte";
   import { haptik } from "../lib/haptik";
-  import { social, STATUS, PLATTFORMEN, typenVon, offen, type Creative } from "../lib/social.svelte";
+  import { social, STATUS, PLATTFORMEN, typenVon, offen, raenge, type Creative } from "../lib/social.svelte";
   import { ziehbar } from "../lib/ziehen";
   import { flip } from "svelte/animate";
   import { fly } from "svelte/transition";
@@ -14,7 +15,6 @@
 
   // global: Nummer aus der Gesamt-Reihenfolge (Bibliothek, Favoriten) statt der Position in dieser Liste
   let { liste, schreiben = false, plattform = "", sortierbar = true, global = false }: { liste: Creative[]; schreiben?: boolean; plattform?: string; sortierbar?: boolean; global?: boolean } = $props();
-  const gesamt = $derived(global ? new Map(social.sortiert().filter(offen).map((c, i) => [c.id, i + 1])) : null);
   const fk = federKurve(0.45, 0.04);
 
   // offene (nummeriert, sortierbar) und dahinter die erledigten
@@ -22,11 +22,24 @@
   let zieht = $state<string | null>(null);
   $effect(() => { const l = liste.filter(offen); if (!zieht) reihe = l; });
   const erledigt = $derived(liste.filter((c) => !offen(c)));
+  const nr = $derived(raenge(reihe, global, social.sortiert()));
+  // die schwebende Kopie zeigt die Nummer, die die Kachel beim Loslassen bekommt
+  let kopie: HTMLElement | null = null;
+  $effect(() => {
+    const n = zieht ? nr.get(zieht) : undefined;
+    const el = kopie?.querySelector<HTMLElement>(".kc__nr");
+    if (!el || n == null || el.textContent === String(n)) return;
+    el.textContent = String(n);
+    el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+    haptik("auswahl");
+  });
 
   let gitter: HTMLElement | undefined = $state();
   let plaetze: { l: number; t: number; r: number; b: number }[] = [];
-  function start(id: string) {
-    zieht = id;
+  function start(id: string, k: HTMLElement) {
+    zieht = id; kopie = k; k.classList.add("kc--schwebt");
+    // die Kopie hängt am Ende der Seite: Bereichsfarbe mitgeben
+    if (gitter) k.style.setProperty("--bereich", getComputedStyle(gitter).getPropertyValue("--bereich"));
     const sy = scrollY;
     plaetze = [...(gitter?.children ?? [])].map((el) => { const r = el.getBoundingClientRect(); return { l: r.left, t: r.top + sy, r: r.right, b: r.bottom + sy }; });
   }
@@ -38,7 +51,7 @@
     const neu = [...reihe]; const [c] = neu.splice(von, 1); neu.splice(ziel, 0, c); reihe = neu;
   }
   async function ende(abgebrochen: boolean) {
-    const id = zieht; zieht = null;
+    const id = zieht; zieht = null; kopie = null;
     const vorher = liste.filter(offen);
     if (!id || abgebrochen || vorher.map((c) => c.id).join() === reihe.map((c) => c.id).join()) { reihe = vorher; return; }
     try { await social.verschieben(id, reihe); } catch (e: any) { daten.melden("Reihenfolge nicht gespeichert: " + (e?.message || e)); reihe = vorher; }
@@ -83,11 +96,11 @@
 
 <div class="gitter" bind:this={gitter}>
   {#each reihe as c, i (c.id)}
-    <a class="kc card" href="#/social/c/{c.slug}" data-cid={c.id}
+    <a class="kc card" href="#/social/c/{c.slug}" data-cid={c.id} data-nr={nr.get(c.id) ?? i + 1}
       animate:flip={{ duration: ruhig() ? 0 : zieht ? 300 : fk.ms, easing: fk.easing }}
       in:fly={{ y: ruhig() ? 0 : 12, duration: ruhig() ? 0 : fk.ms, easing: fk.easing, opacity: 0 }}
-      use:ziehbar={{ aus: !schreiben || !sortierbar, start: () => start(c.id), bewegt: (x, y) => ueber(x, y), ende: (_x, _y, _u, ab) => ende(ab) }}>
-      {@render inhalt(c, gesamt?.get(c.id) ?? i + 1)}
+      use:ziehbar={{ aus: !schreiben || !sortierbar, start: (k) => start(c.id, k), bewegt: (x, y) => ueber(x, y), ende: (_x, _y, _u, ab) => ende(ab) }}>
+      {@render inhalt(c, nr.get(c.id) ?? i + 1)}
     </a>
   {/each}
 </div>
@@ -135,4 +148,14 @@
     .kc__stern:hover { color: #F7C65E; }
   }
   @media (max-width: 520px) { .gitter { gap: 10px; } .kc__t { padding: 10px 11px 12px; } .kc__unten { left: 6px; right: 6px; bottom: 6px; gap: 4px; } .kc__art, .kc__st { font-size: .7rem; padding: 0 7px; } }
+  /* Ziehen: das Original wird zur Lücke mit der Zielnummer, die Kopie schwebt mit Schatten */
+  :global(.kc.zieh-quelle) { opacity: 1 !important; transform: none !important; position: relative; background: color-mix(in srgb, var(--bereich) 7%, transparent) !important;
+    border: 1.5px dashed color-mix(in srgb, var(--bereich) 60%, transparent) !important; box-shadow: none !important; }
+  :global(.kc.zieh-quelle > *) { opacity: 0; }
+  :global(.kc.zieh-quelle)::after { content: attr(data-nr); position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6rem; font-weight: 700;
+    letter-spacing: -.03em; color: color-mix(in srgb, var(--bereich) 80%, var(--text)); font-variant-numeric: tabular-nums; }
+  :global(.kc.kc--schwebt) { border-color: color-mix(in srgb, var(--bereich) 55%, var(--line)) !important; }
+  :global(.kc--schwebt .kc__nr) { background: var(--bereich) !important; color: #0A1220 !important; }
+  :global(.kc__nr.pop) { animation: kc-pop .32s cubic-bezier(.34, 1.56, .64, 1); }
+  @keyframes -global-kc-pop { from { transform: scale(.7); } }
 </style>
