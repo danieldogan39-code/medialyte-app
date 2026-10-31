@@ -50,6 +50,9 @@ export const PLAETZE: { key: string; plattform: string; name: string }[] = [
   { key: "gm-foto", plattform: "google", name: "Foto" }, { key: "gm-beitrag", plattform: "google", name: "Beitrag" },
   { key: "gm-leistung", plattform: "google", name: "Leistung" }, { key: "gm-titel", plattform: "google", name: "Titelbild" }, { key: "gm-logo", plattform: "google", name: "Logo" },
 ];
+/** Name eines Typs auf einer Plattform (Videos heißen bei Instagram und Facebook „Reels“) */
+export const typName = (p: Plattform | undefined, t: Typ, mehrzahl = false) =>
+  t === "video" && (p?.kurz === "ig" || p?.kurz === "fb") ? (mehrzahl ? "Reels" : "Reel") : mehrzahl ? TYPEN[t].mehr : TYPEN[t].name;
 export const plattform = (key: string) => PLATTFORMEN.find((p) => p.key === key);
 const hochkant = (c: Creative) => { const d = c.dateien.find((x) => x.art === "video" || x.art === "bild"); return d?.b && d?.h ? d.h > d.b * 1.3 : true; };
 const artTyp = (c: Creative): Typ => (c.art === "video" ? "video" : c.art === "karussell" ? "karussell" : "beitrag");

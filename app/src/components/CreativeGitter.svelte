@@ -1,6 +1,7 @@
 <script lang="ts">
   // Kacheln der Creatives, per Ziehen sortierbar (Maus: ziehen · Finger: kurz halten, dann ziehen)
   import Icon from "./Icon.svelte";
+  import PlattformLogo from "./PlattformLogo.svelte";
   import { daten } from "../lib/daten.svelte";
   import { social, STATUS, PLATTFORMEN, typenVon, type Creative } from "../lib/social.svelte";
   import { ziehbar } from "../lib/ziehen";
@@ -59,7 +60,7 @@
       <span class="kc__t">
         <b>{c.titel}</b>
         <span class="kc__m">
-          {#if !plattform}{#each aufPlattform(c) as p (p.key)}<span class="pf" style="--p: {p.farbe}" title={p.name}><Icon name={p.icon} size={13} /></span>{/each}{/if}
+          {#if !plattform}{#each aufPlattform(c) as p (p.key)}<span class="pf" title={p.name}><PlattformLogo name={p.key} size={20} rund={0.3} /></span>{/each}{/if}
           {#if sl}<span class="sl" style="--k: {sl.farbe}"><i></i>{sl.name}</span>{/if}
           {#if c.geplant}<span class="gp"><Icon name="calendar" size={12} />{fmtTag(c.geplant)}</span>{/if}
         </span>
@@ -81,7 +82,7 @@
   .kc__t b { color: var(--text); font-weight: 600; font-size: .95rem; line-height: 1.25; }
   .kc__m { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .74rem; color: var(--text-2); }
   .kc__m:empty { display: none; }
-  .pf { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; color: var(--p); background: color-mix(in srgb, var(--p) 16%, transparent); margin-right: -6px; }
+  .pf { display: inline-grid; margin-right: -4px; }
   .sl { display: inline-flex; align-items: center; gap: 6px; }
   .sl i { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
   .gp { display: inline-flex; align-items: center; gap: 5px; color: var(--steel); }

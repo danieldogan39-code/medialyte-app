@@ -1,6 +1,6 @@
 [package]
 name = "medialyte"
-version = "0.9.10"
+version = "0.9.11"
 description = "Medialyte – Akquise, Anfragen, Kunden und Rechnungen"
 authors = ["Medialyte"]
 edition = "2021"

@@ -1,9 +1,7 @@
 -- Social Media: Für welche Plattform und welchen Platz ist ein Creative gebaut?
 -- ig-beitrag, ig-story (Instagram), fb-beitrag, fb-story (Facebook), yt (YouTube), li (LinkedIn)
 alter table public.social_creatives add column if not exists plattformen text[] not null default '{}';
-alter table public.social_creatives drop constraint if exists social_creatives_plattformen_check;
-alter table public.social_creatives add constraint social_creatives_plattformen_check
-  check (plattformen <@ array['ig-beitrag', 'ig-story', 'fb-beitrag', 'fb-story', 'yt', 'li']::text[]);
+-- Erlaubte Plätze: Prüfregel social_creatives_plattformen_check, festgelegt in der jeweils neuesten Migration (119)
 
 -- Bestehende Creatives einmalig zuordnen: Hochkant-Videos (9:16) passen als Beitrag und Story auf Instagram
 -- und Facebook sowie als YouTube Short; Bilder im Format 3:4 sind Instagram- und Facebook-Beiträge.

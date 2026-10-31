@@ -7,7 +7,7 @@
   import { router } from "../lib/router.svelte";
   import { haptik } from "../lib/haptik";
   import { social, STATUS, ART, PLATTFORMEN, PLAETZE, groesse, type Creative, type Datei } from "../lib/social.svelte";
-  import Icon2 from "../components/Icon.svelte";
+  import PlattformLogo from "../components/PlattformLogo.svelte";
   import { istAndroidApp } from "../lib/appupdate.svelte";
 
   let { slug }: { slug: string } = $props();
@@ -74,7 +74,10 @@
   }
   async function platzUmschalten(k: string) {
     if (!c) return;
-    const neu = c.plattformen?.includes(k) ? c.plattformen.filter((x) => x !== k) : [...(c.plattformen ?? []), k];
+    let neu = c.plattformen?.includes(k) ? c.plattformen.filter((x) => x !== k) : [...(c.plattformen ?? []), k];
+    // Ein Instagram-Reel (Hochkant-Video) passt immer auch als YouTube Short und als TikTok-Video
+    if (k === "ig-beitrag" && neu.includes(k) && c.art === "video" && c.dateien.some((d) => d.art === "video" && (d.h ?? 1) > (d.b ?? 0)))
+      neu = [...new Set([...neu, "yt", "tt-video"])];
     await setzen({ plattformen: neu });
     haptik("auswahl");
   }
@@ -149,9 +152,9 @@
             {@const plaetze = PLAETZE.filter((x) => x.plattform === p.key && (p.key !== "youtube" || c.art === "video") && (x.key !== "tt-video" || c.art === "video") && (x.key !== "tt-foto" || c.art !== "video"))}
             {#if plaetze.length}
               <div class="pl__z" style="--p: {p.farbe}">
-                <span class="pl__n"><span class="pl__l"><Icon2 name={p.icon} size={15} /></span>{p.name}</span>
+                <span class="pl__n"><PlattformLogo name={p.key} size={28} rund={0.3} />{p.name}</span>
                 <span class="pl__k">{#each plaetze as x (x.key)}
-                  <button class:on={c.plattformen?.includes(x.key)} aria-pressed={c.plattformen?.includes(x.key)} disabled={!schreiben} onclick={() => platzUmschalten(x.key)}>{x.key === "yt" ? (c.dateien.some((d) => d.art === "video" && (d.h ?? 0) > (d.b ?? 0)) ? "Shorts" : "Video") : (x.key.endsWith("beitrag") && !x.key.startsWith("gm")) || x.key === "li" ? (c.art === "video" ? "Video" : c.art === "karussell" ? "Mehrseitig" : "Beitrag") : x.name}</button>
+                  <button class:on={c.plattformen?.includes(x.key)} aria-pressed={c.plattformen?.includes(x.key)} disabled={!schreiben} onclick={() => platzUmschalten(x.key)}>{x.key === "yt" ? (c.dateien.some((d) => d.art === "video" && (d.h ?? 0) > (d.b ?? 0)) ? "Shorts" : "Video") : (x.key.endsWith("beitrag") && !x.key.startsWith("gm")) || x.key === "li" ? (c.art === "video" ? (x.key === "li" ? "Video" : "Reel") : c.art === "karussell" ? "Mehrseitig" : "Beitrag") : x.name}</button>
                 {/each}</span>
               </div>
             {/if}

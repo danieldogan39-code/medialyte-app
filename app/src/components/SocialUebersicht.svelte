@@ -1,7 +1,8 @@
 <script lang="ts">
   // Einstieg: je Plattform eine große Kachel; ein Tipp öffnet die Plattform mit ihren Inhaltstypen
   import Icon from "./Icon.svelte";
-  import { social, PLATTFORMEN, TYPEN, typenVon, type Creative, type Plattform } from "../lib/social.svelte";
+  import PlattformLogo from "./PlattformLogo.svelte";
+  import { social, PLATTFORMEN, TYPEN, typName, typenVon, type Creative, type Plattform } from "../lib/social.svelte";
   import { fly } from "svelte/transition";
   import { federKurve, ruhig } from "../lib/bewegung";
 
@@ -21,12 +22,12 @@
       in:fly={{ y: ruhig() ? 0 : 16, duration: ruhig() ? 0 : fk.ms, delay: ruhig() ? 0 : i * 50, easing: fk.easing, opacity: 0 }}>
       <span class="pk__glanz" aria-hidden="true"></span>
       <span class="pk__kopf">
-        <span class="pk__logo"><Icon name={p.icon} size={26} /></span>
+        <PlattformLogo name={p.key} size={52} />
         <span class="pk__name"><b>{p.name}</b><small>{l.length ? `${l.length} ${l.length === 1 ? "Creative" : "Creatives"}` : "Noch leer"}</small></span>
         <span class="pk__pfeil"><Icon name="right" size={18} /></span>
       </span>
       <span class="pk__typen">
-        {#each proTyp(p, l) as x (x.t)}<span><Icon name={TYPEN[x.t].icon} size={13} />{x.n} {x.n === 1 ? TYPEN[x.t].name : TYPEN[x.t].mehr}</span>
+        {#each proTyp(p, l) as x (x.t)}<span><Icon name={TYPEN[x.t].icon} size={13} />{x.n} {typName(p, x.t, x.n !== 1)}</span>
         {:else}<span class="leer">Sag Claude, was du für {p.name} brauchst.</span>{/each}
       </span>
       <span class="pk__faecher" aria-hidden="true">

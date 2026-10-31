@@ -2,8 +2,9 @@
   // Eine Plattform: oben die Inhaltstypen als Kacheln (Story, Video, Beitrag, mehrseitig), darunter die Creatives
   import Icon from "./Icon.svelte";
   import CreativeGitter from "./CreativeGitter.svelte";
+  import PlattformLogo from "./PlattformLogo.svelte";
   import { auth } from "../lib/auth.svelte";
-  import { social, STATUS, TYPEN, PLATTFORMEN, plattform, typenVon, type Creative, type Typ } from "../lib/social.svelte";
+  import { social, STATUS, TYPEN, PLATTFORMEN, plattform, typName, typenVon, type Creative, type Typ } from "../lib/social.svelte";
   import { fly } from "svelte/transition";
   import { federKurve, ruhig } from "../lib/bewegung";
 
@@ -28,13 +29,13 @@
   const liste = $derived(basis.filter((c) => passtStatus(c) && (!p || !typ || typenVon(c, p).includes(typ as Typ))));
   const titel = $derived(p ? p.name : kanal === "freigabe" ? "Zur Freigabe" : "Ohne Plattform");
   const bild = (c: Creative) => (c.vorschau ? social.bild[c.vorschau] : "");
-  const leerText = $derived(p && typ ? `Noch keine ${TYPEN[typ as Typ]?.mehr ?? "Creatives"} für ${p.name}.` : p ? `Noch nichts für ${p.name}.` : "Hier ist gerade nichts.");
+  const leerText = $derived(p && typ ? `Noch keine ${typName(p, typ as Typ, true)} für ${p.name}.` : p ? `Noch nichts für ${p.name}.` : "Hier ist gerade nichts.");
 </script>
 
 <div class="kopf" style="--p: {p?.farbe ?? 'var(--bereich)'}; --fl: {p?.flaeche ?? 'var(--bereich)'}">
   <a class="zurueck" href="#/social"><Icon name="left" size={16} />Alle Plattformen</a>
   <div class="kopf__z">
-    <span class="logo"><Icon name={p?.icon ?? (kanal === "freigabe" ? "check" : "image")} size={24} /></span>
+    {#if p}<PlattformLogo name={p.key} size={46} />{:else}<span class="logo"><Icon name={kanal === "freigabe" ? "check" : "image"} size={24} /></span>{/if}
     <h2>{titel}</h2>
     <span class="muted zahl">{basis.filter((c) => c.status !== "verworfen").length} Creatives</span>
   </div>
@@ -50,7 +51,7 @@
       <a class="tk" class:on={typ === x.t} class:leer={!x.l.length} href={typ === x.t ? `#/social/k/${p.key}` : `#/social/k/${p.key}/${x.t}`} aria-current={typ === x.t ? "page" : undefined}
         in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : fk.ms, delay: ruhig() ? 0 : 40 + i * 40, easing: fk.easing, opacity: 0 }}>
         <span class="tk__i"><Icon name={TYPEN[x.t].icon} size={18} /></span>
-        <span class="tk__t"><b>{TYPEN[x.t].name}</b><small>{x.l.length}</small></span>
+        <span class="tk__t"><b>{typName(p, x.t)}</b><small>{x.l.length}</small></span>
         <span class="tk__bilder" aria-hidden="true">{#each x.l.slice(0, 3) as c (c.id)}{#if bild(c)}<img src={bild(c)} alt="" draggable="false">{/if}{/each}</span>
       </a>
     {/each}
@@ -58,7 +59,7 @@
 {/if}
 
 <div class="leiste">
-  <h3>{p && typ ? TYPEN[typ as Typ]?.mehr : "Alle Creatives"} <span class="muted">{liste.length}</span></h3>
+  <h3>{p && typ ? typName(p, typ as Typ, true) : "Alle Creatives"} <span class="muted">{liste.length}</span></h3>
   <label class="st"><span class="sr">Status</span>
     <select class="input" bind:value={status}>
       <option value="aktiv">Alle außer verworfen</option>

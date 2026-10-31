@@ -316,3 +316,10 @@ do $$ begin
   update public.social_creatives set plattformen = array['tt-video', 'tt-story'] where slug = 'test-b';
   raise notice 'OK TikTok und einmalige Schritte';
 end $$;
+
+-- Alle Migrationen lassen sich erneut einspielen, auch wenn schon Google- und TikTok-Plätze vergeben sind
+update public.social_creatives set plattformen = array['gm-foto', 'tt-video'] where slug = 'test-b';
+\ir ../../supabase/migrations/117_social_plattformen.sql
+\ir ../../supabase/migrations/118_social_google.sql
+\ir ../../supabase/migrations/119_social_tiktok.sql
+do $$ begin raise notice 'OK Migrationen wiederholbar'; end $$;
