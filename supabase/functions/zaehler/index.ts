@@ -6,6 +6,8 @@
 //   {aktion: "tischbuch", slug}            → {lokal, anfragen, heute}      (Recht Kunden, Gästedaten nur durchgereicht)
 //   {aktion: "push_info"}                  → {vapid, geraete}               Benachrichtigungen (Recht Akquise)
 //   {aktion: "push_an", abo, geraet} / {aktion: "push_aus", endpoint} / {aktion: "push_test"}
+//   {aktion: "push_geraete"}               → {arten, geraete: [{id, geraet, typ, themen, ruhe}]}  was an welches Gerät geht
+//   {aktion: "push_einstellungen", id, themen, ruhe} / {aktion: "push_geraet_aus", id}
 //   {aktion: "zugang"}                     → {url, schluessel}  nur mit Schreibrecht Kunden: für die Tischbuch-Live-Ansicht
 //   {aktion: "agent_demo", slug, name}     → Demo-Tischbuch „demo-<slug>“ anlegen (Website-Agent ausprobieren)
 import { admin, alsNutzer, cors, json } from "../_shared/util.ts";
@@ -43,11 +45,32 @@ Deno.serve(async (req) => {
     }
     if (e.aktion === "push_an") {
       const ziel = typeof e.fcm === "string" ? { fcm: e.fcm } : { abo: e.abo };
-      const r = await fetch(`${basis}/abo`, { method: "POST", headers: h, body: JSON.stringify({ ...ziel, geraet: String(e.geraet ?? "").slice(0, 60) }) });
+      // wem das Gerät gehört, damit man es in der Liste wiedererkennt (z. B. „Daniel · Android“)
+      const { data: ich } = await nutzer.rpc("ich");
+      const wer = String((ich as any)?.name ?? "").split(" ")[0];
+      const geraet = (wer ? `${wer} · ` : "") + String(e.geraet ?? "").replace(/ · Medialyte-App$/, "");
+      const r = await fetch(`${basis}/abo`, { method: "POST", headers: h, body: JSON.stringify({ ...ziel, geraet: geraet.slice(0, 60) }) });
       return json(r.ok ? 200 : 502, { ok: r.ok });
     }
     if (e.aktion === "push_aus") {
       const r = await fetch(`${basis}/abo`, { method: "DELETE", headers: h, body: JSON.stringify(typeof e.fcm === "string" ? { fcm: e.fcm } : { abo: { endpoint: e.endpoint } }) });
+      return json(r.ok ? 200 : 502, { ok: r.ok });
+    }
+    if (e.aktion === "push_geraete") {
+      const r = await fetch(`${basis}/abo/geraete`, { headers: h });
+      if (r.status === 404) return json(200, { ok: true, veraltet: true, arten: [], geraete: [] });
+      const j = r.ok ? await r.json().catch(() => null) : null;
+      return json(j ? 200 : 502, { ok: !!j, arten: j?.arten ?? [], geraete: j?.geraete ?? [], error: j ? undefined : "Zähler-Dienst nicht erreichbar" });
+    }
+    if (e.aktion === "push_einstellungen") {
+      if (!/^[\w-]{10,40}$/.test(String(e.id ?? ""))) return json(400, { ok: false, error: "Gerät fehlt" });
+      const r = await fetch(`${basis}/abo/einstellungen`, { method: "POST", headers: h, body: JSON.stringify({ id: e.id, themen: e.themen, ruhe: e.ruhe }) });
+      const j = await r.json().catch(() => ({}));
+      return json(r.ok ? 200 : r.status === 404 ? 404 : 502, { ok: r.ok, themen: j.themen, ruhe: j.ruhe, error: r.ok ? undefined : j.fehler ?? "Nicht gespeichert" });
+    }
+    if (e.aktion === "push_geraet_aus") {
+      if (!/^[\w-]{10,40}$/.test(String(e.id ?? ""))) return json(400, { ok: false, error: "Gerät fehlt" });
+      const r = await fetch(`${basis}/abo/geraet`, { method: "DELETE", headers: h, body: JSON.stringify({ id: e.id }) });
       return json(r.ok ? 200 : 502, { ok: r.ok });
     }
     if (e.aktion === "push_test") {

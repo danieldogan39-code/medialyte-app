@@ -3,11 +3,11 @@
 // signiertes Oberflächen-Paket gibt, lädt es still herunter und nimmt es erst beim nächsten Start in Gebrauch
 // (oder wenn sie nach längerer Pause aus dem Hintergrund zurückkommt). Startet ein neues Paket nicht sauber,
 // springt sie von selbst auf das letzte funktionierende zurück (notifyAppReady bleibt dann aus).
-import { istAndroidApp } from "./appupdate.svelte";
+import { istAndroidApp, appUpdate } from "./appupdate.svelte";
 
 const KANAL = "https://api.github.com/repos/danieldogan39-code/medialyte-app/releases/tags/aktualisierung";
 const SCHLUESSEL = (import.meta as any).env?.VITE_UPDATE_SCHLUESSEL as string | undefined;
-const PAUSE = 10 * 60_000, SUCHABSTAND = 30 * 60_000;
+const PAUSE = 10 * 60_000, SUCHABSTAND = 5 * 60_000;
 type Manifest = { version: string; app: string; huelle: number; url: string; sha256: string; signatur: string };
 
 const C = () => (window as any).Capacitor;
@@ -53,6 +53,9 @@ export async function suchen() {
     if (!b?.id) return;
     await U.next({ id: b.id });   // wird beim nächsten Start benutzt
     wartet = b.id;
+    // Hinweis oben: „Jetzt neu starten“ nimmt die neue Oberfläche sofort (sonst beim nächsten Start)
+    appUpdate.liveId = b.id;
+    if (!appUpdate.neu) appUpdate.bereit = { v: m.app || m.version };
   } catch { /* still weiter; nächster Versuch später */ }
   finally { laeuft = false; }
 }

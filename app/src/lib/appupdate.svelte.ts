@@ -32,7 +32,10 @@ class AppUpdate {
   meineVersion = $state("");
   /** Mac/Windows: neue Version liegt bereit und ist beim nächsten Start aktiv */
   bereit = $state<{ v: string } | null>(null);
+  /** Android: vorbereitetes Oberflächen-Paket (lib/liveupdate.ts) */
+  liveId: string | null = null;
   #wartet: any = null;
+  #zuletzt = 0;
   #geladen: Promise<Stand> | null = null;
 
   laden(neu = false): Promise<Stand> {
@@ -74,14 +77,18 @@ class AppUpdate {
 
   /** Mac/Windows: signiertes Update suchen und im Hintergrund laden. true = Updater hat geantwortet. */
   async #programm(): Promise<boolean> {
+    this.#zuletzt = Date.now();
     const { check } = await import("@tauri-apps/plugin-updater");
     const u = await check();
     if (!u) return true;
+    if (this.bereit?.v === u.version) return true;   // schon vorbereitet
     await u.download();
     if (/Mac/i.test(navigator.userAgent)) {
       await u.install();   // ersetzt das Programm auf der Platte; das laufende Fenster bleibt unberührt
     } else {
+      const schonAngemeldet = !!this.#wartet;
       this.#wartet = u;    // Windows: der Installer schließt das Programm – deshalb erst beim Schließen
+      if (schonAngemeldet) { this.bereit = { v: u.version }; return true; }   // neuere Version ersetzt die vorbereitete
       const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const w = getCurrentWindow();
       w.onCloseRequested(async (e) => {
@@ -96,8 +103,24 @@ class AppUpdate {
     return true;
   }
 
+  /** Mac/Windows: auch während das Programm läuft nach neuen Versionen sehen (alle 30 Minuten und beim Zurückkommen) */
+  beobachten() {
+    if (!istDesktop() || !APP_VERSION) return;
+    const nochmal = () => { if (Date.now() - this.#zuletzt > 10 * 60_000) this.#programm().catch(() => {}); };
+    setInterval(nochmal, 30 * 60_000);
+    addEventListener("focus", nochmal);
+    // Mac: liegt eine neue Version bereit und ist das Fenster seit 10 Minuten versteckt, still neu starten
+    let weg = 0;
+    document.addEventListener("visibilitychange", () => { weg = document.visibilityState === "hidden" ? Date.now() : 0; });
+    setInterval(() => {
+      if (this.bereit && !this.#wartet && weg && Date.now() - weg > 10 * 60_000 && /Mac/i.test(navigator.userAgent) && !document.querySelector("dialog[open]"))
+        this.neuStarten().catch(() => {});
+    }, 60_000);
+  }
+
   /** „Jetzt neu starten“: vorbereitete Version sofort in Gebrauch nehmen */
   async neuStarten() {
+    if (istAndroidApp() && this.liveId) { await plugin("CapacitorUpdater").set({ id: this.liveId }); return; }
     if (this.#wartet) { const x = this.#wartet; this.#wartet = null; await x.install(); return; }   // Windows: Installer übernimmt
     const { relaunch } = await import("@tauri-apps/plugin-process");
     await relaunch();

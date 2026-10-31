@@ -147,3 +147,20 @@ export async function pushProbe(): Promise<string> {
   return f.length ? `${kurz} Problem: ${f[0]}` : r.gesendet ? `${kurz} Kommt nichts an, prüfe die Benachrichtigungs-Erlaubnis in den Einstellungen des Geräts.` : kurz;
 }
 export const pushTest = (): Promise<{ gesendet: number | null; geraete: number | null; fehler?: string[] }> => rufen({ aktion: "push_test" });
+
+// ---------- Was auf welches Gerät kommt (je Gerät einstellbar, gespeichert beim Benachrichtigungs-Dienst)
+export type Ruhe = { an: boolean; von: string; bis: string; dringend: boolean };
+export type Geraet = { id: string; geraet: string; seit: string | null; typ: "android" | "browser"; themen: Record<string, boolean>; ruhe: Ruhe | null };
+/** Kennung dieses Geräts beim Dienst (gleiche Rechnung wie dort: SHA-256 des Tokens bzw. der Push-Adresse) */
+export async function meineGeraeteId(): Promise<string | null> {
+  let quelle = "";
+  if (istAndroid) { const t = gemerkt(); if (t) quelle = "fcm:" + t; }
+  else { const s = await (await registrierung())?.pushManager.getSubscription().catch(() => null); if (s) quelle = s.endpoint; }
+  if (!quelle) return null;
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(quelle)));
+  let b = ""; for (const x of h) b += String.fromCharCode(x);
+  return btoa(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "").slice(0, 22);
+}
+export async function geraeteLaden(): Promise<{ veraltet?: boolean; geraete: Geraet[] }> { return rufen({ aktion: "push_geraete" }); }
+export async function geraetEinstellen(id: string, werte: { themen?: Record<string, boolean>; ruhe?: Ruhe }) { return rufen({ aktion: "push_einstellungen", id, ...werte }); }
+export async function geraetAbmelden(id: string) { return rufen({ aktion: "push_geraet_aus", id }); }

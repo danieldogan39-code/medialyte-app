@@ -20,7 +20,7 @@
   const rein = federKurve(0.5, 0), toastRein = federKurve(0.45, 0.18);
   // Rechnungsdaten im Hintergrund (für Rechnungen und das Kundenmenü), auch ohne Internet
   $effect(() => { if (auth.darf("rechnungen")) { R.meldung = (t) => daten.melden(t); R.starten(); } });
-  $effect(() => { setTimeout(() => appUpdate.pruefen(), 4000); });
+  $effect(() => { setTimeout(() => { appUpdate.pruefen(); appUpdate.beobachten(); }, 4000); });
 
   let offen = $state(false);   // „Mehr“-Blatt auf dem Handy
   $effect(() => { daten.laden(); });
@@ -217,7 +217,7 @@
   </nav>
 
   <main class="main" style="--bereich: {bereichVon(router.pfad).farbe}">
-    {#if appUpdate.bereit && !appUpdate.neu}<div class="upd"><span>Version {appUpdate.bereit.v} ist installiert und startet beim nächsten Öffnen.</span><button class="btn btn--s btn--primary" onclick={() => appUpdate.neuStarten().catch((e) => daten.melden(String(e?.message || e)))}>Jetzt neu starten</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.bereit = null)}>Später</button></div>{/if}
+    {#if appUpdate.bereit && !appUpdate.neu}<div class="upd"><span>Version {appUpdate.bereit.v} ist bereit und startet beim nächsten Öffnen.</span><button class="btn btn--s btn--primary" onclick={() => appUpdate.neuStarten().catch((e) => daten.melden(String(e?.message || e)))}>Jetzt neu starten</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.bereit = null)}>Später</button></div>{/if}
     {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} ist da. Mit einem Tipp installieren – deine Daten bleiben erhalten.</span><button class="btn btn--s btn--primary" disabled={appUpdate.fortschritt != null} onclick={async () => { const f = await appUpdate.installieren().catch((e) => String(e?.message || e)); if (f) daten.melden(f); }}>{appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : "Jetzt aktualisieren"}</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
     <div class="buehne">
     {#key seite + "#" + neuNr}
