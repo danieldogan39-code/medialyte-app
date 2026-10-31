@@ -8,6 +8,9 @@ on:
     paths: ["app/**", ".github/workflows/web.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: web-deploy
   cancel-in-progress: true
@@ -23,6 +26,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: app/package-lock.json
+      - name: Update-Schlüssel holen (öffentlicher Schlüssel für die App, privater zum Signieren der Android-Pakete)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: bddogrluopqgeqvqzqmy
+        run: bash tools/update/schluessel.sh oberflaeche
       - name: Bauen und prüfen
         working-directory: app
         run: |
@@ -40,3 +48,7 @@ jobs:
           if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$PASS" ]; then echo "::warning::IONOS-Secrets fehlen – nur gebaut, nicht hochgeladen."; exit 0; fi
           sudo apt-get install -y -qq lftp >/dev/null
           lftp -u "$USER","$PASS" "sftp://$HOST" -e "set sftp:auto-confirm yes; set net:max-retries 3; mirror --reverse --delete --verbose=1 app/dist /medialyte-app; bye"
+      - name: Oberfläche für die Android-App bereitstellen (signiert, wird dort automatisch eingespielt)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/update/oberflaeche_veroeffentlichen.sh

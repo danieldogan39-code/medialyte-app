@@ -62,7 +62,7 @@
     <small class="muted">Dieselbe App für alle Geräte. Die neueste Version holst du direkt hier.</small>
     {#if android || desktop}
       <div class="zeile">
-        <span><b>Diese App</b><small class="muted">{android ? `Android · Version ${appUpdate.meinBuild ? "1.0." + appUpdate.meinBuild : "…"}` : `${/Mac/i.test(navigator.userAgent) ? "Mac" : "Windows"} · Version ${APP_VERSION}`}{aktuell ? " · aktuell" : ""}</small></span>
+        <span><b>Diese App</b><small class="muted">{android ? `Android · App ${appUpdate.meineVersion || "…"} · Oberfläche ${APP_VERSION}` : `${/Mac/i.test(navigator.userAgent) ? "Mac" : "Windows"} · Version ${APP_VERSION}`}{aktuell ? " · aktuell" : ""}</small></span>
         <button class="btn btn--s {aktuell ? '' : 'btn--primary'}" disabled={appUpdate.fortschritt != null} onclick={holen}>
           {appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : aktuell ? "Neu installieren" : `Version ${android ? st.android?.v : st.programm?.v} installieren`}</button>
       </div>

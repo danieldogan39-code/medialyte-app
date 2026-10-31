@@ -8,6 +8,7 @@ import { R } from "./lib/rechnungen/daten.svelte";
 import { federCss } from "./lib/bewegung";
 import { modalZu } from "./lib/bewegung";
 import { haptik } from "./lib/haptik";
+import { bestaetigen, beobachten, suchen } from "./lib/liveupdate";
 
 // Federkurven als CSS-Variablen (für Übergänge in den Stilen)
 document.documentElement.style.setProperty("--feder", federCss(0.5, 0.08));
@@ -41,6 +42,8 @@ addEventListener("click", (e) => {
 auth.init();
 mount(App, { target: document.getElementById("app")! });
 swStarten();
+// Android: diese Oberfläche läuft → bestätigen (sonst Rückfall auf die vorige); danach still nach Updates schauen
+bestaetigen().then(() => { beobachten(); setTimeout(suchen, 8000); });
 
 // Im Mac-/Windows-Programm: Links nach außen (Demos, WhatsApp, E-Mail, Telefon) im Standardprogramm öffnen
 if ("__TAURI_INTERNALS__" in window) {

@@ -214,6 +214,7 @@
   </nav>
 
   <main class="main" style="--bereich: {bereichVon(router.pfad).farbe}">
+    {#if appUpdate.bereit && !appUpdate.neu}<div class="upd"><span>Version {appUpdate.bereit.v} ist installiert und startet beim nächsten Öffnen.</span><button class="btn btn--s btn--primary" onclick={() => appUpdate.neuStarten().catch((e) => daten.melden(String(e?.message || e)))}>Jetzt neu starten</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.bereit = null)}>Später</button></div>{/if}
     {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} ist da. Mit einem Tipp installieren – deine Daten bleiben erhalten.</span><button class="btn btn--s btn--primary" disabled={appUpdate.fortschritt != null} onclick={async () => { const f = await appUpdate.installieren().catch((e) => String(e?.message || e)); if (f) daten.melden(f); }}>{appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : "Jetzt aktualisieren"}</button><button class="btn btn--quiet btn--s" onclick={() => (appUpdate.neu = null)}>Später</button></div>{/if}
     <div class="buehne">
     {#key seite + "#" + neuNr}

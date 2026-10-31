@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Medialyte",
-  "version": "0.9.11",
+  "version": "0.9.12",
   "identifier": "de.medialyte.app",
   "build": {
     "frontendDist": "../dist",
@@ -60,6 +60,18 @@
       },
       "wix": {
         "language": "de-DE"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "WIRD-BEIM-BAUEN-EINGESETZT",
+      "endpoints": [
+        "https://github.com/danieldogan39-code/medialyte-app/releases/download/aktualisierung/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

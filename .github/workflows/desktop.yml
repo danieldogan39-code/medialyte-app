@@ -42,6 +42,16 @@ jobs:
           workspaces: app/src-tauri -> target
       - run: npm ci
         working-directory: app
+      - name: Update-Schlüssel holen und öffentlichen Schlüssel einsetzen
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: bddogrluopqgeqvqzqmy
+        run: |
+          bash tools/update/schluessel.sh programm
+          PUB=$(grep '^TAURI_UPDATER_PUBKEY=' "$GITHUB_ENV" | tail -1 | cut -d= -f2-)
+          jq --arg k "$PUB" '.plugins.updater.pubkey = $k' app/src-tauri/tauri.conf.json > "$RUNNER_TEMP/t.json"
+          mv "$RUNNER_TEMP/t.json" app/src-tauri/tauri.conf.json
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,3 +65,14 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  kanal:
+    # Update-Kanal für den Tauri-Updater: latest.json mit den signierten Mac- und Windows-Dateien
+    needs: bauen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: latest.json bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/update/programm_kanal.sh

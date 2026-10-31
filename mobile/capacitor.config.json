@@ -17,6 +17,18 @@
         "sound",
         "alert"
       ]
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "appReadyTimeout": 15000,
+      "responseTimeout": 60,
+      "autoDeleteFailed": true,
+      "autoDeletePrevious": true,
+      "resetWhenUpdate": true,
+      "directUpdate": false,
+      "updateUrl": "",
+      "statsUrl": "",
+      "channelUrl": ""
     }
   },
   "loggingBehavior": "production"

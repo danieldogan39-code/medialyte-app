@@ -1,6 +1,9 @@
-// Neueste App-Version direkt aus der App holen, ohne Umweg über GitHub:
-// Android lädt die APK selbst herunter und startet die Installation, Mac/Windows laden das Installationsprogramm
-// direkt herunter. Die Liste der Versionen kommt von den GitHub-Releases (öffentlich, ohne Anmeldung).
+// Neue App-Versionen:
+// · Mac/Windows: der Tauri-Updater lädt signierte Versionen im Hintergrund; aktiv werden sie beim nächsten Start
+//   (Mac sofort vorbereitet, Windows beim Schließen des Fensters). Nur wenn das nicht geht, wie früher per Download.
+// · Android: die Oberfläche aktualisiert sich selbst (lib/liveupdate.ts). Nur neue Handy-Funktionen brauchen eine neue
+//   APK – die lädt die App selbst herunter und startet die Installation.
+// Die Liste der Versionen kommt von den GitHub-Releases (öffentlich, ohne Anmeldung).
 const RELEASES = "https://api.github.com/repos/danieldogan39-code/medialyte-app/releases?per_page=30";
 declare const __APP_VERSION__: string;
 export const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "";
@@ -26,6 +29,10 @@ class AppUpdate {
   /** Fortschritt beim Herunterladen (0–1), null = läuft nicht */
   fortschritt = $state<number | null>(null);
   meinBuild = $state(0);
+  meineVersion = $state("");
+  /** Mac/Windows: neue Version liegt bereit und ist beim nächsten Start aktiv */
+  bereit = $state<{ v: string } | null>(null);
+  #wartet: any = null;
   #geladen: Promise<Stand> | null = null;
 
   laden(neu = false): Promise<Stand> {
@@ -54,14 +61,46 @@ class AppUpdate {
     try {
       if (istAndroidApp()) {
         const info = await cap().Plugins?.App?.getInfo?.();
-        this.meinBuild = +(info?.build ?? 0); if (!this.meinBuild) return;
+        this.meinBuild = +(info?.build ?? 0); this.meineVersion = String(info?.version ?? ""); if (!this.meinBuild) return;
         const s = await this.laden();
         if (s.android && s.android.build > this.meinBuild) this.neu = { v: s.android.v };
       } else if (istDesktop() && APP_VERSION) {
-        const s = await this.laden();
+        if (await this.#programm().catch(() => false)) return;
+        const s = await this.laden();   // Notlösung: Updater nicht erreichbar → Hinweis mit Download wie bisher
         if (s.programm && neuer(s.programm.v, APP_VERSION)) this.neu = { v: s.programm.v };
       }
     } catch { /* ohne Hinweis weiter */ }
+  }
+
+  /** Mac/Windows: signiertes Update suchen und im Hintergrund laden. true = Updater hat geantwortet. */
+  async #programm(): Promise<boolean> {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const u = await check();
+    if (!u) return true;
+    await u.download();
+    if (/Mac/i.test(navigator.userAgent)) {
+      await u.install();   // ersetzt das Programm auf der Platte; das laufende Fenster bleibt unberührt
+    } else {
+      this.#wartet = u;    // Windows: der Installer schließt das Programm – deshalb erst beim Schließen
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      const w = getCurrentWindow();
+      w.onCloseRequested(async (e) => {
+        if (!this.#wartet) return;
+        e.preventDefault();
+        const x = this.#wartet; this.#wartet = null;
+        try { await x.install(); } catch { /* dann beim nächsten Mal */ }
+        await w.destroy();
+      });
+    }
+    this.bereit = { v: u.version };
+    return true;
+  }
+
+  /** „Jetzt neu starten“: vorbereitete Version sofort in Gebrauch nehmen */
+  async neuStarten() {
+    if (this.#wartet) { const x = this.#wartet; this.#wartet = null; await x.install(); return; }   // Windows: Installer übernimmt
+    const { relaunch } = await import("@tauri-apps/plugin-process");
+    await relaunch();
   }
 
   /** Direkt-Link für das passende Installationsprogramm am Mac bzw. unter Windows */

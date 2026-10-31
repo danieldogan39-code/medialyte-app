@@ -25,6 +25,21 @@ Dieselbe Oberfläche läuft im Browser (app.medialyte.de), als Programm auf Mac 
   aus einem vorhandenen Secret abgeleitet und landet nie im Repository.
 - **Datensparsam.** Anfragen ohne Auftrag werden nach 12 Monaten gelöscht; Google-Daten eines Betriebs nur, solange seine Demo online ist.
 
+## Automatische Updates
+
+Die App startet immer aus ihren eigenen Dateien (nie aus dem Netz). Neue Versionen kommen signiert im Hintergrund
+und werden erst beim nächsten Start aktiv.
+
+- **Mac/Windows:** Tauri-Updater. `desktop.yml` signiert die Builds und legt `latest.json` im Release `aktualisierung` ab.
+  Mac bereitet das Update sofort vor, Windows installiert es beim Schließen des Fensters; „Jetzt neu starten“ geht auch.
+- **Android:** Oberflächen-Pakete (Capgo Updater, ohne Capgo-Cloud). `web.yml` baut die Oberfläche, signiert das Paket
+  (ECDSA P-256) und legt es samt Manifest im Release `aktualisierung` ab. Die App prüft die Signatur, lädt das Paket,
+  nimmt es beim nächsten Start (oder nach 10 Minuten im Hintergrund) und springt zurück, wenn es nicht sauber startet.
+- **Neue Handy-Funktionen** (Capacitor-Plugins, Android-Rechte): `mobile/huelle.txt` um eins erhöhen. Die neue APK
+  heißt dann `<Stufe>.0.<Build>`; Pakete mit höherer Stufe warten, bis die neue APK installiert ist.
+- **Schlüssel:** `tools/update/schluessel.sh` legt sie beim ersten Lauf an und hält sie in `private.update_schluessel`
+  (Supabase). Im Repository steht keiner.
+
 ## Social Media (Creatives)
 
 Fertige Creatives landen auf der Seite „Social Media“ (Bilder, Karussells, Videos mit Titelbild und Text).
