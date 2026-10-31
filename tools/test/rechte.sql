@@ -299,3 +299,11 @@ do $$ begin
   raise notice 'OK Social nur mit Zwei-Faktor';
 end $$;
 reset role;
+
+-- Plattformen: nur bekannte Plätze erlaubt
+do $$ begin
+  update public.social_creatives set plattformen = array['ig-story', 'li'] where slug = 'test-a';
+  begin update public.social_creatives set plattformen = array['tiktok'] where slug = 'test-a'; raise exception 'unbekannte Plattform angenommen';
+  exception when check_violation then null; end;
+  raise notice 'OK Plattformen';
+end $$;

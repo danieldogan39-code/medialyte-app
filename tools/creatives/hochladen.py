@@ -2,7 +2,7 @@
 
   python3 tools/creatives/hochladen.py <ordner> [<ordner> …]
 
-Jeder Ordner ist ein Creative: creative.json (titel, art, serie, text, format, saeule, optional status/position/geplant)
+Jeder Ordner ist ein Creative: creative.json (titel, art, serie, text, format, saeule, optional plattformen/status/position/geplant)
 und die Dateien (Bilder 01.jpg, 02.jpg …, bzw. video.mp4 + titelbild.jpg). Das Skript erzeugt das Vorschaubild,
 bei Karussells ein ZIP mit allen Bildern und dem Text, verschlüsselt alles mit tools/creatives/schluessel.pub
 und legt es im Zweig creatives-eingang ab. Den Rest erledigt .github/workflows/creatives.yml.
@@ -53,6 +53,13 @@ def vorbereiten(ordner: str, ziel: str) -> str:
             for f in bilder: z.write(os.path.join(ordner, f), f"{slug}_{f}")
             if meta.get("text"): z.writestr(f"{slug}_text.txt", meta["text"] + "\n")
         infos.append({"name": "paket.zip", "anzeige": f"{slug}.zip", "art": "paket"})
+    if "plattformen" not in meta:   # Standard nach Format: hochkant 9:16, Beitrag 3:4/4:5/1:1, quer 16:9
+        m = next((i for i in infos if i.get("b") and i.get("h") and not i["name"].startswith(("titelbild", "vorschau"))), {})
+        r = (m.get("h") or 1) / (m.get("b") or 1)
+        if meta["art"] == "video":
+            meta["plattformen"] = ["ig-beitrag", "ig-story", "fb-beitrag", "fb-story", "yt"] if r > 1.5 else ["yt", "li", "fb-beitrag"]
+        else:
+            meta["plattformen"] = ["ig-story", "fb-story"] if r > 1.5 else ["ig-beitrag", "fb-beitrag"] + (["li"] if r <= 1.26 else [])
     meta["dateien"] = infos
     json.dump(meta, open(os.path.join(out, "creative.json"), "w"), ensure_ascii=False)
     return slug

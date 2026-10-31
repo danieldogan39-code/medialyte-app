@@ -6,7 +6,8 @@
   import { frage } from "../lib/frage.svelte";
   import { router } from "../lib/router.svelte";
   import { haptik } from "../lib/haptik";
-  import { social, STATUS, ART, groesse, type Creative, type Datei } from "../lib/social.svelte";
+  import { social, STATUS, ART, PLATTFORMEN, PLAETZE, groesse, type Creative, type Datei } from "../lib/social.svelte";
+  import Icon2 from "../components/Icon.svelte";
   import { istAndroidApp } from "../lib/appupdate.svelte";
 
   let { slug }: { slug: string } = $props();
@@ -71,6 +72,12 @@
     try { await social.loeschen(c); daten.melden("Creative gelöscht"); router.geh("/social"); }
     catch (e: any) { daten.melden("Nicht gelöscht: " + e.message); }
   }
+  async function platzUmschalten(k: string) {
+    if (!c) return;
+    const neu = c.plattformen?.includes(k) ? c.plattformen.filter((x) => x !== k) : [...(c.plattformen ?? []), k];
+    await setzen({ plattformen: neu });
+    haptik("auswahl");
+  }
   const datum = (s: string) => new Date(s).toLocaleDateString("de-DE", { day: "numeric", month: "long", year: "numeric" });
   const DATEIART: Record<string, string> = { bild: "Bild", video: "Video", titelbild: "Titelbild", paket: "Alle Bilder als ZIP" };
 </script>
@@ -79,7 +86,7 @@
   {#if social.laedt}<div class="skelett" aria-label="Lade …"><i></i><i></i></div>
   {:else}<div class="card empty"><b>Creative nicht gefunden</b><p>Vielleicht wurde es gelöscht.</p><a class="btn" href="#/social">Zu den Creatives</a></div>{/if}
 {:else}
-  <Head titel={c.titel} text={[c.serie, ART[c.art], c.format].filter(Boolean).join(" · ")} zurueck="#/social">
+  <Head titel={c.titel} text={[c.serie, ART[c.art], c.format].filter(Boolean).join(" · ")} zurueck={social.zuletzt || "#/social"}>
     <span class="pill pill--{STATUS[c.status].ton}">{STATUS[c.status].name}</span>
   </Head>
 
@@ -133,6 +140,23 @@
           <div class="knoepfe"><button class="btn btn--s btn--primary" onclick={textSpeichern}>Speichern</button><button class="btn btn--quiet btn--s" onclick={() => (bearbeiten = false)}>Abbrechen</button></div>
         {:else if c.text}<p class="text">{c.text}</p>
         {:else}<p class="muted klein">Noch kein Text.</p>{/if}
+      </section>
+
+      <section class="card block">
+        <div class="block__k"><b>Plattformen</b><span class="muted klein">Wofür ist es gebaut?</span></div>
+        <div class="pl">
+          {#each PLATTFORMEN as p (p.key)}
+            {@const plaetze = PLAETZE.filter((x) => x.plattform === p.key && (p.key !== "youtube" || c.art === "video"))}
+            {#if plaetze.length}
+              <div class="pl__z" style="--p: {p.farbe}">
+                <span class="pl__n"><span class="pl__l"><Icon2 name={p.icon} size={15} /></span>{p.name}</span>
+                <span class="pl__k">{#each plaetze as x (x.key)}
+                  <button class:on={c.plattformen?.includes(x.key)} aria-pressed={c.plattformen?.includes(x.key)} disabled={!schreiben} onclick={() => platzUmschalten(x.key)}>{x.key === "yt" ? (c.dateien.some((d) => d.art === "video" && (d.h ?? 0) > (d.b ?? 0)) ? "Shorts" : "Video") : x.key.endsWith("beitrag") || x.key === "li" ? (c.art === "video" ? "Video" : c.art === "karussell" ? "Mehrseitig" : "Beitrag") : x.name}</button>
+                {/each}</span>
+              </div>
+            {/if}
+          {/each}
+        </div>
       </section>
 
       <section class="card block">
@@ -202,6 +226,14 @@
   .seg button.on.seg--gruen { background: rgba(76, 195, 138, .2); color: #6FD3A2; }
   .seg button.on.seg--blau { background: rgba(111, 168, 240, .2); color: #8DBBF5; }
   .seg button.on.seg--grau { background: rgba(139, 152, 173, .2); color: #AEB9CA; }
+  .pl { display: grid; gap: 8px; }
+  .pl__z { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pl__n { display: inline-flex; align-items: center; gap: 10px; font-size: .9rem; color: var(--text); }
+  .pl__l { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--p); background: color-mix(in srgb, var(--p) 15%, transparent); }
+  .pl__k { display: flex; gap: 6px; }
+  .pl__k button { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--steel); font: inherit; font-size: .8rem; cursor: pointer;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+  .pl__k button.on { background: color-mix(in srgb, var(--p) 20%, transparent); border-color: color-mix(in srgb, var(--p) 55%, transparent); color: var(--text); }
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .meta { font-size: .8rem; margin: 0; }
   .weg { justify-self: start; color: #FF8080; }

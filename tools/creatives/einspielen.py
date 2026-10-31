@@ -10,7 +10,7 @@ from schluessel import entschluesseln, privat_aus_secret
 REF = os.environ["PROJECT_REF"]
 TOKEN = os.environ["SUPABASE_ACCESS_TOKEN"]
 BASIS = f"https://{REF}.supabase.co"
-ERLAUBT = {"titel", "art", "serie", "text", "format", "saeule", "status", "position", "geplant", "notiz"}
+ERLAUBT = {"plattformen", "titel", "art", "serie", "text", "format", "saeule", "status", "position", "geplant", "notiz"}
 
 
 def anfrage(url, methode="GET", daten=None, kopf=None):

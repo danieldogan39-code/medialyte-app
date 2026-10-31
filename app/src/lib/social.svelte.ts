@@ -8,7 +8,7 @@ export type Datei = { name: string; pfad: string; art: "bild" | "video" | "titel
 export type Creative = {
   id: string; slug: string; titel: string; art: "bild" | "karussell" | "video"; serie: string | null; text: string; format: string | null;
   status: "pruefen" | "freigegeben" | "gepostet" | "verworfen"; saeule: string | null; dateien: Datei[]; vorschau: string | null;
-  position: number | null; geplant: string | null; notiz: string | null; erstellt: string; geaendert: string;
+  position: number | null; geplant: string | null; notiz: string | null; erstellt: string; geaendert: string; plattformen: string[];
 };
 export type Saeule = { id: string; name: string; farbe: string; text: string };
 export type Plan = { idee?: string; faden?: string; zielgruppe?: string; ton?: string; rhythmus?: string; saeulen?: Saeule[] };
@@ -18,6 +18,43 @@ export const STATUS: Record<Creative["status"], { name: string; ton: string }> =
   gepostet: { name: "Gepostet", ton: "blau" }, verworfen: { name: "Verworfen", ton: "grau" },
 };
 export const ART: Record<Creative["art"], string> = { bild: "Einzelbild", karussell: "Karussell", video: "Video" };
+// Plattformen und was dort gepostet wird. Gespeichert wird je Creative, auf welchen Plätzen es läuft:
+// ig-beitrag, ig-story, fb-beitrag, fb-story, yt, li
+export type Typ = "story" | "video" | "beitrag" | "karussell" | "short";
+export type Plattform = { key: string; name: string; kurz: string; icon: string; farbe: string; flaeche: string; typen: Typ[] };
+export const PLATTFORMEN: Plattform[] = [
+  { key: "instagram", name: "Instagram", kurz: "ig", icon: "instagram", farbe: "#E4405F", flaeche: "linear-gradient(135deg, #FEDA75 0%, #F58529 22%, #DD2A7B 52%, #8134AF 78%, #515BD4 100%)", typen: ["story", "video", "beitrag", "karussell"] },
+  { key: "facebook", name: "Facebook", kurz: "fb", icon: "facebook", farbe: "#1877F2", flaeche: "linear-gradient(135deg, #3B95FF, #1877F2 55%, #0B5BD3)", typen: ["story", "video", "beitrag", "karussell"] },
+  { key: "linkedin", name: "LinkedIn", kurz: "li", icon: "linkedin", farbe: "#0A66C2", flaeche: "linear-gradient(135deg, #2D8CE8, #0A66C2 55%, #064C93)", typen: ["video", "beitrag", "karussell"] },
+  { key: "youtube", name: "YouTube", kurz: "yt", icon: "youtube", farbe: "#FF0033", flaeche: "linear-gradient(135deg, #FF4D5E, #FF0033 55%, #C4001F)", typen: ["short", "video"] },
+];
+export const TYPEN: Record<Typ, { name: string; mehr: string; icon: string }> = {
+  story: { name: "Story", mehr: "Stories", icon: "story" },
+  video: { name: "Video", mehr: "Videos", icon: "play" },
+  beitrag: { name: "Beitrag", mehr: "Beiträge", icon: "image" },
+  karussell: { name: "Mehrseitiger Beitrag", mehr: "Mehrseitige Beiträge", icon: "stapel" },
+  short: { name: "Shorts", mehr: "Shorts", icon: "story" },
+};
+/** Plätze zum Ankreuzen auf der Detailseite */
+export const PLAETZE: { key: string; plattform: string; name: string }[] = [
+  { key: "ig-beitrag", plattform: "instagram", name: "Beitrag" }, { key: "ig-story", plattform: "instagram", name: "Story" },
+  { key: "fb-beitrag", plattform: "facebook", name: "Beitrag" }, { key: "fb-story", plattform: "facebook", name: "Story" },
+  { key: "li", plattform: "linkedin", name: "Beitrag" }, { key: "yt", plattform: "youtube", name: "Video" },
+];
+export const plattform = (key: string) => PLATTFORMEN.find((p) => p.key === key);
+const hochkant = (c: Creative) => { const d = c.dateien.find((x) => x.art === "video" || x.art === "bild"); return d?.b && d?.h ? d.h > d.b * 1.3 : true; };
+const artTyp = (c: Creative): Typ => (c.art === "video" ? "video" : c.art === "karussell" ? "karussell" : "beitrag");
+/** Als was ein Creative auf einer Plattform läuft (z. B. Video als Story und als Video) */
+export function typenVon(c: Creative, p: Plattform): Typ[] {
+  const pl = c.plattformen ?? [], r: Typ[] = [];
+  if (p.kurz === "ig" || p.kurz === "fb") {
+    if (pl.includes(p.kurz + "-story")) r.push("story");
+    if (pl.includes(p.kurz + "-beitrag")) r.push(artTyp(c));
+  } else if (p.kurz === "li" && pl.includes("li")) r.push(artTyp(c));
+  else if (p.kurz === "yt" && pl.includes("yt") && c.art === "video") r.push(hochkant(c) ? "short" : "video");
+  return r;
+}
+
 export const FARBEN = ["#FF5757", "#F7C65E", "#8AB0FF", "#4EDC8F", "#A78BFA", "#4FC7D4", "#F08FC0", "#FB923C"];
 
 class Social {
@@ -25,6 +62,7 @@ class Social {
   plan = $state<Plan>(lies("social:plan", {}));
   laedt = $state(!hat("social:creatives"));
   fehler = $state("");
+  zuletzt = "";   // zuletzt geöffnete Plattform-Ansicht (für „Zurück“ auf der Detailseite)
   private urls = new Map<string, { url: string; bis: number }>();
   private kanal: ReturnType<typeof sb.channel> | null = null;
 
