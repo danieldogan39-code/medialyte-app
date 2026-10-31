@@ -7,7 +7,12 @@ alter table public.social_creatives add constraint social_creatives_plattformen_
 
 -- Bestehende Creatives einmalig zuordnen: Hochkant-Videos (9:16) passen als Beitrag und Story auf Instagram
 -- und Facebook sowie als YouTube Short; Bilder im Format 3:4 sind Instagram- und Facebook-Beiträge.
-update public.social_creatives set plattformen = case
-    when art = 'video' then array['ig-beitrag', 'ig-story', 'fb-beitrag', 'fb-story', 'yt']
-    else array['ig-beitrag', 'fb-beitrag'] end
-where plattformen = '{}';
+-- (Nur solange 119 die Tabelle public.einmalig noch nicht angelegt hat; danach nie wieder.)
+do $$ begin
+  if to_regclass('public.einmalig') is null then
+    update public.social_creatives set plattformen = case
+        when art = 'video' then array['ig-beitrag', 'ig-story', 'fb-beitrag', 'fb-story', 'yt']
+        else array['ig-beitrag', 'fb-beitrag'] end
+    where plattformen = '{}';
+  end if;
+end $$;

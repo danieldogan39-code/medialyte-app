@@ -25,9 +25,10 @@ export type Plattform = { key: string; name: string; kurz: string; icon: string;
 export const PLATTFORMEN: Plattform[] = [
   { key: "instagram", name: "Instagram", kurz: "ig", icon: "instagram", farbe: "#E4405F", flaeche: "linear-gradient(135deg, #FEDA75 0%, #F58529 22%, #DD2A7B 52%, #8134AF 78%, #515BD4 100%)", typen: ["story", "video", "beitrag", "karussell"] },
   { key: "facebook", name: "Facebook", kurz: "fb", icon: "facebook", farbe: "#1877F2", flaeche: "linear-gradient(135deg, #3B95FF, #1877F2 55%, #0B5BD3)", typen: ["story", "video", "beitrag", "karussell"] },
+  { key: "tiktok", name: "TikTok", kurz: "tt", icon: "tiktok", farbe: "#FE2C55", flaeche: "linear-gradient(135deg, #25F4EE 0%, #121212 38%, #121212 62%, #FE2C55 100%)", typen: ["video", "karussell", "story"] },
   { key: "linkedin", name: "LinkedIn", kurz: "li", icon: "linkedin", farbe: "#0A66C2", flaeche: "linear-gradient(135deg, #2D8CE8, #0A66C2 55%, #064C93)", typen: ["video", "beitrag", "karussell"] },
-  { key: "google", name: "Google Maps", kurz: "gm", icon: "pin", farbe: "#34A853", flaeche: "linear-gradient(135deg, #5BB974, #34A853 50%, #1E8E3E)", typen: ["foto", "beitrag", "leistung", "titelbild", "logo"] },
   { key: "youtube", name: "YouTube", kurz: "yt", icon: "youtube", farbe: "#FF0033", flaeche: "linear-gradient(135deg, #FF4D5E, #FF0033 55%, #C4001F)", typen: ["short", "video"] },
+  { key: "google", name: "Google", kurz: "gm", icon: "google", farbe: "#4285F4", flaeche: "linear-gradient(135deg, #4285F4 0%, #34A853 38%, #FBBC05 68%, #EA4335 100%)", typen: ["foto", "beitrag", "leistung", "titelbild", "logo"] },
 ];
 export const TYPEN: Record<Typ, { name: string; mehr: string; icon: string }> = {
   story: { name: "Story", mehr: "Stories", icon: "story" },
@@ -45,6 +46,7 @@ export const PLAETZE: { key: string; plattform: string; name: string }[] = [
   { key: "ig-beitrag", plattform: "instagram", name: "Beitrag" }, { key: "ig-story", plattform: "instagram", name: "Story" },
   { key: "fb-beitrag", plattform: "facebook", name: "Beitrag" }, { key: "fb-story", plattform: "facebook", name: "Story" },
   { key: "li", plattform: "linkedin", name: "Beitrag" }, { key: "yt", plattform: "youtube", name: "Video" },
+  { key: "tt-video", plattform: "tiktok", name: "Video" }, { key: "tt-foto", plattform: "tiktok", name: "Foto-Beitrag" }, { key: "tt-story", plattform: "tiktok", name: "Story" },
   { key: "gm-foto", plattform: "google", name: "Foto" }, { key: "gm-beitrag", plattform: "google", name: "Beitrag" },
   { key: "gm-leistung", plattform: "google", name: "Leistung" }, { key: "gm-titel", plattform: "google", name: "Titelbild" }, { key: "gm-logo", plattform: "google", name: "Logo" },
 ];
@@ -59,7 +61,11 @@ export function typenVon(c: Creative, p: Plattform): Typ[] {
     if (pl.includes(p.kurz + "-beitrag")) r.push(artTyp(c));
   } else if (p.kurz === "li" && pl.includes("li")) r.push(artTyp(c));
   else if (p.kurz === "yt" && pl.includes("yt") && c.art === "video") r.push(hochkant(c) ? "short" : "video");
-  else if (p.kurz === "gm") {
+  else if (p.kurz === "tt") {
+    if (pl.includes("tt-video") && c.art === "video") r.push("video");
+    if (pl.includes("tt-foto") && c.art !== "video") r.push(c.art === "karussell" ? "karussell" : "beitrag");
+    if (pl.includes("tt-story")) r.push("story");
+  } else if (p.kurz === "gm") {
     const m: [string, Typ][] = [["gm-foto", "foto"], ["gm-beitrag", "beitrag"], ["gm-leistung", "leistung"], ["gm-titel", "titelbild"], ["gm-logo", "logo"]];
     for (const [k, t] of m) if (pl.includes(k)) r.push(c.art === "video" && t === "foto" ? "video" : t);
   }

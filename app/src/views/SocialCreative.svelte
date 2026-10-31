@@ -146,7 +146,7 @@
         <div class="block__k"><b>Plattformen</b><span class="muted klein">Wofür ist es gebaut?</span></div>
         <div class="pl">
           {#each PLATTFORMEN as p (p.key)}
-            {@const plaetze = PLAETZE.filter((x) => x.plattform === p.key && (p.key !== "youtube" || c.art === "video"))}
+            {@const plaetze = PLAETZE.filter((x) => x.plattform === p.key && (p.key !== "youtube" || c.art === "video") && (x.key !== "tt-video" || c.art === "video") && (x.key !== "tt-foto" || c.art !== "video"))}
             {#if plaetze.length}
               <div class="pl__z" style="--p: {p.farbe}">
                 <span class="pl__n"><span class="pl__l"><Icon2 name={p.icon} size={15} /></span>{p.name}</span>

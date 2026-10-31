@@ -57,7 +57,7 @@ def vorbereiten(ordner: str, ziel: str) -> str:
         m = next((i for i in infos if i.get("b") and i.get("h") and not i["name"].startswith(("titelbild", "vorschau"))), {})
         r = (m.get("h") or 1) / (m.get("b") or 1)
         if meta["art"] == "video":
-            meta["plattformen"] = ["ig-beitrag", "ig-story", "fb-beitrag", "fb-story", "yt"] if r > 1.5 else ["yt", "li", "fb-beitrag"]
+            meta["plattformen"] = ["ig-beitrag", "ig-story", "fb-beitrag", "fb-story", "yt", "tt-video"] if r > 1.5 else ["yt", "li", "fb-beitrag"]
         else:
             meta["plattformen"] = ["ig-story", "fb-story"] if r > 1.5 else ["ig-beitrag", "fb-beitrag"] + (["li"] if r <= 1.26 else [])
     meta["dateien"] = infos

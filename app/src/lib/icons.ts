@@ -30,6 +30,8 @@ export const ICONS: Record<string, string> = {
   facebook: '<path d="M14.2 21v-7.6h2.6l.4-3.1h-3V8.4c0-.9.3-1.5 1.6-1.5h1.6V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.3H8.6v3.1h2.6V21"/>',
   youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10.3 9.3 4.6 2.7-4.6 2.7z" fill="currentColor"/>',
   linkedin: '<rect x="3" y="3" width="18" height="18" rx="3.5"/><path d="M8 10.5V16.5M8 7.6v.01M11.6 16.5v-6M11.6 13.2c0-1.7 1-2.8 2.4-2.8s2.2.9 2.2 2.7v3.4"/>',
+  tiktok: '<path d="M13.5 3v11.3a3.6 3.6 0 1 1-3.6-3.6"/><path d="M13.5 3.2c.5 2.7 2.4 4.6 5.2 4.9"/>',
+  google: '<path d="M20 12.2a8 8 0 1 1-2.3-5.8"/><path d="M20.2 12h-7.4"/>',
   story: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.4"/><circle cx="12" cy="12" r="4.5"/>',
   play: '<path d="M7 4.5v15l12.5-7.5z"/>',
   shield: '<path d="M12 3 4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>',

@@ -307,3 +307,12 @@ do $$ begin
   exception when check_violation then null; end;
   raise notice 'OK Plattformen';
 end $$;
+
+-- TikTok: Daten-Schritt läuft nur einmal (später angelegte oder geänderte Creatives bleiben, wie sie sind)
+\ir ../../supabase/migrations/119_social_tiktok.sql
+do $$ begin
+  if not exists (select 1 from public.einmalig where name = 'social-tiktok-videos') then raise exception 'Marker fehlt'; end if;
+  if exists (select 1 from public.social_creatives where slug = 'test-b' and 'tt-video' = any(plattformen)) then raise exception 'Daten-Schritt lief erneut'; end if;
+  update public.social_creatives set plattformen = array['tt-video', 'tt-story'] where slug = 'test-b';
+  raise notice 'OK TikTok und einmalige Schritte';
+end $$;
