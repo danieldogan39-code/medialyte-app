@@ -35,6 +35,8 @@ jobs:
           git add tools/creatives/schluessel.pub
           git commit -m "Creatives: öffentlicher Schlüssel für den Eingang"
           git push
+      - name: Speicher prüfen (Typen und Größen der Videos)
+        run: python3 tools/creatives/pruefen.py || true
 
   einspielen:
     if: github.ref == 'refs/heads/creatives-eingang'
