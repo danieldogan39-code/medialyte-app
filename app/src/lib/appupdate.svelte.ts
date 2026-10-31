@@ -90,7 +90,8 @@ class AppUpdate {
     this.fortschritt = 0;
     const h = await Filesystem.addListener?.("progress", (p: any) => { if (p?.contentLength) this.fortschritt = Math.min(1, p.bytes / p.contentLength); }).catch?.(() => null);
     try {
-      const pfad = `update/medialyte-${v}.apk`;
+      // Achtung: das native Herunterladen legt keine Unterordner an – deshalb direkt in den Cache-Ordner
+      const pfad = `medialyte-${v}.apk`;
       await Filesystem.deleteFile({ path: pfad, directory: "CACHE" }).catch(() => {});
       const r = await Filesystem.downloadFile({ url, path: pfad, directory: "CACHE", recursive: true, progress: true });
       const ziel = r?.path ? (String(r.path).startsWith("file:") ? r.path : "file://" + r.path) : (await Filesystem.getUri({ path: pfad, directory: "CACHE" })).uri;
@@ -98,7 +99,10 @@ class AppUpdate {
       await FileOpener.open({ filePath: ziel, contentType: "application/vnd.android.package-archive", openWithDefault: true });
       return null;
     } catch (e: any) {
-      return "Die neue Version ließ sich nicht laden: " + (e?.message || e) + ". Erlaube beim ersten Mal „Apps aus dieser Quelle installieren“ für Medialyte.";
+      // Notlösung: Android lädt die Datei selbst herunter (Benachrichtigung „Download abgeschlossen“ antippen)
+      try { window.open(url, "_blank"); } catch { /* egal */ }
+      const grund = String(e?.message || e).replace(/^Error downloading file:\s*/i, "");
+      return `Direkt-Installation ging nicht (${grund.slice(0, 80)}). Der Download läuft jetzt über Android – danach die Datei antippen und installieren.`;
     } finally {
       h?.remove?.(); setTimeout(() => (this.fortschritt = null), 600);
     }
