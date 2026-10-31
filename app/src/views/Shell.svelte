@@ -5,22 +5,9 @@
   import { router } from "../lib/router.svelte";
   import { ROLLEN } from "../lib/status";
   import Uebersicht from "./Uebersicht.svelte";
-  import Akquise from "./Akquise.svelte";
-  import Kategorie from "./Kategorie.svelte";
-  import Betrieb from "./Betrieb.svelte";
-  import Anfragen from "./Anfragen.svelte";
-  import Team from "./Team.svelte";
-  import Nachfassen from "./Nachfassen.svelte";
-  import Rechnungen from "./Rechnungen.svelte";
-  import Kunden from "./Kunden.svelte";
-  import Kunde from "./Kunde.svelte";
-  import Kosten from "./Kosten.svelte";
-  import Einstellungen from "./Einstellungen.svelte";
-  import DemoWeiter from "./DemoWeiter.svelte";
   import Rueckfrage from "../components/Rueckfrage.svelte";
   import { appUpdate } from "../lib/appupdate.svelte";
   import Ebenen from "../components/rechnungen/Ebenen.svelte";
-  import RechnungsKunde from "./RechnungsKunde.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
   import { agent } from "../lib/agent.svelte";
   import { haptik } from "../lib/haptik";
@@ -139,6 +126,28 @@
   });
 
   const t = $derived(router.teile);
+  // Seiten werden erst geladen, wenn sie gebraucht werden – die App startet so mit weniger Code.
+  // Gleich nach dem Start lädt sie alle übrigen Seiten in Ruhe nach, damit jeder Wechsel danach sofort geht.
+  const LADER: Record<string, () => Promise<any>> = {
+    anfragen: () => import("./Anfragen.svelte"), akquise: () => import("./Akquise.svelte"), kategorie: () => import("./Kategorie.svelte"),
+    betrieb: () => import("./Betrieb.svelte"), demo: () => import("./DemoWeiter.svelte"), nachfassen: () => import("./Nachfassen.svelte"),
+    kunden: () => import("./Kunden.svelte"), kunde: () => import("./Kunde.svelte"), rkunde: () => import("./RechnungsKunde.svelte"),
+    rechnungen: () => import("./Rechnungen.svelte"), kosten: () => import("./Kosten.svelte"), team: () => import("./Team.svelte"),
+    einstellungen: () => import("./Einstellungen.svelte"),
+  };
+  let mods = $state<Record<string, any>>({});
+  const unterwegs = new Map<string, Promise<void>>();
+  function laden(k: string) {
+    if (!unterwegs.has(k)) unterwegs.set(k, LADER[k]().then((m) => { mods[k] = m.default; }).catch(() => { unterwegs.delete(k); }));
+    return unterwegs.get(k)!;
+  }
+  const holen = (k: string) => { if (!mods[k]) laden(k); return mods[k]; };
+  $effect(() => {
+    const rest = Object.keys(LADER);
+    const weiter = () => { const k = rest.shift(); if (!k) return; laden(k).then(() => ("requestIdleCallback" in window ? (window as any).requestIdleCallback(weiter, { timeout: 1500 }) : setTimeout(weiter, 50))); };
+    const t0 = setTimeout(weiter, 900);
+    return () => clearTimeout(t0);
+  });
   // Welche Teile des Pfads eine neue Seite sind (Unterreiter, gewählte Anfrage oder Nachfass-Karte bleiben dieselbe Seite)
   const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" ? t[0] : t.slice(0, 3).join("/"));
   // Die alte Seite bleibt beim Wechsel kurz stehen und gleitet weg (statt schlagartig zu verschwinden)
@@ -205,19 +214,19 @@
     <div class="buehne">
     {#key seite + "#" + neuNr}
     <div class="seite" in:fly={{ x: ruhig() || stumm ? 0 : richtung * 28, y: ruhig() || richtung ? 0 : 8, duration: ruhig() ? 0 : richtung ? rein.ms : 260, easing: rein.easing, opacity: 0 }} out:raus>
-    {#if t[0] === "anfragen"}<Anfragen id={t[1]} />
-    {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}<Betrieb id={t[2]} />
-    {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}<DemoWeiter slug={t[2]} />
-    {:else if t[0] === "kosten"}<Kosten />
-    {:else if t[0] === "einstellungen"}<Einstellungen />
-    {:else if t[0] === "akquise" && t[1]}<Kategorie slug={t[1]} tab={t[2] ?? "ueberblick"} />
-    {:else if t[0] === "akquise"}<Akquise />
-    {:else if t[0] === "nachfassen"}<Nachfassen slug={t[1]} />
-    {:else if t[0] === "team"}<Team />
-    {:else if t[0] === "kunden" && t[1] === "r" && t[2]}<RechnungsKunde id={t[2]} />
-    {:else if t[0] === "kunden" && t[1]}<Kunde slug={t[1]} />
-    {:else if t[0] === "kunden"}<Kunden />
-    {:else if t[0] === "rechnungen" && auth.darf("rechnungen")}<Rechnungen />
+    {#if t[0] === "anfragen"}{@const C = holen("anfragen")}{#if C}<C id={t[1]} />{/if}
+    {:else if t[0] === "akquise" && t[1] === "betrieb" && t[2]}{@const C = holen("betrieb")}{#if C}<C id={t[2]} />{/if}
+    {:else if t[0] === "akquise" && t[1] === "demo" && t[2]}{@const C = holen("demo")}{#if C}<C slug={t[2]} />{/if}
+    {:else if t[0] === "kosten"}{@const C = holen("kosten")}{#if C}<C />{/if}
+    {:else if t[0] === "einstellungen"}{@const C = holen("einstellungen")}{#if C}<C />{/if}
+    {:else if t[0] === "akquise" && t[1]}{@const C = holen("kategorie")}{#if C}<C slug={t[1]} tab={t[2] ?? "ueberblick"} />{/if}
+    {:else if t[0] === "akquise"}{@const C = holen("akquise")}{#if C}<C />{/if}
+    {:else if t[0] === "nachfassen"}{@const C = holen("nachfassen")}{#if C}<C slug={t[1]} />{/if}
+    {:else if t[0] === "team"}{@const C = holen("team")}{#if C}<C />{/if}
+    {:else if t[0] === "kunden" && t[1] === "r" && t[2]}{@const C = holen("rkunde")}{#if C}<C id={t[2]} />{/if}
+    {:else if t[0] === "kunden" && t[1]}{@const C = holen("kunde")}{#if C}<C slug={t[1]} />{/if}
+    {:else if t[0] === "kunden"}{@const C = holen("kunden")}{#if C}<C />{/if}
+    {:else if t[0] === "rechnungen" && auth.darf("rechnungen")}{@const C = holen("rechnungen")}{#if C}<C />{/if}
     {:else}<Uebersicht />{/if}
     </div>
     {/key}

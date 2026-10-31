@@ -11,7 +11,7 @@
   let { kat }: { kat: Kategorie } = $props();
   let g = $state<any>(lies("ged:" + kat.slug, null)), reiter = $state<"welten" | "handwerk">("welten"), welt = $state(""), alle = $state<Record<string, boolean>>({});
   let verworfen = $state<Set<string>>(new Set()), bilder = $state<Record<string, string>>({}), warten = $state(0);
-  $effect(() => { sb.from("gedaechtnis").select("*").eq("kategorie", kat.slug).maybeSingle().then(async ({ data }) => {
+  $effect(() => { Promise.resolve(sb.from("gedaechtnis").select("*").eq("kategorie", kat.slug).maybeSingle()).then(async ({ data }) => {
     g = merk("ged:" + kat.slug, data?.daten ?? null); verworfen = new Set(g?.verworfen_ids ?? []); if (g?.welten?.length && !welt) welt = g.welten[0].key;
     // Vorschaubilder der bewerteten Demos (privater Speicher)
     const ids = [...new Set((g?.welten ?? []).flatMap((w: any) => [...w.vorbilder, ...w.abgelehnt]).map((v: any) => v.bild).filter(Boolean))] as string[];
@@ -23,7 +23,7 @@
     const { data: bw } = await sb.from("bewertungen").select("slug,version,daumen,kommentar");
     const vt = g?.verarbeitet ?? {};
     warten = (bw ?? []).filter((r: any) => (r.daumen || r.kommentar) && vt[`${r.slug}@${r.version}`] !== `${r.daumen ?? 0}|${String(r.kommentar ?? "").trim().slice(0, 800)}`).length;
-  }); });
+  }).catch(() => { /* Vorschaubilder sind nur Beiwerk */ }); });
   const w = $derived(g?.welten?.find((x: any) => x.key === welt));
   const darf = $derived(auth.darf("akquise", true));
 

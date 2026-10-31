@@ -20,9 +20,24 @@
     return { x: 200 + Math.sin(a) * r, y: 200 - Math.cos(a) * r, w };
   }
   const still = ruhig();
+  // Skala als zwei Pfade statt 72 Einzellinien (weniger Elemente zum Zeichnen)
+  const TICKS = [false, true].map((lang) => Array.from({ length: 72 }, (_, s) => s).filter((s) => (s % 6 === 0) === lang).map((s) => {
+    const a = (s / 72) * 2 * Math.PI, l = lang ? 10 : 4, f = (r: number) => `${(200 + Math.sin(a) * r).toFixed(1)} ${(200 - Math.cos(a) * r).toFixed(1)}`;
+    return `M${f(178)}L${f(178 + l)}`; }).join(""));
+  // Leistung: nur die größten Fundorte bekommen eine Echo-Welle; ist das Radar nicht zu sehen, ruht jede Bewegung
+  const echos = $derived(new Set(gebiete.map((g, i) => [g.zuletzt ? g.ohne_website ?? 0 : 0, i] as [number, number]).filter(([h]) => h > 0).sort((a, b) => b[0] - a[0]).slice(0, 5).map(([, i]) => i)));
+  let sichtbar = $state(true), el: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => { sichtbar = e.isIntersecting && document.visibilityState === "visible"; });
+    io.observe(el);
+    const v = () => { sichtbar = document.visibilityState === "visible" && el!.getBoundingClientRect().bottom > 0; };
+    document.addEventListener("visibilitychange", v);
+    return () => { io.disconnect(); document.removeEventListener("visibilitychange", v); };
+  });
 </script>
 
-<div class="radar-ganz" class:gross>
+<div class="radar-ganz" class:gross class:ruht={!sichtbar} bind:this={el}>
   <div class="radar" class:still>
     <svg viewBox="0 0 400 400" role="img" aria-label="Suchradar mit {gebiete.length} Gebieten, {durch} durchsucht, {treffer} Betriebe ohne Website">
       <defs>
@@ -32,8 +47,7 @@
       <circle cx="200" cy="200" r="192" fill="url(#r-grund)" />
       <g class="ringe">
         {#each [0.25, 0.5, 0.75, 1] as f, i}<circle class="ring" style="--i:{i}" cx="200" cy="200" r={170 * f} />{/each}
-        {#each Array(72) as _, s}{@const a = (s / 72) * 2 * Math.PI}{@const l = s % 6 === 0 ? 10 : 4}
-          <line class="tick" class:lang={s % 6 === 0} x1={200 + Math.sin(a) * 178} y1={200 - Math.cos(a) * 178} x2={200 + Math.sin(a) * (178 + l)} y2={200 - Math.cos(a) * (178 + l)} />{/each}
+        <path class="tick" d={TICKS[0]} /><path class="tick lang" d={TICKS[1]} />
         <line class="spoke" x1="200" y1="30" x2="200" y2="370" /><line class="spoke" x1="30" y1="200" x2="370" y2="200" />
       </g>
       {#each gebiete as g, i (g.name + i)}
@@ -41,7 +55,7 @@
         <g class="pkt" class:treffer={da && h > 0} class:cur={i === (index ?? 0) % n} class:sel={wahl === g}
           style="--d: {(p.w * UMLAUF - UMLAUF).toFixed(2)}s; --e: {(0.5 + p.w * 0.9).toFixed(2)}s" role="button" tabindex="0" aria-label="{g.name}: {da ? `${h} ohne Website` : 'noch nicht durchsucht'}"
           onclick={() => (wahl = wahl === g ? null : g)} onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); wahl = wahl === g ? null : g; } }}>
-          {#if da && h}<circle class="echo" cx={p.x} cy={p.y} r={r} />{/if}
+          {#if da && h}<circle class="halo" cx={p.x} cy={p.y} r={r * 2.1} />{#if echos.has(i)}<circle class="echo" cx={p.x} cy={p.y} r={r} />{/if}{/if}
           {#if i === (index ?? 0) % n}<circle class="ziel" cx={p.x} cy={p.y} r={r + 4} /><circle class="ziel z2" cx={p.x} cy={p.y} r={r + 4} />{/if}
           <circle class="dot" cx={p.x} cy={p.y} r={r} fill={!da ? "#2A3F63" : h ? "#8DBBFF" : "#3D5F8F"} />
           <circle class="hit" cx={p.x} cy={p.y} r={r + 8} fill="transparent" />
@@ -89,13 +103,10 @@
   .spoke { stroke: rgba(123, 175, 255, .07); animation: an .8s ease .3s both; }
   .pkt { cursor: pointer; outline: none; }
   .pkt .dot, .pkt .echo, .pkt .ziel { transform-box: fill-box; transform-origin: center; }
-  .pkt .dot { animation: auftauchen .7s cubic-bezier(.34, 1.56, .64, 1) var(--e) both, leuchten 6s linear var(--d) infinite; transition: transform .45s var(--feder-schnell); }
-  .pkt.treffer .dot { filter: drop-shadow(0 0 5px rgba(141, 187, 255, .9)); }
+  /* Punkte erscheinen einmal reihum und stehen dann still (keine Dauer-Animation je Punkt: das kostet auf dem Handy Bilder) */
+  .pkt .dot { animation: auftauchen .7s cubic-bezier(.34, 1.56, .64, 1) var(--e) backwards; transition: transform .45s var(--feder-schnell); }
+  .halo { fill: rgba(141, 187, 255, .16); pointer-events: none; }
   @keyframes auftauchen { from { transform: scale(0); } }
-  /* Der Strahl streift den Punkt: kurz hell, dann klingt es ab (Takt = eine Umdrehung) */
-  @keyframes leuchten { 0% { opacity: 1; } 4% { opacity: 1; } 45% { opacity: .55; } 100% { opacity: .55; } }
-  .pkt:not(.treffer) .dot { animation: auftauchen .7s cubic-bezier(.34, 1.56, .64, 1) var(--e) both, leuchten-schwach 6s linear var(--d) infinite; }
-  @keyframes leuchten-schwach { 0% { opacity: 1; } 40% { opacity: .7; } 100% { opacity: .7; } }
   .echo { fill: none; stroke: #8DBBFF; stroke-width: 1.4; animation: echo 6s cubic-bezier(.2, .6, .3, 1) var(--d) infinite; opacity: 0; }
   @keyframes echo { 0% { transform: scale(1); opacity: .9; } 22% { transform: scale(3.4); opacity: 0; } 100% { transform: scale(3.4); opacity: 0; } }
   .ziel { fill: none; stroke: #F3F5F9; stroke-width: 1.5; animation: ziel 2.2s cubic-bezier(.2, .6, .3, 1) infinite; }
@@ -108,6 +119,7 @@
   .kern { transform-box: fill-box; transform-origin: center; animation: atmen 3s ease-in-out infinite; }
   @keyframes atmen { 50% { transform: scale(1.25); opacity: .7; } }
   .still .strahl, .still .echo, .still .ziel { animation: none; }
+  .ruht :is(.strahl, .echo, .ziel, .kern) { animation-play-state: paused; }
   .still .strahl { opacity: .5; }
 
   .seite { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-content: start; }

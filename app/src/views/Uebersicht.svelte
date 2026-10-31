@@ -15,6 +15,9 @@
 
   let termine = $state<any[]>(lies("ue:termine", [])), neu = $state<any[]>(lies("ue:neu", [])), zahlen = $state<any[]>(lies("akquise_zahlen", [])), laeufe = $state<any[]>(lies("ue:laeufe", []));
 
+  // Das Radar ist das aufwendigste Bild der App: erst aufbauen, wenn der Seitenwechsel durch ist
+  let radarBereit = $state(false);
+  $effect(() => { const t = setTimeout(() => (radarBereit = true), 340); return () => clearTimeout(t); });
   async function laden() {
     const jobs: PromiseLike<any>[] = [];
     if (auth.darf("anfragen")) {
@@ -69,7 +72,7 @@
       <h2>Suchradar</h2>
       <p class="muted">Der Agent durchkämmt deine Suchgebiete reihum nach Betrieben ohne gute Website.{#if agent.c.naechster_lauf}{" "}Nächster Lauf: {bis(agent.c.naechster_lauf)}{/if}</p>
     </div>
-    <Radar gebiete={agent.c.gebiete} index={agent.c.gebiet_index ?? 0} gross />
+    {#if radarBereit}<Radar gebiete={agent.c.gebiete} index={agent.c.gebiet_index ?? 0} gross />{:else}<div class="radar-platz" aria-hidden="true"></div>{/if}
   </section>
 {/if}
 
@@ -198,4 +201,6 @@
   .kat__t { display: grid; min-width: 0; }
   .kat__t b { color: var(--text); font-weight: 500; }
   .kat__t small { font-size: .82rem; }
+  .radar-platz { width: min(100%, 500px); aspect-ratio: 1; margin: 0 auto; }
+  @media (min-width: 761px) { .radar-platz { width: calc(100% - 304px); margin: 0; } }
 </style>
