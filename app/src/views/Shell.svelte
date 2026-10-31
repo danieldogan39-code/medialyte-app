@@ -10,6 +10,7 @@
   import Ebenen from "../components/rechnungen/Ebenen.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
   import { agent } from "../lib/agent.svelte";
+  import { social } from "../lib/social.svelte";
   import { haptik } from "../lib/haptik";
   import { bereichVon, BEREICHE } from "../lib/bereiche";
   const farbe = (p: string) => BEREICHE.find((b) => b.pfad === p)?.farbe ?? "#8B98AD";
@@ -23,6 +24,8 @@
 
   let offen = $state(false);   // „Mehr“-Blatt auf dem Handy
   $effect(() => { daten.laden(); });
+  // Social Media: Zahl der Creatives „zur Freigabe“ fürs Menü
+  $effect(() => { if (auth.darf("social")) { social.laden(); return social.live(); } });
 
   // Scrollposition je Seite merken: Zurück landet wieder an derselben Stelle (wie in nativen Apps), neue Seiten starten oben
   const pos = new Map<string, number>();
@@ -72,12 +75,12 @@
   // Untere Reiter auf dem Handy: die ersten vier erlaubten Bereiche, der Rest unter „Mehr“
   const darfPfad: Record<string, () => boolean> = {
     "/": () => true, "/anfragen": () => auth.darf("anfragen"), "/akquise": () => auth.darf("akquise"), "/kunden": () => auth.darf("kunden") || auth.darf("rechnungen"),
-    "/rechnungen": () => auth.darf("rechnungen"), "/nachfassen": () => auth.darf("akquise"), "/kosten": () => auth.darf("akquise"), "/team": () => auth.darf("team"), "/einstellungen": () => true,
+    "/rechnungen": () => auth.darf("rechnungen"), "/social": () => auth.darf("social"), "/nachfassen": () => auth.darf("akquise"), "/kosten": () => auth.darf("akquise"), "/team": () => auth.darf("team"), "/einstellungen": () => true,
   };
-  const REIHE = ["/", "/anfragen", "/akquise", "/kunden", "/rechnungen", "/nachfassen", "/kosten", "/team", "/einstellungen"];
+  const REIHE = ["/", "/anfragen", "/akquise", "/kunden", "/rechnungen", "/social", "/nachfassen", "/kosten", "/team", "/einstellungen"];
   const reiter = $derived(REIHE.filter((p) => darfPfad[p]?.()).slice(0, 4).map((p) => BEREICHE.find((b) => b.pfad === p)!));
-  const kurz: Record<string, string> = { "/": "Übersicht", "/team": "Team" };
-  const badge = (p: string) => p === "/anfragen" ? daten.neueAnfragen : p === "/nachfassen" ? daten.nachfassHeute : p === "/kunden" ? daten.tischbuchWartet : 0;
+  const kurz: Record<string, string> = { "/": "Übersicht", "/team": "Team", "/social": "Social" };
+  const badge = (p: string) => p === "/anfragen" ? daten.neueAnfragen : p === "/nachfassen" ? daten.nachfassHeute : p === "/kunden" ? daten.tischbuchWartet : p === "/social" ? social.zurFreigabe : 0;
   const imReiter = (p: string) => reiter.some((b) => b.pfad === p);
   const mehrAktiv = $derived(!reiter.some((b) => aktiv(b.pfad)));
   const mehrBadge = $derived(REIHE.filter((p) => !reiter.some((b) => b.pfad === p)).reduce((n, p) => n + (badge(p) || 0), 0));
@@ -133,7 +136,7 @@
     betrieb: () => import("./Betrieb.svelte"), demo: () => import("./DemoWeiter.svelte"), nachfassen: () => import("./Nachfassen.svelte"),
     kunden: () => import("./Kunden.svelte"), kunde: () => import("./Kunde.svelte"), rkunde: () => import("./RechnungsKunde.svelte"),
     rechnungen: () => import("./Rechnungen.svelte"), kosten: () => import("./Kosten.svelte"), team: () => import("./Team.svelte"),
-    einstellungen: () => import("./Einstellungen.svelte"),
+    einstellungen: () => import("./Einstellungen.svelte"), social: () => import("./Social.svelte"), socialc: () => import("./SocialCreative.svelte"),
   };
   let mods = $state<Record<string, any>>({});
   const unterwegs = new Map<string, Promise<void>>();
@@ -149,7 +152,7 @@
     return () => clearTimeout(t0);
   });
   // Welche Teile des Pfads eine neue Seite sind (Unterreiter, gewählte Anfrage oder Nachfass-Karte bleiben dieselbe Seite)
-  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" ? t[0] : t.slice(0, 3).join("/"));
+  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" || (t[0] === "social" && t[1] !== "c") ? t[0] : t.slice(0, 3).join("/"));
   // Die alte Seite bleibt beim Wechsel kurz stehen und gleitet weg (statt schlagartig zu verschwinden)
   function raus(node: HTMLElement) {
     const dy = scrollY, r = richtung;
@@ -187,6 +190,7 @@
       {#if auth.darf("akquise")}<a href="#/nachfassen" style="--f: {farbe("/nachfassen")}" class:on={aktiv("/nachfassen")} class:in-reiter={imReiter("/nachfassen")}><span class="ni"><Icon name="phone" size={15} /></span>Nachfassen{#if daten.nachfassHeute}{#key daten.nachfassHeute}<span class="badge badge--b num pop">{daten.nachfassHeute}</span>{/key}{/if}</a>{/if}
       {#if auth.darf("kunden") || auth.darf("rechnungen")}<a href="#/kunden" style="--f: {farbe("/kunden")}" class:on={aktiv("/kunden")} class:in-reiter={imReiter("/kunden")}><span class="ni"><Icon name="users" size={15} /></span>Kunden{#if daten.tischbuchWartet}{#key daten.tischbuchWartet}<span class="badge num pop" title="Gäste warten auf Antwort">{daten.tischbuchWartet}</span>{/key}{/if}</a>{/if}
       {#if auth.darf("rechnungen")}<a href="#/rechnungen" style="--f: {farbe("/rechnungen")}" class:on={aktiv("/rechnungen")} class:in-reiter={imReiter("/rechnungen")}><span class="ni"><Icon name="receipt" size={15} /></span>Rechnungen</a>{/if}
+      {#if auth.darf("social")}<a href="#/social" style="--f: {farbe("/social")}" class:on={aktiv("/social")} class:in-reiter={imReiter("/social")}><span class="ni"><Icon name="image" size={15} /></span>Social Media{#if social.zurFreigabe}{#key social.zurFreigabe}<span class="badge badge--b num pop" title="Creatives zur Freigabe">{social.zurFreigabe}</span>{/key}{/if}</a>{/if}
       {#if auth.darf("akquise")}<a href="#/kosten" style="--f: {farbe("/kosten")}" class:on={aktiv("/kosten")} class:in-reiter={imReiter("/kosten")}><span class="ni"><Icon name="scale" size={15} /></span>Kosten</a>{/if}
       {#if auth.darf("team")}<a href="#/team" style="--f: {farbe("/team")}" class:on={aktiv("/team")} class:in-reiter={imReiter("/team")}><span class="ni"><Icon name="shield" size={15} /></span>Team & Rechte</a>{/if}
       <a href="#/einstellungen" style="--f: {farbe("/einstellungen")}" class:on={aktiv("/einstellungen")} class:in-reiter={imReiter("/einstellungen")}><span class="ni"><Icon name="settings" size={15} /></span>Einstellungen</a>
@@ -222,6 +226,8 @@
     {:else if t[0] === "akquise" && t[1]}{@const C = holen("kategorie")}{#if C}<C slug={t[1]} tab={t[2] ?? "ueberblick"} />{/if}
     {:else if t[0] === "akquise"}{@const C = holen("akquise")}{#if C}<C />{/if}
     {:else if t[0] === "nachfassen"}{@const C = holen("nachfassen")}{#if C}<C slug={t[1]} />{/if}
+    {:else if t[0] === "social" && t[1] === "c" && t[2] && auth.darf("social")}{@const C = holen("socialc")}{#if C}<C slug={t[2]} />{/if}
+    {:else if t[0] === "social" && auth.darf("social")}{@const C = holen("social")}{#if C}<C tab={t[1] ?? "creatives"} />{/if}
     {:else if t[0] === "team"}{@const C = holen("team")}{#if C}<C />{/if}
     {:else if t[0] === "kunden" && t[1] === "r" && t[2]}{@const C = holen("rkunde")}{#if C}<C id={t[2]} />{/if}
     {:else if t[0] === "kunden" && t[1]}{@const C = holen("kunde")}{#if C}<C slug={t[1]} />{/if}

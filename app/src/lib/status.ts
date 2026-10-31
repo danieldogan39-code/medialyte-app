@@ -24,6 +24,6 @@ export const ROLLEN: Record<string, string> = {
 };
 export const BEREICHE: Record<string, string> = {
   akquise: "Akquise (Kategorien, Betriebe, Demos)", briefe: "Briefe verschicken", anfragen: "Anfragen",
-  kunden: "Kunden", rechnungen: "Rechnungen & Angebote", team: "Team & Rechte", einstellungen: "Einstellungen",
+  kunden: "Kunden", rechnungen: "Rechnungen & Angebote", social: "Social Media (Creatives & Plan)", team: "Team & Rechte", einstellungen: "Einstellungen",
 };
 export const FORMATE: Record<string, string> = { video: "Video-Call", telefon: "Telefon", "vor-ort": "Vor Ort" };

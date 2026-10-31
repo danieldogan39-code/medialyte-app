@@ -1,0 +1,50 @@
+# Neue Creatives in die App einspielen (Seite „Social Media“).
+# Claude legt fertige Creatives verschlüsselt im Zweig creatives-eingang ab; dieser Ablauf entschlüsselt sie,
+# lädt die Dateien in den privaten Supabase-Speicher, trägt sie ein und löscht den Zweig danach wieder.
+# Bei Änderungen an diesem Ablauf wird außerdem der öffentliche Schlüssel (tools/creatives/schluessel.pub) aktuell gehalten.
+name: Creatives einspielen
+
+on:
+  push:
+    branches: [main, creatives-eingang]
+    paths: ["eingang/**", "tools/creatives/**", ".github/workflows/creatives.yml"]
+
+concurrency:
+  group: creatives
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_REF: bddogrluopqgeqvqzqmy
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+jobs:
+  schluessel:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q cryptography
+      - name: Öffentlichen Schlüssel aktuell halten
+        run: |
+          python3 -c "import sys; sys.path.insert(0,'tools/creatives'); from schluessel import *; import os; open('tools/creatives/schluessel.pub','w').write(oeffentlich_text(privat_aus_secret(os.environ['SUPABASE_ACCESS_TOKEN'])))"
+          if git diff --quiet -- tools/creatives/schluessel.pub && git ls-files --error-unmatch tools/creatives/schluessel.pub >/dev/null 2>&1; then echo "Schlüssel unverändert."; exit 0; fi
+          git config user.name "Medialyte"; git config user.email "info@medialyte.de"
+          git add tools/creatives/schluessel.pub
+          git commit -m "Creatives: öffentlicher Schlüssel für den Eingang"
+          git push
+
+  einspielen:
+    if: github.ref == 'refs/heads/creatives-eingang'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q cryptography
+      - name: Entschlüsseln, hochladen, eintragen
+        run: python3 tools/creatives/einspielen.py
+      - name: Eingang leeren
+        if: always()
+        run: git push origin --delete creatives-eingang || true

@@ -17,3 +17,10 @@ insert into auth.users (id, email, created_at) values
   ('00000000-0000-0000-0000-0000000000f1', 'finn@example.org', now()),
   ('00000000-0000-0000-0000-0000000000a1', 'aurelia@example.org', now()),
   ('00000000-0000-0000-0000-0000000000ff', 'fremd@example.org', now());
+-- Dateispeicher (nur so viel, wie die Migrationen brauchen)
+create schema storage;
+create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets(id), name text, owner uuid, created_at timestamptz default now());
+alter table storage.objects enable row level security;
+grant usage on schema storage to authenticated, service_role;
+grant select, insert, update, delete on storage.objects to authenticated, service_role;

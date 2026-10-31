@@ -9,6 +9,7 @@ export const BEREICHE: Bereich[] = [
   { pfad: "/nachfassen", name: "Nachfassen", icon: "phone", farbe: "#E7B94A" },
   { pfad: "/kunden", name: "Kunden", icon: "users", farbe: "#4CC38A" },
   { pfad: "/rechnungen", name: "Rechnungen", icon: "receipt", farbe: "#A78BFA" },
+  { pfad: "/social", name: "Social Media", icon: "image", farbe: "#FB923C" },
   { pfad: "/kosten", name: "Kosten", icon: "scale", farbe: "#4FC7D4" },
   { pfad: "/team", name: "Team & Rechte", icon: "shield", farbe: "#F08FC0" },
   { pfad: "/einstellungen", name: "Einstellungen", icon: "settings", farbe: "#AEB9CA" },

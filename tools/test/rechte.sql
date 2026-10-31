@@ -266,3 +266,36 @@ do $$ begin
   raise notice 'OK Kundenkategorien nur mit Zwei-Faktor';
 end $$;
 reset role;
+
+-- Social Media: Marketing sieht und ändert Creatives, Buchhaltung sieht nichts, ohne Zwei-Faktor nichts; Anlegen nur per Server
+insert into public.social_creatives (slug, titel, art, status) values ('test-a', 'Test A', 'bild', 'pruefen'), ('test-b', 'Test B', 'video', 'freigegeben');
+do $$ begin
+  if (select position from public.social_creatives where slug = 'test-b') >= (select position from public.social_creatives where slug = 'test-a') then raise exception 'neues Creative nicht oben'; end if;
+  if (select count(*) from storage.buckets where id = 'creatives' and not public) <> 1 then raise exception 'Speicher fehlt oder öffentlich'; end if;
+  raise notice 'OK Creatives: Reihenfolge und privater Speicher';
+end $$;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ begin
+  if (select count(*) from public.social_creatives) <> 2 then raise exception 'Marketing sieht Creatives nicht'; end if;
+  update public.social_creatives set status = 'freigegeben', geplant = '2026-11-03', position = 5 where slug = 'test-a';
+  if (select status from public.social_creatives where slug = 'test-a') <> 'freigegeben' then raise exception 'Marketing kann nicht freigeben'; end if;
+  update public.social_plan set inhalt = inhalt || '{"idee":"x"}'::jsonb where id = 1;
+  if (select inhalt->>'idee' from public.social_plan) <> 'x' then raise exception 'Plan nicht änderbar'; end if;
+  begin insert into public.social_creatives (slug, titel, art) values ('x', 'x', 'bild'); raise exception 'Marketing durfte anlegen';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Social für Marketing';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ begin
+  if exists (select 1 from public.social_creatives) or exists (select 1 from public.social_plan) then raise exception 'Buchhaltung sieht Social'; end if;
+  update public.social_creatives set status = 'verworfen';
+  if exists (select 1 from public.social_creatives where status = 'verworfen') then raise exception 'Buchhaltung konnte ändern'; end if;
+  raise notice 'OK Social nicht für Buchhaltung';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
+do $$ begin
+  if exists (select 1 from public.social_creatives) then raise exception 'Creatives ohne Zwei-Faktor sichtbar'; end if;
+  raise notice 'OK Social nur mit Zwei-Faktor';
+end $$;
+reset role;
