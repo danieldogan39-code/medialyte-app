@@ -36,12 +36,12 @@
     const reihe = (f: (r: any) => number) => used.slice(-12).map(f);
     const ersatz = summe((r) => r.daten?.ki_ersatztexte ?? 0);
     return [
-      { k: "Demos online", v: online, hint: `${zahl(c.demos_jemals ?? 0)} insgesamt gebaut`, s: reihe(demosVon) },
-      { k: "Betriebe geprüft", v: gp, hint: `über ${used.length} ${used.length === 1 ? "Lauf" : "Läufe"}`, s: reihe(geprueft) },
-      { k: "Ohne Website", v: tr, hint: gp ? `${Math.round((tr / gp) * 100)} % der geprüften` : "noch keine Daten", s: reihe(treffer) },
-      { k: "Gebiete durchsucht", v: durch, unit: alleG ? ` / ${alleG}` : "", hint: alleG ? `${Math.round((durch / alleG) * 100)} % der Region` : "", s: reihe((r) => geb(r).length) },
-      { k: "Google-Anfragen", v: used.filter((r) => Date.parse(r.start) > monat).reduce((a, r) => a + google(r), 0), hint: `letzte 30 Tage${c.einstellungen ? `, max. ${c.einstellungen.google_budget} Suchen pro Lauf` : ""}`, s: reihe(google) },
-      { k: "KI-Texte", v: summe((r) => r.daten?.ki_texte ?? 0), hint: ersatz ? `${ersatz} mit Standardtext` : "alle von Claude geschrieben", s: reihe((r) => r.daten?.ki_texte ?? 0) },
+      { k: "Demos online", f: "#6FA8F0", v: online, hint: `${zahl(c.demos_jemals ?? 0)} insgesamt gebaut`, s: reihe(demosVon) },
+      { k: "Betriebe geprüft", f: "#4FC7D4", v: gp, hint: `über ${used.length} ${used.length === 1 ? "Lauf" : "Läufe"}`, s: reihe(geprueft) },
+      { k: "Ohne Website", f: "#F2786A", v: tr, hint: gp ? `${Math.round((tr / gp) * 100)} % der geprüften` : "noch keine Daten", s: reihe(treffer) },
+      { k: "Gebiete durchsucht", f: "#A78BFA", v: durch, unit: alleG ? ` / ${alleG}` : "", hint: alleG ? `${Math.round((durch / alleG) * 100)} % der Region` : "", s: reihe((r) => geb(r).length) },
+      { k: "Google-Anfragen", f: "#E7B94A", v: used.filter((r) => Date.parse(r.start) > monat).reduce((a, r) => a + google(r), 0), hint: `letzte 30 Tage${c.einstellungen ? `, max. ${c.einstellungen.google_budget} Suchen pro Lauf` : ""}`, s: reihe(google) },
+      { k: "KI-Texte", f: "#4CC38A", v: summe((r) => r.daten?.ki_texte ?? 0), hint: ersatz ? `${ersatz} mit Standardtext` : "alle von Claude geschrieben", s: reihe((r) => r.daten?.ki_texte ?? 0) },
     ];
   });
   function spark(s: number[], w = 200, h = 34) {
@@ -76,7 +76,7 @@
 <div class="kpis">
   {#each k as x, i (x.k)}
     {@const p = spark(x.s)}
-    <article class="card kpi">
+    <article class="card kpi ton" style="--t: {x.f}">
       <small>{x.k}</small>
       <b class="num">{zahl(x.v)}{#if x.unit}<span class="u">{x.unit}</span>{/if}</b>
       <span class="hint">{x.hint}</span>
@@ -134,12 +134,12 @@
   .kpi .u { font-size: .9rem; color: var(--steel); font-weight: 400; }
   .hint { font-size: .78rem; color: var(--text-2); }
   .spark { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 34px; }
-  .spark .a { fill: rgba(123, 175, 255, .14); }
+  .spark .a { fill: color-mix(in srgb, var(--t) 16%, transparent); }
   .spark .l { stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 1.4s cubic-bezier(.32, .72, 0, 1) .2s forwards; }
   .spark .a { animation: an 1s ease .6s both; }
   @keyframes zeichnen { to { stroke-dashoffset: 0; } }
   @keyframes an { from { opacity: 0; } }
-  .spark .l { fill: none; stroke: #7BAFFF; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  .spark .l { fill: none; stroke: var(--t); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; margin-bottom: 14px; }
   .box { padding: 16px 20px 20px; display: grid; gap: 8px; align-content: start; }
   .klein { font-size: .84rem; line-height: 1.45; }

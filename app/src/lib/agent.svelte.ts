@@ -11,9 +11,12 @@ export type Cockpit = {
   links?: { repo: string; actions: string; wochenlauf: string; berichte: string; einstellungen: string };
   gebiet_index?: number; gebiete?: Gebiet[]; suchgebiete?: { ort: string; umkreis_km: number }[];
   status_zahlen?: Record<string, number>; demos_jemals?: number;
-  verbrauch?: { tage: number; gesamt_eur: number; pro_demo_eur: number | null; demos: number; laeufe: number; tools: { tool: string; eur: number }[];
+  verbrauch?: { tage: number; ab?: string | null; gesamt_eur: number; pro_demo_eur: number | null; demos: number; laeufe: number; tools: { tool: string; eur: number }[];
     posten: any[]; freikontingente: Record<string, [number, number]>; stimme_konto?: any };
   kostenanalyse?: { erstellt: string; text: string } | null;
+  /** alte Kostenanalyse: Text und Zahlen bis zum Neuanfang der Kostenrechnung */
+  kostenanalyse_alt?: { erstellt?: string; text: string; archiviert: string; zeitraum?: [string | null, string | null];
+    verbrauch?: { gesamt_eur: number; pro_demo_eur: number | null; demos: number; laeufe: number; tools: { tool: string; eur: number }[] } } | null;
   neubau?: { erledigt: Record<string, string>; fehler: Record<string, string> };
   briefe?: { erledigt: Record<string, any>; protokoll: any[] };
   zaehler_status?: any; app?: any;

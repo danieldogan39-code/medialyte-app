@@ -118,13 +118,18 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 100; padding: 10px 16px; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; border-radius: 999px;
   background: var(--text); color: var(--bg); font-weight: 500; box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6); }
 
+/* Farbige Kennzeichnung von Kennzahlen: ein Streifen links in der Bedeutungsfarbe */
+.ton { position: relative; overflow: hidden; }
+.ton::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--t, var(--bereich, var(--steel))); }
+.ton-rot { --t: #F24A4A; } .ton-gelb { --t: #E7B94A; } .ton-gruen { --t: #4CC38A; } .ton-blau { --t: #6FA8F0; } .ton-lila { --t: #A78BFA; } .ton-tuerkis { --t: #4FC7D4; } .ton-grau { --t: #8B98AD; }
+
 /* Bewegung wie in iOS: Drücken federt, Reiter gleiten, Farben blenden weich */
 :where(a.card, button.card, .zeile, .chip, .jk, .gh, .mehr, .neu.card) { transition: transform .45s var(--feder-schnell), background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease; }
 :where(a.card, button.card, .zeile, .jk, .neu.card):active { transform: scale(.985); transition-duration: .1s, .2s, .2s, .2s, .2s; }
 :where(.chip):active { transform: scale(.95); transition-duration: .08s; }
 [role="tab"] { transition: color .3s ease, background-color .3s ease; }
 .mit-gleiter { position: relative; isolation: isolate; }
-.mit-gleiter > .gleiter { position: absolute; top: 0; left: 0; z-index: -1; border-radius: 999px; background: var(--text); pointer-events: none; opacity: 0;
+.mit-gleiter > .gleiter { position: absolute; top: 0; left: 0; z-index: -1; border-radius: 999px; background: var(--bereich, var(--text)); pointer-events: none; opacity: 0;
   transition: transform .55s var(--feder), width .55s var(--feder), height .55s var(--feder), opacity .2s ease; will-change: transform; }
 .mit-gleiter [role="tab"][aria-selected="true"] { background: transparent !important; }
 .gleiter-linie > .gleiter { border-radius: 2px; z-index: 1; }

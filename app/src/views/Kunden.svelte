@@ -97,11 +97,11 @@
 {#if laedt && !eintraege.length}<div class="skelett" aria-label="Lade …"><i></i><i></i><i></i></div>{/if}
 {#if eintraege.length}
   <div class="kz">
-    <div class="card"><small>Kunden</small><b class="num"><Zahl wert={eintraege.length} /></b></div>
-    {#if reDarf && R.loaded}<div class="card" class:heiss={offenSumme > 0}><small>Offene Rechnungen</small><b class="num klein-b"><Zahl wert={offenSumme} format={eur} /></b></div>{/if}
+    <div class="card ton ton-gruen"><small>Kunden</small><b class="num"><Zahl wert={eintraege.length} /></b></div>
+    {#if reDarf && R.loaded}<div class="card ton ton-lila" class:heiss={offenSumme > 0}><small>Offene Rechnungen</small><b class="num klein-b"><Zahl wert={offenSumme} format={eur} /></b></div>{/if}
     {#if lokale && kunden.length}
-      <div class="card" class:heiss={summe.warten}><small>Tischanfragen offen</small><b class="num"><Zahl wert={summe.offen} /></b>{#if summe.warten}<span class="pill pill--rot pill--plain">{summe.warten} {summe.warten === 1 ? "Restaurant antwortet" : "Restaurants antworten"} nicht</span>{/if}</div>
-      <div class="card"><small>Websites live</small><b class="num">{kunden.filter((k) => k.stand?.stand === "live").length}<span class="von"> von {kunden.length}</span></b></div>
+      <div class="card ton ton-rot" class:heiss={summe.warten}><small>Tischanfragen offen</small><b class="num"><Zahl wert={summe.offen} /></b>{#if summe.warten}<span class="pill pill--rot pill--plain">{summe.warten} {summe.warten === 1 ? "Restaurant antwortet" : "Restaurants antworten"} nicht</span>{/if}</div>
+      <div class="card ton ton-blau"><small>Websites live</small><b class="num">{kunden.filter((k) => k.stand?.stand === "live").length}<span class="von"> von {kunden.length}</span></b></div>
     {/if}
   </div>
 {/if}

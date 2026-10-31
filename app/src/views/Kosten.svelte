@@ -8,9 +8,12 @@
   import { daten } from "../lib/daten.svelte";
   import { befehl } from "../lib/befehl";
   import { datum, datumZeit, zahl } from "../lib/format";
+  import { slide } from "svelte/transition";
 
   const v = $derived(agent.c.verbrauch);
   const a = $derived(agent.c.kostenanalyse);
+  const alt = $derived(agent.c.kostenanalyse_alt);
+  let altOffen = $state(false);
   const eur = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const eurFein = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 4 });
   const TCOL: Record<string, string> = { anthropic: "#D9A47A", recraft: "#B58CF0", google: "#7BAFFF", elevenlabs: "#4CC38A", github: "#AEB9CA", letterxpress: "#F24A4A" };
@@ -49,13 +52,13 @@
   }
 </script>
 
-<Head titel="Kosten & Verbrauch" text="Was der Agent in den letzten {v?.tage ?? 30} Tagen gekostet hat. Schätzwerte aus den Preisen in config.yaml." />
+<Head titel="Kosten & Verbrauch" text={v?.ab ? `Neu gerechnet seit ${datum(v.ab)}: was der Agent seitdem gekostet hat (höchstens die letzten ${v.tage} Tage). Schätzwerte aus den Preisen in config.yaml.` : `Was der Agent in den letzten ${v?.tage ?? 30} Tagen gekostet hat. Schätzwerte aus den Preisen in config.yaml.`} />
 
 {#if v}
   <div class="kz">
-    <div class="card"><small>Gesamt, geschätzt</small><b class="num"><Zahl wert={v.gesamt_eur ?? 0} format={(n) => eur.format(n)} /></b><span class="muted">letzte {v.tage} Tage</span></div>
-    <div class="card"><small>Pro gebauter Demo</small><b class="num">{v.pro_demo_eur != null ? eur.format(v.pro_demo_eur) : "–"}</b><span class="muted">{v.demos ?? 0} Demos</span></div>
-    <div class="card"><small>Läufe</small><b class="num"><Zahl wert={v.laeufe ?? 0} /></b><span class="muted">Wochenläufe</span></div>
+    <div class="card ton ton-tuerkis"><small>Gesamt, geschätzt</small><b class="num"><Zahl wert={v.gesamt_eur ?? 0} format={(n) => eur.format(n)} /></b><span class="muted">{v.ab ? `seit ${datum(v.ab)}` : `letzte ${v.tage} Tage`}</span></div>
+    <div class="card ton ton-blau"><small>Pro gebauter Demo</small><b class="num">{v.pro_demo_eur != null ? eur.format(v.pro_demo_eur) : "–"}</b><span class="muted">{v.demos ?? 0} Demos</span></div>
+    <div class="card ton ton-grau"><small>Läufe</small><b class="num"><Zahl wert={v.laeufe ?? 0} /></b><span class="muted">Wochenläufe</span></div>
   </div>
 
   <div class="cols">
@@ -96,7 +99,32 @@
       </tbody>
     </table>
   </section>
-{:else}
+{/if}
+
+{#if alt}
+  <section class="card alt" class:auf={altOffen}>
+    <button class="alt__k" onclick={() => (altOffen = !altOffen)} aria-expanded={altOffen}>
+      <span class="alt__t"><b>Alte Kostenanalyse</b><small class="muted">{alt.zeitraum?.[0] ? `${datum(alt.zeitraum[0])} bis ${datum(alt.zeitraum[1] ?? alt.archiviert)}` : "bis " + datum(alt.archiviert)} · aufgehoben am {datum(alt.archiviert)}</small></span>
+      {#if alt.verbrauch}<span class="alt__z"><b class="num">{eur.format(alt.verbrauch.gesamt_eur ?? 0)}</b><small class="muted">{alt.verbrauch.laeufe ?? 0} Läufe · {alt.verbrauch.pro_demo_eur != null ? eur.format(alt.verbrauch.pro_demo_eur) + " pro Demo" : `${alt.verbrauch.demos ?? 0} Demos`}</small></span>{/if}
+      <svg class="pf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+    </button>
+    {#if altOffen}
+      <div class="alt__b" transition:slide={{ duration: 420 }}>
+        {#if alt.verbrauch?.tools?.length}
+          {@const am = Math.max(0.0001, ...alt.verbrauch.tools.map((x) => x.eur))}
+          <div class="tools">
+            {#each alt.verbrauch.tools as t (t.tool)}
+              <div class="tool"><span>{TOOL_NAME[t.tool] ?? t.tool}</span><span class="bar"><i style="width:{Math.max(2, Math.round((t.eur / am) * 100))}%;background:{TCOL[t.tool] ?? '#7BAFFF'}"></i></span><b class="num">{eur.format(t.eur)}</b></div>
+            {/each}
+          </div>
+        {/if}
+        {#if alt.text}<small class="muted">KI-Analyse vom {datumZeit(alt.erstellt ?? alt.archiviert)}</small><div class="md">{@html md(alt.text)}</div>{/if}
+      </div>
+    {/if}
+  </section>
+{/if}
+
+{#if !v}
   <div class="card empty"><b>Noch keine Kostendaten</b><p>Sie kommen mit dem nächsten Abgleich des Agenten.</p></div>
 {/if}
 
@@ -123,6 +151,15 @@
   .md :global(b) { color: var(--text); }
   .md :global(code) { font: .84em ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, .07); }
   .tw { overflow-x: auto; }
+  .alt { margin-top: 14px; padding: 0; overflow: hidden; }
+  .alt__k { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 20px; border: 0; background: none; color: inherit; cursor: pointer; font: inherit; text-align: left; }
+  .alt__t { display: grid; gap: 2px; flex: 1; min-width: 0; }
+  .alt__t b { color: var(--text); }
+  .alt__z { display: grid; justify-items: end; gap: 2px; }
+  .alt__z b { color: var(--text); font-size: 1.15rem; }
+  .alt .pf { width: 18px; height: 18px; color: var(--steel); transition: transform .5s var(--feder); flex: none; }
+  .alt.auf .pf { transform: rotate(180deg); }
+  .alt__b { display: grid; gap: 12px; padding: 16px 20px 20px; border-top: 1px solid var(--line); }
   .r { text-align: right; }
   .tl { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
 </style>

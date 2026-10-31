@@ -52,12 +52,12 @@
 
 <div class="kpis">
   {#if auth.darf("anfragen")}
-    <a class="kpi card" href="#/anfragen"><small>Neue Anfragen</small><b class="num"><Zahl wert={daten.neueAnfragen} /></b><span class="muted">warten auf Antwort</span></a>
-    <a class="kpi card" href="#/anfragen"><small>Anstehende Termine</small><b class="num"><Zahl wert={termine.length} /></b><span class="muted">{termine[0] ? "nächster " + datumZeit(termine[0].termin) : "keine geplant"}</span></a>
+    <a class="kpi card ton ton-rot" href="#/anfragen"><small>Neue Anfragen</small><b class="num"><Zahl wert={daten.neueAnfragen} /></b><span class="muted">warten auf Antwort</span></a>
+    <a class="kpi card ton ton-rot" href="#/anfragen"><small>Anstehende Termine</small><b class="num"><Zahl wert={termine.length} /></b><span class="muted">{termine[0] ? "nächster " + datumZeit(termine[0].termin) : "keine geplant"}</span></a>
   {/if}
   {#if auth.darf("akquise")}
-    <a class="kpi card" href="#/akquise"><small>Demos online</small><b class="num"><Zahl wert={online(null)} /></b><span class="muted">in allen Kategorien</span></a>
-    <a class="kpi card" href="#/akquise"><small>Briefe verschickt</small><b class="num">{zahl(summe(null, ["verschickt", "interesse", "kunde"]))}</b><span class="muted">insgesamt</span></a>
+    <a class="kpi card ton ton-blau" href="#/akquise"><small>Demos online</small><b class="num"><Zahl wert={online(null)} /></b><span class="muted">in allen Kategorien</span></a>
+    <a class="kpi card ton ton-gelb" href="#/akquise"><small>Briefe verschickt</small><b class="num">{zahl(summe(null, ["verschickt", "interesse", "kunde"]))}</b><span class="muted">insgesamt</span></a>
   {/if}
 </div>
 

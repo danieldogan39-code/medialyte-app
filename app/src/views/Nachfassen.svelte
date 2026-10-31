@@ -167,9 +167,9 @@
 <Head titel="Nachfassen" text="Wen du heute anrufen solltest – Rückrufwünsche und wer die Demo geöffnet hat stehen ganz oben. Am besten zwischen 15 und 17 Uhr." />
 
 <div class="kz">
-  <div class="card"><small>Heute dran</small><b class="num"><Zahl wert={gruppen.dran.length} /></b></div>
-  <div class="card"><small>Später</small><b class="num"><Zahl wert={gruppen.spaeter.length} /></b></div>
-  <div class="card"><small>Kunden</small><b class="num"><Zahl wert={gruppen.neueKunden.length} /></b></div>
+  <div class="card ton ton-gelb"><small>Heute dran</small><b class="num"><Zahl wert={gruppen.dran.length} /></b></div>
+  <div class="card ton ton-grau"><small>Später</small><b class="num"><Zahl wert={gruppen.spaeter.length} /></b></div>
+  <div class="card ton ton-gruen"><small>Kunden</small><b class="num"><Zahl wert={gruppen.neueKunden.length} /></b></div>
 </div>
 
 {#if laedt}<p class="muted">Lade …</p>

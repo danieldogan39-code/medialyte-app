@@ -126,9 +126,9 @@
   <div class="seite-h"><h1>{greeting(R.settings.account_holder || auth.ich?.name || "")}</h1>
     <p class="muted">{offenAnzahl ? `${offenAnzahl} offene ${offenAnzahl === 1 ? "Rechnung" : "Rechnungen"} · ${eur(summe(["open", "overdue"]))} ausstehend` : "Alles bezahlt – keine offenen Rechnungen."}</p></div>
   <div class="stats">
-    <div class="card"><small>Offen</small><b class="num"><Zahl wert={summe(["open", "overdue"])} format={eur} /></b></div>
-    <div class="card" class:rot={summe(["overdue"]) > 0}><small>Überfällig</small><b class="num"><Zahl wert={summe(["overdue"])} format={eur} /></b></div>
-    <div class="card"><small>Bezahlt gesamt</small><b class="num"><Zahl wert={ev.reduce((a, e) => a + e.amount, 0)} format={eur} /></b></div>
+    <div class="card ton ton-gelb"><small>Offen</small><b class="num"><Zahl wert={summe(["open", "overdue"])} format={eur} /></b></div>
+    <div class="card ton ton-rot" class:rot={summe(["overdue"]) > 0}><small>Überfällig</small><b class="num"><Zahl wert={summe(["overdue"])} format={eur} /></b></div>
+    <div class="card ton ton-gruen"><small>Bezahlt gesamt</small><b class="num"><Zahl wert={ev.reduce((a, e) => a + e.amount, 0)} format={eur} /></b></div>
   </div>
   <div class="jahre">
     <button class="jk alle" onclick={() => B.auf(Statistik, { welches: "all" })}><small>Gesamt seit 2024</small><b class="num"><Zahl wert={ev.reduce((a, e) => a + e.amount, 0)} format={eur} /></b><span class="d">Verlauf ansehen ›</span>
@@ -166,9 +166,9 @@
   {:else}
     <div class="seite-h"><h1>Angebote</h1><p class="muted">{aAnz(["open"]) ? `${aAnz(["open"])} ${aAnz(["open"]) === 1 ? "Angebot wartet" : "Angebote warten"} auf Antwort · ${eur(aSumme(["open"]))}` : "Schreib ein Angebot – mit einem Tipp wird daraus später die Rechnung."}</p></div>
     <div class="stats">
-      <div class="card"><small>Offen</small><b class="num"><Zahl wert={aSumme(["open"])} format={eur} /></b></div>
-      <div class="card"><small>Angenommen</small><b class="num"><Zahl wert={aSumme(["accepted"])} format={eur} /></b></div>
-      <div class="card"><small>Zusagequote</small><b class="num">{quote_ === null ? "–" : quote_ + " %"}</b></div>
+      <div class="card ton ton-gelb"><small>Offen</small><b class="num"><Zahl wert={aSumme(["open"])} format={eur} /></b></div>
+      <div class="card ton ton-gruen"><small>Angenommen</small><b class="num"><Zahl wert={aSumme(["accepted"])} format={eur} /></b></div>
+      <div class="card ton ton-lila"><small>Zusagequote</small><b class="num">{quote_ === null ? "–" : quote_ + " %"}</b></div>
     </div>
     <div class="bar">
       <div class="chips" use:gleiter={{ sel: ".chip.on" }}>{#each [["all", "Alle"], ["draft", "Entwürfe"], ["open", "Offen"], ["accepted", "Angenommen"], ["declined", "Abgelehnt"], ["expired", "Abgelaufen"]] as [k, t]}<button class="chip" class:on={A.qfilter === k} onclick={() => (A.qfilter = k)}>{t}</button>{/each}</div>
