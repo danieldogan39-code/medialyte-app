@@ -184,7 +184,8 @@
   .kz b { color: var(--text); font-size: 1.6rem; font-weight: 600; }
   .kz .von { font-size: .9rem; color: var(--steel); font-weight: 400; }
   .card.heiss { border-color: rgba(242, 74, 74, .45); }
-  .sek { display: grid; gap: 10px; margin-bottom: 28px; }
+  .sek { display: grid; gap: 10px; margin-bottom: 28px; min-width: 0; }
+  .sek > * { min-width: 0; }
   .sek h2 { font-size: 1.05rem; }
   .sek > p { margin-top: -6px; font-size: .9rem; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
@@ -207,7 +208,7 @@
   .klein-b { font-size: 1.25rem !important; }
   .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .bar h2 { margin-right: 6px; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; flex: 0 1 auto; min-width: 0; max-width: 100%; scrollbar-width: none; overscroll-behavior-x: contain; }
   .chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font: inherit; font-size: .86rem; white-space: nowrap; }
   .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
   .search { position: relative; display: block; width: min(260px, 100%); margin-left: auto; }
@@ -226,6 +227,6 @@
   .re { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line); font-size: .82rem; color: var(--text-2); }
   .re > span:first-child { display: inline-flex; gap: 6px; align-items: center; }
   .re :global(svg) { color: var(--steel); }
-  @media (hover: hover) { a.card:hover { border-color: var(--line-2); background: var(--panel-2); } }
+  @media (hover: hover) and (pointer: fine) { a.card:hover { border-color: var(--line-2); background: var(--panel-2); } }
   @media (max-width: 560px) { .kz { grid-template-columns: repeat(2, minmax(0, 1fr)); } .neu { flex-wrap: wrap; } .search { width: 100%; } }
 </style>

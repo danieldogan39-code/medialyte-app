@@ -160,7 +160,7 @@
   .seg .n { opacity: .6; font-size: .82em; margin-left: 2px; }
   .liste { display: grid; gap: 2px; }
   .zeile { display: flex; justify-content: space-between; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 10px 10px; border-radius: var(--radius-s); border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; }
-  @media (hover: hover) { .zeile:hover { background: var(--hover); } }
+  @media (hover: hover) and (pointer: fine) { .zeile:hover { background: var(--hover); } }
   .h { display: grid; gap: 2px; min-width: 0; }
   .h b { color: var(--text); font-weight: 600; }
   .h small { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; }

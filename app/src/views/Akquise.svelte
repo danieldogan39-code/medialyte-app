@@ -60,7 +60,7 @@
 <style>
   .kats { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
   .kat { display: grid; gap: 16px; padding: 20px; transition: border-color .15s ease, transform .15s var(--ease); }
-  @media (hover: hover) { .kat:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); } }
+  @media (hover: hover) and (pointer: fine) { .kat:hover { border-color: color-mix(in srgb, var(--c) 40%, transparent); } }
   .kat__h { display: flex; align-items: center; justify-content: space-between; }
   .kat__sw { display: flex; align-items: center; gap: 10px; }
   .kat__sw small { font-size: .8rem; }

@@ -253,7 +253,7 @@
   .liste { display: grid; gap: 6px; }
   .zeile { display: flex; justify-content: space-between; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 10px 12px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--bg-2); color: inherit; cursor: pointer; font: inherit; }
   .zeile:disabled { cursor: default; }
-  @media (hover: hover) { .zeile:not(:disabled):hover { border-color: var(--line-2); } }
+  @media (hover: hover) and (pointer: fine) { .zeile:not(:disabled):hover { border-color: var(--line-2); } }
   .h { display: grid; gap: 2px; min-width: 0; }
   .h b { color: var(--text); font-weight: 600; }
   .h small { font-size: .8rem; }

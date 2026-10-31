@@ -232,7 +232,7 @@
   .jk svg { width: 100%; height: 28px; margin-top: 4px; }
   .zeichnen { stroke-dasharray: 1; stroke-dashoffset: 1; animation: zeichnen 1.2s cubic-bezier(.32, .72, 0, 1) .15s forwards; }
   @keyframes zeichnen { to { stroke-dashoffset: 0; } }
-  @media (hover: hover) { .jk:hover { border-color: var(--line-2); } }
+  @media (hover: hover) and (pointer: fine) { .jk:hover { border-color: var(--line-2); } }
   .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
   .chips { display: flex; gap: 6px; overflow-x: auto; }
   .chip { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font-size: .86rem; white-space: nowrap; }
@@ -245,7 +245,7 @@
   .liste { display: grid; gap: 6px; }
   .zeile { display: flex; justify-content: space-between; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 11px 12px; border-radius: var(--radius-s); border: 1px solid transparent; background: transparent; color: inherit; cursor: pointer; font: inherit; }
   .liste .zeile { border-color: var(--line); background: var(--panel); }
-  @media (hover: hover) { .zeile:hover { background: var(--hover); } .liste .zeile:hover { border-color: var(--line-2); } }
+  @media (hover: hover) and (pointer: fine) { .zeile:hover { background: var(--hover); } .liste .zeile:hover { border-color: var(--line-2); } }
   .h { display: grid; gap: 2px; min-width: 0; }
   .h b { color: var(--text); font-weight: 600; }
   .h small { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; }
@@ -264,6 +264,6 @@
   .klein { font-size: .86rem; margin: 0; }
   .unter { margin: 22px 0 4px; }
   .note { padding: 10px 14px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .1); color: #A9C9F5; font-size: .9rem; margin-bottom: 12px; }
-  .fab { position: fixed; right: max(24px, calc((100vw - var(--side, 0px)) / 2 - 560px)); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 5; min-height: 52px; padding: 0 22px; font-size: 1rem;
+  .fab { position: fixed; right: max(24px, calc((100vw - var(--side, 0px)) / 2 - 560px)); bottom: calc(24px + var(--unten, env(safe-area-inset-bottom))); z-index: 5; min-height: 52px; padding: 0 22px; font-size: 1rem;
     box-shadow: 0 16px 36px -14px rgba(242, 74, 74, .7); }
 </style>

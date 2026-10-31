@@ -133,7 +133,7 @@
   .items li + li { border-top: 1px solid var(--line); }
   .items a { display: flex; justify-content: space-between; gap: 12px; padding: 14px 18px; transition: background-color .12s ease; }
   .items a.on { background: rgba(255, 255, 255, .06); }
-  @media (hover: hover) { .items a:hover { background: var(--hover); } }
+  @media (hover: hover) and (pointer: fine) { .items a:hover { background: var(--hover); } }
   .items__t { display: grid; min-width: 0; }
   .items__t b { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .items__t small { font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

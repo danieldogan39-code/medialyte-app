@@ -148,7 +148,7 @@
   @media (max-width: 600px) { .nums, .nums.ohne-ust { grid-template-columns: repeat(3, minmax(0, 1fr)); } .del { justify-self: end; } }
   .pfuss { display: flex; justify-content: space-between; gap: 10px; font-size: .82rem; color: var(--text-2); }
   .lnk { border: 0; background: none; padding: 0; color: var(--steel); cursor: pointer; font: inherit; }
-  @media (hover: hover) { .lnk:hover { color: var(--text); } }
+  @media (hover: hover) and (pointer: fine) { .lnk:hover { color: var(--text); } }
   .knoepfe { display: flex; gap: 6px; flex-wrap: wrap; }
   .rabatte { display: grid; gap: 8px; }
   .rh { font-size: .82rem; font-weight: 600; color: var(--steel); }

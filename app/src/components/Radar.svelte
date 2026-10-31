@@ -103,7 +103,7 @@
   @keyframes ziel { from { transform: scale(.8); opacity: .95; } to { transform: scale(2.6); opacity: 0; } }
   .pkt.cur .dot { stroke: #fff; stroke-width: 1.6; }
   .pkt.sel .dot { stroke: #fff; stroke-width: 2.2; transform: scale(1.35); }
-  @media (hover: hover) { .pkt:hover .dot { transform: scale(1.4); } }
+  @media (hover: hover) and (pointer: fine) { .pkt:hover .dot { transform: scale(1.4); } }
   .pkt:focus-visible .dot { stroke: var(--coral-2); stroke-width: 2.5; }
   .kern { transform-box: fill-box; transform-origin: center; animation: atmen 3s ease-in-out infinite; }
   @keyframes atmen { 50% { transform: scale(1.25); opacity: .7; } }

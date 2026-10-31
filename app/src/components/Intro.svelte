@@ -1,14 +1,17 @@
 <script lang="ts">
   // Eingangsanimation beim Öffnen der App: Radarwellen, das Medialyte-Zeichen schreibt sich, der Schriftzug steigt auf,
-  // dann öffnet sich die App. Einmal pro Start (nicht bei jedem Neuladen), Tippen überspringt, „Bewegung reduzieren“ lässt sie aus.
+  // dann öffnet sich die App. Einmal am Tag (danach startet die App sofort wie eine native App), Tippen überspringt,
+  // „Bewegung reduzieren“ lässt sie aus.
   import { ruhig } from "../lib/bewegung";
   let { bereit = true }: { bereit?: boolean } = $props();
   const KEY = "medialyte-intro";
-  let schon = false; try { schon = sessionStorage.getItem(KEY) === "1"; } catch { /* egal */ }
+  const heute = new Date().toISOString().slice(0, 10);
+  let schon = false;
+  try { schon = sessionStorage.getItem(KEY) === "1" || localStorage.getItem(KEY) === heute; } catch { /* egal */ }
   let zeigen = $state(!schon && !ruhig()), fertig = $state(false), geht = $state(false);
   $effect(() => {
     if (!zeigen) return;
-    try { sessionStorage.setItem(KEY, "1"); } catch { /* egal */ }
+    try { sessionStorage.setItem(KEY, "1"); localStorage.setItem(KEY, heute); } catch { /* egal */ }
     const t = setTimeout(() => (fertig = true), 2400);
     return () => clearTimeout(t);
   });

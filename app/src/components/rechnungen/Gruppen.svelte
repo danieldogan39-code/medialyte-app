@@ -54,6 +54,6 @@
   .gb { display: grid; gap: 2px; padding: 0 8px 8px; border-top: 1px solid var(--line); padding-top: 6px; }
   .mehr { justify-self: start; border: 0; background: none; color: var(--text-2); cursor: pointer; font: inherit; font-size: .86rem; padding: 8px 10px; border-radius: 8px; }
   .mehr.neu { color: var(--coral-2); }
-  @media (hover: hover) { .gh:hover, .mehr:hover { background: var(--hover); } }
+  @media (hover: hover) and (pointer: fine) { .gh:hover, .mehr:hover { background: var(--hover); } }
   @media (max-width: 520px) { .gh { grid-template-columns: minmax(0, 1fr) auto 18px; } .nr { display: none; } }
 </style>

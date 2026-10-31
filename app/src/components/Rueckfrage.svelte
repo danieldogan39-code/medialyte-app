@@ -41,5 +41,5 @@
   .rf__b p { line-height: 1.55; }
   .rf__a { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   :global(.btn--gefahr) { background: #C93636; border-color: #D94444; color: #fff; font-weight: 600; }
-  @media (hover: hover) { :global(.btn--gefahr:hover) { background: #D63E3E !important; } }
+  @media (hover: hover) and (pointer: fine) { :global(.btn--gefahr:hover) { background: #D63E3E !important; } }
 </style>

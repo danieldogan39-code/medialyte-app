@@ -29,7 +29,7 @@
 <style>
   .liste { display: grid; gap: 6px; }
   .zeile { display: flex; justify-content: space-between; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border-radius: var(--radius-s); border: 1px solid var(--line); background: var(--bg-2); color: inherit; cursor: pointer; font: inherit; }
-  @media (hover: hover) { .zeile:hover { border-color: var(--line-2); background: var(--panel-2); } }
+  @media (hover: hover) and (pointer: fine) { .zeile:hover { border-color: var(--line-2); background: var(--panel-2); } }
   .h { display: grid; gap: 2px; min-width: 0; }
   .h b { color: var(--text); font-weight: 600; }
   .h small { font-size: .8rem; white-space: pre-line; }

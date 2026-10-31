@@ -34,5 +34,5 @@
   .haken { font-size: .78rem; opacity: .9; animation: rein .45s var(--feder); }
   @keyframes rein { from { opacity: 0; transform: scale(.4); } }
   .kc--rand { border-style: dashed; color: var(--steel); }
-  @media (hover: hover) { .kc:not(:disabled):hover { border-color: color-mix(in srgb, var(--k, #8B98AD) 60%, transparent); } }
+  @media (hover: hover) and (pointer: fine) { .kc:not(:disabled):hover { border-color: color-mix(in srgb, var(--k, #8B98AD) 60%, transparent); } }
 </style>

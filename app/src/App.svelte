@@ -30,9 +30,9 @@
 {/if}
 
 <style>
-  .splash { min-height: 100vh; display: grid; place-items: center; }
+  .splash { min-height: 100dvh; display: grid; place-items: center; }
   .splash img { animation: puls 1.4s ease-in-out infinite; }
   @keyframes puls { 50% { opacity: .4; } }
-  :global(.gate) { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  :global(.gate) { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
   :global(.gate__box) { width: min(420px, 100%); padding: 32px; display: grid; gap: 16px; }
 </style>

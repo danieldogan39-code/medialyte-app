@@ -160,7 +160,7 @@
   .kpi small { color: var(--steel); font-size: .84rem; }
   .kpi b { font-size: clamp(1.6rem, 5vw, 2rem); font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1.15; }
   .kpi span { font-size: .84rem; line-height: 1.35; }
-  @media (hover: hover) { .kpi:hover, .kat:hover { border-color: var(--line-2); } }
+  @media (hover: hover) and (pointer: fine) { .kpi:hover, .kat:hover { border-color: var(--line-2); } }
   @media (max-width: 420px) { .agents { grid-template-columns: minmax(0, 1fr); } }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
   .box { padding: 6px 0; }
@@ -169,7 +169,7 @@
   .list { list-style: none; margin: 0; padding: 0; }
   .list li + li { border-top: 1px solid var(--line); }
   .list a, .list .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; }
-  @media (hover: hover) { .list a:hover { background: var(--hover); } }
+  @media (hover: hover) and (pointer: fine) { .list a:hover { background: var(--hover); } }
   .list span:first-child { display: grid; min-width: 0; }
   .list b { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .list small { font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
