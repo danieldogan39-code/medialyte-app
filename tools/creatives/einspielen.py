@@ -2,7 +2,7 @@
 Supabase-Speicher „creatives“ und legt die Creatives in public.social_creatives an (bzw. aktualisiert sie).
 
 Je Ordner der Lieferung eins davon:
-  creative.json  ein Creative (optional kunde_id und auftrag_id: zählt beim Auftrag als geliefert)
+  creative.json  ein Creative (optional kunde_id oder kunde = Name des Social-Kunden, auftrag_id: zählt beim Auftrag als geliefert)
   profil.json    Stilprofil eines Social-Kunden {kunde_id, profil, auftrag_id?, ergebnis?} (Ergebnis von „Anlernen“)
   meldung.json   Stand eines Auftrags {auftrag_id, status: in_arbeit|fertig|fehler, ergebnis?}
   kunde.json     Social-Kunden einrichten {name, website?, kanaele: [{plattform, name, url}], profil}: legt den Kunden mit der
@@ -95,6 +95,12 @@ def main():
                 liste.append({"name": info.get("anzeige") or name, "pfad": pfad, "art": art, "groesse": m.size, "typ": typ,
                               **{k: info[k] for k in ("b", "h", "dauer") if k in info}})
             zeile = {k: v for k, v in meta.items() if k in ERLAUBT}
+            if meta.get("kunde") and not zeile.get("kunde_id"):   # Kunde per Name (wie in kunde.json)
+                code, body = rest(f"social_kunden?name=ilike.{urllib.parse.quote(str(meta['kunde']))}&select=id")
+                treffer = json.loads(body or b"[]") if code < 300 else []
+                if len(treffer) != 1:
+                    sys.exit(f"{slug}: Social-Kunde nicht eindeutig gefunden")
+                zeile["kunde_id"] = treffer[0]["id"]
             for k in ("kunde_id", "auftrag_id"):
                 if zeile.get(k) is not None and not UUID.match(str(zeile[k])):
                     sys.exit(f"{slug}: {k} ungültig")
