@@ -41,7 +41,7 @@ class Rechnungen {
   ausgeblendet = $derived(this.alleRechnungen.filter((r) => r.ausgeblendet_am));
   ausgeblendeteAngebote = $derived(this.alleAngebote.filter((r) => r.ausgeblendet_am));
   customers = $state<any[]>([]); products = $state<any[]>([]); recurring = $state<any[]>([]); mail = $state<any[]>([]);
-  kategorien = $state<{ id: string; name: string; farbe: string; sortierung: number }[]>([]);   // eigene Kundenkategorien
+  kategorien = $state<{ id: string; name: string; farbe: string; sortierung: number; bereich?: string | null }[]>([]);   // eigene Kundenkategorien
   outbox = $state<Op[]>(readLS(OUTBOX_KEY, [])); failed = $state<Op[]>(readLS(FAILED_KEY, []));
   offline = $state(false); loaded = $state(false); syncedAt = $state<number | null>(null);
   offeneBlaetter = $state(0);   // offene Formulare: dann nicht neu zeichnen
@@ -242,6 +242,8 @@ class Rechnungen {
   customer(id?: string | null) { return this.customers.find((c) => c.id === id); }
   kategorie(id?: string | null) { return this.kategorien.find((k) => k.id === id); }
   /** Kategorie „Website“ (für Website-Kunden aus dem Agenten automatisch) */
+  /** „Social Media“: Kunden mit dieser Kategorie haben einen eigenen Bereich unter Social Media */
+  get socialKategorie() { return this.kategorien.find((k) => k.bereich === "social") ?? null; }
   get webKategorie() { return this.kategorien.find((k) => k.name.trim().toLowerCase() === "website") ?? null; }
   invoice(id?: string | null) { return this.alleRechnungen.find((i) => i.id === id); }
   quote(id?: string | null) { return this.alleAngebote.find((q) => q.id === id); }

@@ -35,7 +35,7 @@
 </script>
 
 <div class="kopf" style="--p: {p?.farbe ?? 'var(--bereich)'}; --fl: {p?.flaeche ?? 'var(--bereich)'}">
-  <a class="zurueck" href="#/social"><Icon name="left" size={16} />Alle Plattformen</a>
+  <a class="zurueck" href={social.basis}><Icon name="left" size={16} />Alle Plattformen</a>
   <div class="kopf__z">
     {#if p}<PlattformLogo name={p.key} size={46} />{:else}<span class="logo"><Icon name={kanal === "freigabe" ? "check" : kanal === "favoriten" ? "star" : "image"} size={24} fill={kanal === "favoriten"} /></span>{/if}
     <h2>{titel}</h2>
@@ -45,12 +45,12 @@
 
 {#if p}
   <div class="typen" style="--p: {p.farbe}">
-    <a class="tk" class:on={!typ} href="#/social/k/{p.key}" aria-current={!typ ? "page" : undefined}>
+    <a class="tk" class:on={!typ} href="{social.basis}/k/{p.key}" aria-current={!typ ? "page" : undefined}>
       <span class="tk__i"><Icon name="layers" size={18} /></span>
       <span class="tk__t"><b>Alle</b><small>{basis.filter((c) => c.status !== "verworfen").length}</small></span>
     </a>
     {#each typen as x, i (x.t)}
-      <a class="tk" class:on={typ === x.t} class:leer={!x.l.length} href={typ === x.t ? `#/social/k/${p.key}` : `#/social/k/${p.key}/${x.t}`} aria-current={typ === x.t ? "page" : undefined}
+      <a class="tk" class:on={typ === x.t} class:leer={!x.l.length} href={typ === x.t ? `${social.basis}/k/${p.key}` : `${social.basis}/k/${p.key}/${x.t}`} aria-current={typ === x.t ? "page" : undefined}
         in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : fk.ms, delay: ruhig() ? 0 : 40 + i * 40, easing: fk.easing, opacity: 0 }}>
         <span class="tk__i"><Icon name={TYPEN[x.t].icon} size={18} /></span>
         <span class="tk__t"><b>{typName(p, x.t)}</b><small>{x.l.length}</small></span>

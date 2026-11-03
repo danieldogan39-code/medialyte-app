@@ -12,8 +12,10 @@
 
   let { slug }: { slug: string } = $props();
   const schreiben = $derived(auth.darf("social", true));
-  $effect(() => { if (!social.liste.length) social.laden(); return social.live(); });
-  const c = $derived(social.liste.find((x) => x.slug === slug));
+  $effect(() => { if (!social.alle.length) social.laden(); return social.live(); });
+  const c = $derived(social.alle.find((x) => x.slug === slug));
+  // Bereich des Creatives öffnen (eigene oder die eines Kunden): Nummer, Säulen und „Zurück“ passen dazu
+  $effect(() => { if (c) social.kunde = c.kunde_id ?? null; });
   const nr = $derived(c && offen(c) ? social.sortiert().filter(offen).findIndex((x) => x.id === c.id) + 1 : 0);
 
   const bilder = $derived((c?.dateien ?? []).filter((d) => d.art === "bild"));
@@ -88,9 +90,9 @@
 
 {#if !c}
   {#if social.laedt}<div class="skelett" aria-label="Lade …"><i></i><i></i></div>
-  {:else}<div class="card empty"><b>Creative nicht gefunden</b><p>Vielleicht wurde es gelöscht.</p><a class="btn" href="#/social">Zu den Creatives</a></div>{/if}
+  {:else}<div class="card empty"><b>Creative nicht gefunden</b><p>Vielleicht wurde es gelöscht.</p><a class="btn" href={social.basis}>Zu den Creatives</a></div>{/if}
 {:else}
-  <Head titel={c.titel} text={[c.serie, ART[c.art], c.format].filter(Boolean).join(" · ")} zurueck={social.zuletzt || "#/social"}>
+  <Head titel={c.titel} text={[c.serie, ART[c.art], c.format].filter(Boolean).join(" · ")} zurueck={social.zuletzt || social.basis}>
     <span class="pill pill--{STATUS[c.status].ton}">{STATUS[c.status].name}</span>
     {#if nr}<span class="pill pill--plain" title="Posting-Reihenfolge">Nr. {nr}</span>{/if}
     {#if schreiben}<button class="btn btn--s stern" class:an={c.favorit} aria-pressed={!!c.favorit} onclick={() => setzen({ favorit: !c.favorit }, c.favorit ? "Aus Favoriten entfernt" : "Zu Favoriten hinzugefügt")}><Icon name="star" size={15} fill={!!c.favorit} />{c.favorit ? "Favorit" : "Favorisieren"}</button>

@@ -18,13 +18,13 @@
     stand = "speichert";
     social.planSpeichern(teil).then(() => (stand = "gespeichert")).catch((e) => { stand = "fehler"; daten.melden("Plan nicht gespeichert: " + e.message); });
   }
-  const FELDER: { k: keyof Plan; name: string; hilfe: string; zeilen: number }[] = [
-    { k: "idee", name: "Grundidee", hilfe: "Wofür steht der Kanal? Was soll jemand nach drei Posts über Medialyte wissen?", zeilen: 3 },
+  const FELDER: { k: keyof Plan; name: string; hilfe: string; zeilen: number }[] = $derived([
+    { k: "idee", name: "Grundidee", hilfe: `Wofür steht der Kanal? Was soll jemand nach drei Posts über ${social.aktuell?.name ?? "Medialyte"} wissen?`, zeilen: 3 },
     { k: "faden", name: "Roter Faden", hilfe: "Wie hängen die Posts zusammen? Welche Geschichte erzählt der Kanal über Wochen?", zeilen: 3 },
     { k: "zielgruppe", name: "Zielgruppe", hilfe: "Wen wollen wir erreichen?", zeilen: 2 },
     { k: "ton", name: "Tonalität", hilfe: "Wie klingen wir?", zeilen: 2 },
     { k: "rhythmus", name: "Rhythmus", hilfe: "Wie oft und in welcher Mischung posten wir?", zeilen: 2 },
-  ];
+  ]);
 
   // ---------- Content-Säulen
   const saeulen = $derived(social.plan.saeulen ?? []);

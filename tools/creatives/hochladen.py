@@ -2,7 +2,8 @@
 
   python3 tools/creatives/hochladen.py <ordner> [<ordner> …]
 
-Jeder Ordner ist ein Creative: creative.json (titel, art, serie, text, format, saeule, optional plattformen/status/position/geplant)
+Jeder Ordner ist ein Creative – oder eine Meldung an die App (nur profil.json bzw. meldung.json, siehe einspielen.py).
+Creative: creative.json (titel, art, serie, text, format, saeule, optional plattformen/status/position/geplant)
 und die Dateien (Bilder 01.jpg, 02.jpg …, bzw. video.mp4 + titelbild.jpg). Das Skript erzeugt das Vorschaubild,
 bei Karussells ein ZIP mit allen Bildern und dem Text, verschlüsselt alles mit tools/creatives/schluessel.pub
 und legt es im Zweig creatives-eingang ab. Den Rest erledigt .github/workflows/creatives.yml.
@@ -23,6 +24,11 @@ def git(*a, cwd=REPO):
 
 
 def vorbereiten(ordner: str, ziel: str) -> str:
+    for nur in ("profil.json", "meldung.json"):
+        if os.path.exists(os.path.join(ordner, nur)):
+            slug = os.path.basename(os.path.normpath(ordner))
+            os.makedirs(os.path.join(ziel, slug)); shutil.copy(os.path.join(ordner, nur), os.path.join(ziel, slug, nur))
+            return slug
     meta = json.load(open(os.path.join(ordner, "creative.json")))
     slug = meta.get("slug") or os.path.basename(os.path.normpath(ordner))
     assert meta.get("titel") and meta.get("art") in ("bild", "karussell", "video"), f"{slug}: titel/art fehlt"
@@ -86,7 +92,7 @@ def main():
                 open(os.path.join(baum, "eingang", f"lieferung.bin.{i // TEIL:03d}"), "wb").write(paket[i:i + TEIL])
             git("add", "eingang", cwd=baum)
             git("-c", "user.name=Medialyte", "-c", "user.email=info@medialyte.de", "commit", "-q", "-m",
-                f"Creatives-Eingang: {len(slugs)} Creatives (verschlüsselt)", cwd=baum)
+                f"Creatives-Eingang: {len(slugs)} Lieferungen (verschlüsselt)", cwd=baum)
             git("push", "-q", "-f", "origin", "creatives-eingang", cwd=baum)
         finally:
             git("worktree", "remove", "--force", baum)

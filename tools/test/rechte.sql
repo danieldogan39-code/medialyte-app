@@ -355,3 +355,58 @@ update public.social_creatives set plattformen = array['gm-foto', 'tt-video'] wh
 do $$ begin raise notice 'OK Migrationen wiederholbar'; end $$;
 \ir ../../supabase/migrations/121_social_bibliothek.sql
 do $$ begin raise notice 'OK Bibliothek wiederholbar'; end $$;
+
+-- Social Media für Kunden: Kategorie am Kunden ⇒ eigener Bereich; Kanäle, Stil, Aufträge nur mit Social-Recht
+\ir ../../supabase/migrations/122_social_kunden.sql
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare kat uuid := (select id from public.kundenkategorien where bereich = 'social'); begin
+  if kat is null then raise exception 'Kategorie Social Media fehlt'; end if;
+  insert into public.customers (name, kategorien) values ('Fakten-Test', array[kat]);
+  if (select count(*) from public.social_kunden where name = 'Fakten-Test' and aktiv) <> 1 then raise exception 'Social-Bereich nicht angelegt'; end if;
+  update public.customers set name = 'Fakten-Test 2' where name = 'Fakten-Test';
+  if not exists (select 1 from public.social_kunden where name = 'Fakten-Test 2') then raise exception 'Name nicht übernommen'; end if;
+  raise notice 'OK Kategorie legt Social-Bereich an';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ declare k uuid; ka uuid; a uuid; n int; begin
+  select id into k from public.social_kunden where name = 'Fakten-Test 2';
+  if k is null then raise exception 'Marketing sieht Social-Kunden nicht'; end if;
+  update public.social_kunden set profil = '{"stimme":"ruhig"}' where id = k;
+  if (select profil->>'stimme' from public.social_kunden where id = k) <> 'ruhig' then raise exception 'Stil nicht speicherbar'; end if;
+  begin update public.social_kunden set aktiv = false where id = k; raise exception 'aktiv änderbar';
+  exception when insufficient_privilege then null; end;
+  begin insert into public.social_kunden (name) values ('x'); raise exception 'Social-Kunde direkt angelegt';
+  exception when insufficient_privilege then null; end;
+  insert into public.social_kanaele (kunde_id, plattform, name) values (k, 'tiktok', '@test') returning id into ka;
+  insert into public.social_auftraege (kunde_id, art, kanaele, erstellt_von) values (k, 'video', array[ka], auth.uid()) returning id into a;
+  begin insert into public.social_auftraege (kunde_id, art, status, erstellt_von) values (k, 'video', 'fertig', auth.uid()); raise exception 'fertiger Auftrag angelegt';
+  exception when insufficient_privilege then null; end;
+  begin insert into public.social_auftraege (kunde_id, art, kanaele, erstellt_von) values (k, 'video', array[gen_random_uuid()], auth.uid()); raise exception 'fremder Kanal angenommen';
+  exception when raise_exception then null; end;
+  begin update public.social_auftraege set geliefert = 3 where id = a; raise exception 'geliefert änderbar';
+  exception when insufficient_privilege then null; end;
+  update public.social_auftraege set status = 'abgebrochen' where id = a;
+  if (select erledigt from public.social_auftraege where id = a) is null then raise exception 'erledigt fehlt'; end if;
+  insert into public.befehle (art, daten) values ('social', '{}');
+  delete from public.social_auftraege where id = a; get diagnostics n = row_count;
+  if n <> 1 then raise exception 'abgebrochener Auftrag nicht löschbar'; end if;
+  raise notice 'OK Marketing pflegt Kanäle, Stil und Aufträge';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ begin
+  if exists (select 1 from public.social_kunden) or exists (select 1 from public.social_kanaele) then raise exception 'Buchhaltung sieht Social-Kunden'; end if;
+  begin insert into public.befehle (art, daten) values ('social', '{}'); raise exception 'Buchhaltung durfte Social-Befehl';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Social-Kunden nicht für Buchhaltung';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ begin
+  update public.customers set kategorien = '{}' where name = 'Fakten-Test 2';
+  if (select aktiv from public.social_kunden where name = 'Fakten-Test 2') then raise exception 'Bereich bleibt aktiv'; end if;
+  if not exists (select 1 from public.social_kanaele) then raise exception 'Kanäle verloren'; end if;
+  raise notice 'OK Kategorie entfernt: Bereich ruht, Daten bleiben';
+end $$;
+reset role;
+\ir ../../supabase/migrations/122_social_kunden.sql
+do $$ begin raise notice 'OK Social-Kunden wiederholbar'; end $$;

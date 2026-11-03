@@ -11,12 +11,13 @@
   import { oeffneRechnung } from "../../lib/rechnungen/oeffnen";
 
   // vorlage: Angaben für einen neuen Kunden (z. B. aus dem Impressum der Website), kundeSlug: gleich mit der Website verknüpfen
-  let { zu, c = null, gespeichert, vorlage = {}, kundeSlug = null }: { zu: () => void; c?: any; gespeichert?: (k: any) => void; vorlage?: Record<string, string>; kundeSlug?: string | null } = $props();
+  // kategorienVorab: Kategorien für einen neuen Kunden (z. B. „Social Media“, wenn er im Social-Bereich angelegt wird)
+  let { zu, c = null, gespeichert, vorlage = {}, kundeSlug = null, kategorienVorab = [] }: { zu: () => void; c?: any; gespeichert?: (k: any) => void; vorlage?: Record<string, string>; kundeSlug?: string | null; kategorienVorab?: string[] } = $props();
   const neu = !c;
   const K = ["number", "name", "contact", "email", "street", "zip", "city", "country", "vat_id", "website"] as const;
   let f = $state<Record<string, string>>(Object.fromEntries(K.map((k) => [k, k === "number" ? (c?.number ?? (neu ? R.nextCustomerNumber() : "")) : k === "country" ? (c?.country ?? "Deutschland") : (c?.[k] ?? vorlage[k] ?? "")])));
   let start = $state(String(c?.invoice_start ?? 1));
-  let kategorien = $state<string[]>([...(c?.kategorien ?? (kundeSlug && R.webKategorie ? [R.webKategorie.id] : []))]);
+  let kategorien = $state<string[]>([...(c?.kategorien ?? [...(kundeSlug && R.webKategorie ? [R.webKategorie.id] : []), ...kategorienVorab])]);
   let feld: HTMLInputElement | undefined = $state();
   $effect(() => { if (neu) setTimeout(() => feld?.focus(), 200); });
   const proKunde = $derived(isOn(R.settings.number_per_customer));

@@ -16,14 +16,16 @@
   const favoriten = $derived(social.liste.filter((c) => c.favorit));
   // die nächsten in der Posting-Reihenfolge (Nummer 1 zuerst)
   const naechste = $derived(aktiv.filter(offen).slice(0, 8));
+  // bei Kunden nur die Plattformen, auf denen sie einen Kanal haben (oder schon Creatives)
+  const plattformen = $derived(social.kunde ? PLATTFORMEN.filter((p) => social.kanaeleVon(social.kunde!).some((k) => k.plattform === p.key) || auf(p).length) : PLATTFORMEN);
   const wo = (c: Creative) => PLATTFORMEN.filter((p) => typenVon(c, p).length).slice(0, 3);
 </script>
 
 <div class="ue">
 <div class="kacheln">
-  {#each PLATTFORMEN as p, i (p.key)}
+  {#each plattformen as p, i (p.key)}
     {@const l = auf(p)}
-    <a class="pk" class:leer={!l.length} href="#/social/k/{p.key}" style="--p: {p.farbe}; --fl: {p.flaeche}"
+    <a class="pk" class:leer={!l.length} href="{social.basis}/k/{p.key}" style="--p: {p.farbe}; --fl: {p.flaeche}"
       in:fly={{ y: ruhig() ? 0 : 16, duration: ruhig() ? 0 : fk.ms, delay: ruhig() ? 0 : i * 50, easing: fk.easing, opacity: 0 }}>
       <span class="pk__glanz" aria-hidden="true"></span>
       <span class="pk__kopf">
@@ -33,7 +35,7 @@
       </span>
       <span class="pk__typen">
         {#each proTyp(p, l) as x (x.t)}<span><Icon name={TYPEN[x.t].icon} size={13} />{x.n} {typName(p, x.t, x.n !== 1)}</span>
-        {:else}<span class="leer">Sag Claude, was du für {p.name} brauchst.</span>{/each}
+        {:else}<span class="leer">{social.kunde ? "Noch nichts – beauftrage Claude oben rechts." : `Sag Claude, was du für ${p.name} brauchst.`}</span>{/each}
       </span>
       <span class="pk__faecher" aria-hidden="true">
         {#each l.slice(0, 3) as c, j (c.id)}{#if bild(c)}<img src={bild(c)} alt="" draggable="false" style="--j: {j}">{/if}{/each}
@@ -44,7 +46,7 @@
 
 {#if naechste.length}
   <section class="naechste" aria-labelledby="sn-t">
-    <div class="naechste__k"><h3 id="sn-t">Als Nächstes posten</h3><a href="#/social/bibliothek" onclick={() => social.ansichtSetzen("reihe")}>Ganze Reihenfolge<Icon name="right" size={14} /></a></div>
+    <div class="naechste__k"><h3 id="sn-t">Als Nächstes posten</h3><a href="{social.basis}/bibliothek" onclick={() => social.ansichtSetzen("reihe")}>Ganze Reihenfolge<Icon name="right" size={14} /></a></div>
     <ol class="reihe">
       {#each naechste as c, i (c.id)}
         <li><a href="#/social/c/{c.slug}" class="nx">
@@ -60,21 +62,21 @@
 {#if freigabe.length || ohne.length || favoriten.length}
   <div class="neben">
     {#if favoriten.length}
-      <a class="nk card" href="#/social/k/favoriten">
+      <a class="nk card" href="{social.basis}/k/favoriten">
         <span class="nk__i nk__i--stern"><Icon name="star" size={18} fill /></span>
         <span><b>Favoriten</b><small class="muted">{favoriten.length} {favoriten.length === 1 ? "Creative" : "Creatives"} mit Stern</small></span>
         <Icon name="right" size={16} />
       </a>
     {/if}
     {#if freigabe.length}
-      <a class="nk card" href="#/social/k/freigabe">
+      <a class="nk card" href="{social.basis}/k/freigabe">
         <span class="nk__i nk__i--gelb"><Icon name="check" size={18} /></span>
         <span><b>Zur Freigabe</b><small class="muted">{freigabe.length} {freigabe.length === 1 ? "Creative wartet" : "Creatives warten"} auf dein Okay</small></span>
         <Icon name="right" size={16} />
       </a>
     {/if}
     {#if ohne.length}
-      <a class="nk card" href="#/social/k/ohne">
+      <a class="nk card" href="{social.basis}/k/ohne">
         <span class="nk__i"><Icon name="image" size={18} /></span>
         <span><b>Ohne Plattform</b><small class="muted">{ohne.length} noch keiner Plattform zugeordnet</small></span>
         <Icon name="right" size={16} />

@@ -155,7 +155,7 @@
     return () => clearTimeout(t0);
   });
   // Welche Teile des Pfads eine neue Seite sind (Unterreiter, gewählte Anfrage oder Nachfass-Karte bleiben dieselbe Seite)
-  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" ? t[0] : t[0] === "social" && t[1] === "k" ? "social/k/" + (t[2] ?? "") : t[0] === "social" && t[1] !== "c" ? "social" : t.slice(0, 3).join("/"));
+  const seite = $derived(t[0] === "akquise" && t[1] && t[1] !== "betrieb" && t[1] !== "demo" ? "akquise/" + t[1] : t[0] === "anfragen" || t[0] === "nachfassen" ? t[0] : t[0] === "social" && t[1] === "k" ? "social/k/" + (t[2] ?? "") : t[0] === "social" && t[1] === "kunde" ? "social/kunde/" + (t[2] ?? "") + (t[3] === "k" ? "/k/" + (t[4] ?? "") : "") : t[0] === "social" && t[1] !== "c" ? "social" : t.slice(0, 3).join("/"));
   // Die alte Seite bleibt beim Wechsel kurz stehen und gleitet weg (statt schlagartig zu verschwinden)
   function raus(node: HTMLElement) {
     const dy = scrollY, r = richtung;
@@ -231,7 +231,7 @@
     {:else if t[0] === "akquise"}{@const C = holen("akquise")}{#if C}<C />{/if}
     {:else if t[0] === "nachfassen"}{@const C = holen("nachfassen")}{#if C}<C slug={t[1]} />{/if}
     {:else if t[0] === "social" && t[1] === "c" && t[2] && auth.darf("social")}{@const C = holen("socialc")}{#if C}<C slug={t[2]} />{/if}
-    {:else if t[0] === "social" && auth.darf("social")}{@const C = holen("social")}{#if C}<C tab={t[1] === "plan" ? "plan" : t[1] === "bibliothek" ? "bibliothek" : "creatives"} kanal={t[1] === "k" ? t[2] ?? "" : ""} typ={t[1] === "k" ? t[3] ?? "" : ""} />{/if}
+    {:else if t[0] === "social" && auth.darf("social")}{@const C = holen("social")}{@const kd = t[1] === "kunde" ? t[2] ?? "" : ""}{@const r = kd ? t.slice(3) : t.slice(1)}{#if C}{#key kd}<C kunde={kd} tab={r[0] === "plan" || r[0] === "bibliothek" || r[0] === "stil" ? r[0] : "creatives"} kanal={r[0] === "k" ? r[1] ?? "" : ""} typ={r[0] === "k" ? r[2] ?? "" : ""} />{/key}{/if}
     {:else if t[0] === "team"}{@const C = holen("team")}{#if C}<C />{/if}
     {:else if t[0] === "kunden" && t[1] === "r" && t[2]}{@const C = holen("rkunde")}{#if C}<C id={t[2]} />{/if}
     {:else if t[0] === "kunden" && t[1]}{@const C = holen("kunde")}{#if C}<C slug={t[1]} />{/if}

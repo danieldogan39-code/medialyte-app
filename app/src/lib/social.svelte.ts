@@ -3,13 +3,14 @@
 import { sb } from "./supabase";
 import { hat, lies, merk } from "./speicher";
 import { istAndroidApp, istDesktop } from "./appupdate.svelte";
+import { befehl } from "./befehl";
 
 export type Datei = { name: string; pfad: string; art: "bild" | "video" | "titelbild" | "paket"; groesse?: number; typ?: string; b?: number; h?: number; dauer?: number };
 export type Creative = {
   id: string; slug: string; titel: string; art: "bild" | "karussell" | "video"; serie: string | null; text: string; format: string | null;
   status: "pruefen" | "freigegeben" | "gepostet" | "verworfen"; saeule: string | null; dateien: Datei[]; vorschau: string | null;
   position: number | null; geplant: string | null; notiz: string | null; erstellt: string; geaendert: string; plattformen: string[];
-  favorit?: boolean; eigen?: boolean; hochgeladen_von?: string | null;
+  favorit?: boolean; eigen?: boolean; hochgeladen_von?: string | null; kunde_id?: string | null; auftrag_id?: string | null;
 };
 /** Noch zu posten (bekommt eine Nummer in der Reihenfolge) */
 export const offen = (c: Creative) => c.status === "pruefen" || c.status === "freigegeben";
@@ -25,6 +26,23 @@ export function raenge(teil: Creative[], global: boolean, gesamt?: Creative[]): 
 export const suchtext = (c: Creative) => `${c.titel} ${c.text} ${c.serie ?? ""} ${c.notiz ?? ""} ${c.slug}`.toLowerCase();
 export type Saeule = { id: string; name: string; farbe: string; text: string };
 export type Plan = { idee?: string; faden?: string; zielgruppe?: string; ton?: string; rhythmus?: string; saeulen?: Saeule[] };
+/** Stil eines Kunden: so baut Claude seine Creatives (einmal angelernt, jederzeit änderbar) */
+export type Profil = Plan & { format?: string; aufbau?: string; bild?: string; figuren?: string; stimme?: string; musik?: string;
+  texte?: string; themen?: string; vermeiden?: string; vorbilder?: string };
+export type Kanal = { id: string; kunde_id: string; plattform: string; name: string; url: string; aktiv: boolean; erstellt: string };
+export type Auftrag = { id: string; kunde_id: string; art: "anlernen" | "video" | "karussell" | "bild"; anzahl: number; kanaele: string[];
+  thema: string; hinweise: string; status: "offen" | "in_arbeit" | "fertig" | "abgebrochen" | "fehler"; ergebnis: string | null;
+  geliefert: number; erstellt: string; geaendert: string; erledigt: string | null };
+export type SocialKunde = { id: string; customer_id: string | null; name: string; aktiv: boolean; farbe: string; profil: Profil;
+  angelernt: string | null; erstellt: string };
+export const AUFTRAG: Record<Auftrag["status"], { name: string; ton: string }> = {
+  offen: { name: "Wartet auf Claude", ton: "gelb" }, in_arbeit: { name: "In Arbeit", ton: "blau" }, fertig: { name: "Geliefert", ton: "gruen" },
+  abgebrochen: { name: "Abgebrochen", ton: "grau" }, fehler: { name: "Hat nicht geklappt", ton: "rot" },
+};
+export const AUFTRAGSART: Record<Auftrag["art"], { name: string; mehr: string; icon: string }> = {
+  anlernen: { name: "Stil anlernen", mehr: "Stil anlernen", icon: "sparkles" }, video: { name: "Video", mehr: "Videos", icon: "play" },
+  karussell: { name: "Karussell", mehr: "Karussells", icon: "stapel" }, bild: { name: "Einzelbild", mehr: "Einzelbilder", icon: "image" },
+};
 
 export const STATUS: Record<Creative["status"], { name: string; ton: string }> = {
   pruefen: { name: "Zur Freigabe", ton: "gelb" }, freigegeben: { name: "Freigegeben", ton: "gruen" },
@@ -91,15 +109,32 @@ export function typenVon(c: Creative, p: Plattform): Typ[] {
 export const FARBEN = ["#FF5757", "#F7C65E", "#8AB0FF", "#4EDC8F", "#A78BFA", "#4FC7D4", "#F08FC0", "#FB923C"];
 
 class Social {
-  liste = $state<Creative[]>(lies("social:creatives", []));
-  plan = $state<Plan>(lies("social:plan", {}));
+  /** alle Creatives (eigene und die der Kunden); liste zeigt nur die des gerade offenen Bereichs */
+  alle = $state<Creative[]>(lies("social:creatives", []));
+  planEigen = $state<Plan>(lies("social:plan", {}));
+  kunden = $state<SocialKunde[]>(lies("social:kunden", []));
+  kanaele = $state<Kanal[]>(lies("social:kanaele", []));
+  auftraege = $state<Auftrag[]>(lies("social:auftraege", []));
+  /** offener Bereich: null = Medialyte selbst, sonst die Kennung des Social-Kunden */
+  kunde = $state<string | null>(null);
+  get liste() { return this.alle.filter((c) => (c.kunde_id ?? null) === this.kunde); }
+  get plan(): Profil { return this.kunde ? (this.aktuell?.profil ?? {}) : this.planEigen; }
+  get aktuell() { return this.kunden.find((k) => k.id === this.kunde) ?? null; }
+  /** Anfang der Links im offenen Bereich */
+  get basis() { return this.kunde ? `#/social/kunde/${this.kunde}` : "#/social"; }
+  get aktiveKunden() { return this.kunden.filter((k) => k.aktiv).sort((a, b) => a.name.localeCompare(b.name, "de")); }
+  kanaeleVon(id: string) { return this.kanaele.filter((k) => k.kunde_id === id).sort((a, b) => String(a.erstellt ?? "").localeCompare(String(b.erstellt ?? ""))); }
+  auftraegeVon(id: string) { return this.auftraege.filter((a) => a.kunde_id === id).sort((a, b) => String(b.erstellt ?? "").localeCompare(String(a.erstellt ?? ""))); }
+  freigabeVon(id: string | null) { return this.alle.filter((c) => (c.kunde_id ?? null) === id && c.status === "pruefen").length; }
   laedt = $state(!hat("social:creatives"));
   fehler = $state("");
   zuletzt = "";   // zuletzt geöffnete Plattform-Ansicht (für „Zurück“ auf der Detailseite)
   private urls = new Map<string, { url: string; bis: number }>();
   private kanal: ReturnType<typeof sb.channel> | null = null;
 
-  get zurFreigabe() { return this.liste.filter((c) => c.status === "pruefen").length; }
+  /** für die Navigation: alles, was irgendwo auf ein Okay wartet (eigene und aktive Kunden) */
+  get zurFreigabe() { const an = new Set(this.aktiveKunden.map((k) => k.id)); return this.alle.filter((c) => c.status === "pruefen" && (!c.kunde_id || an.has(c.kunde_id))).length; }
+  get freigabeHier() { return this.freigabeVon(this.kunde); }
   get favoriten() { return this.liste.filter((c) => c.favorit).length; }
   /** Kacheln zum Stöbern oder Reihenfolge zum Sortieren (je Gerät gemerkt) */
   ansicht = $state<"kacheln" | "reihe">(lies("social:ansicht", "kacheln"));
@@ -108,23 +143,32 @@ class Social {
   saeule(id: string | null | undefined) { return (this.plan.saeulen ?? []).find((s) => s.id === id); }
 
   async laden() {
-    const [c, p] = await Promise.all([sb.from("social_creatives").select("*"), sb.from("social_plan").select("inhalt").eq("id", 1).maybeSingle()]);
+    const [c, p, k, ka, a] = await Promise.all([sb.from("social_creatives").select("*"), sb.from("social_plan").select("inhalt").eq("id", 1).maybeSingle(),
+      sb.from("social_kunden").select("*"), sb.from("social_kanaele").select("*"),
+      sb.from("social_auftraege").select("*").order("erstellt", { ascending: false }).limit(300)]);
     if (c.error) { this.fehler = c.error.message; this.laedt = false; return; }
-    this.liste = merk("social:creatives", (c.data as Creative[]) ?? []);
-    if (p.data) this.plan = merk("social:plan", (p.data as any).inhalt ?? {});
+    this.alle = merk("social:creatives", (c.data as Creative[]) ?? []);
+    if (p.data) this.planEigen = merk("social:plan", (p.data as any).inhalt ?? {});
+    if (!k.error) this.kunden = merk("social:kunden", (k.data as SocialKunde[]) ?? []);
+    if (!ka.error) this.kanaele = merk("social:kanaele", (ka.data as Kanal[]) ?? []);
+    if (!a.error) this.auftraege = merk("social:auftraege", (a.data as Auftrag[]) ?? []);
     this.fehler = ""; this.laedt = false;
     await this.vorschauen();
   }
   live() {
     if (this.kanal) return () => {};
-    this.kanal = sb.channel("social-live").on("postgres_changes", { event: "*", schema: "public", table: "social_creatives" }, () => this.laden()).subscribe();
+    let t: any = null;
+    const neu = () => { clearTimeout(t); t = setTimeout(() => this.laden(), 250); };
+    this.kanal = sb.channel("social-live");
+    for (const table of ["social_creatives", "social_kunden", "social_kanaele", "social_auftraege"]) this.kanal.on("postgres_changes", { event: "*", schema: "public", table }, neu);
+    this.kanal.subscribe();
     return () => { if (this.kanal) sb.removeChannel(this.kanal); this.kanal = null; };
   }
 
   // ---------- Links zu den Dateien (1 Stunde gültig, im Speicher wiederverwendet)
   bild = $state<Record<string, string>>({});
   async vorschauen() {
-    const pfade = this.liste.map((c) => c.vorschau).filter((p): p is string => !!p);
+    const pfade = this.alle.map((c) => c.vorschau).filter((p): p is string => !!p);
     await this.links(pfade);
   }
   async links(pfade: string[]) {
@@ -140,12 +184,12 @@ class Social {
 
   // ---------- Ändern
   async setzen(id: string, werte: Partial<Creative>) {
-    const alt = this.liste.find((c) => c.id === id); if (!alt) return false;
+    const alt = this.alle.find((c) => c.id === id); if (!alt) return false;
     const vorher = { ...alt };
     Object.assign(alt, werte);
     const { error } = await sb.from("social_creatives").update(werte).eq("id", id);
     if (error) { Object.assign(alt, vorher); throw new Error(error.message); }
-    merk("social:creatives", this.liste);
+    merk("social:creatives", this.alle);
     return true;
   }
   /** Nach dem Ziehen: neue Position zwischen den Nachbarn (nur eine Zeile wird geschrieben) */
@@ -196,11 +240,11 @@ class Social {
       const zeile = {
         slug, titel: e.titel.trim() || e.dateien[0].name.replace(/\.[^.]+$/, ""), art: video ? "video" : dateien.length > 1 ? "karussell" : "bild",
         text: e.text, format: erste.b && erste.h ? `${erste.b} × ${erste.h}` : null, status: e.status, saeule: e.saeule, dateien, vorschau,
-        plattformen: e.plattformen, eigen: true, hochgeladen_von: uid,
+        plattformen: e.plattformen, eigen: true, hochgeladen_von: uid, kunde_id: this.kunde,
       };
       const { data, error } = await sb.from("social_creatives").insert(zeile).select().single();
       if (error) throw new Error(error.message);
-      this.liste = merk("social:creatives", [...this.liste.filter((x) => x.id !== data.id), data as Creative]);
+      this.alle = merk("social:creatives", [...this.alle.filter((x) => x.id !== data.id), data as Creative]);
       await this.vorschauen();
       return data as Creative;
     } catch (err) {
@@ -214,19 +258,72 @@ class Social {
     const { error } = await sb.from("social_creatives").delete().eq("id", c.id);
     if (error) throw new Error(error.message);
     if (pfade.length) await sb.storage.from("creatives").remove(pfade);
-    this.liste = merk("social:creatives", this.liste.filter((x) => x.id !== c.id));
+    this.alle = merk("social:creatives", this.alle.filter((x) => x.id !== c.id));
   }
   private planTimer: any = null;
-  planSpeichern(teil: Partial<Plan>) {
-    this.plan = merk("social:plan", { ...this.plan, ...teil });
+  /** Plan bzw. Stil des offenen Bereichs speichern (beim Tippen, kurz verzögert) */
+  planSpeichern(teil: Partial<Profil>) {
+    const k = this.aktuell;
+    if (k) {
+      k.profil = { ...k.profil, ...teil }; merk("social:kunden", this.kunden);
+      clearTimeout(this.planTimer);
+      const id = k.id, profil = k.profil;
+      return new Promise<void>((res, rej) => {
+        this.planTimer = setTimeout(async () => {
+          const { error } = await sb.from("social_kunden").update({ profil }).eq("id", id);
+          error ? rej(new Error(error.message)) : res();
+        }, 700);
+      });
+    }
+    this.planEigen = merk("social:plan", { ...this.planEigen, ...teil });
     clearTimeout(this.planTimer);
     return new Promise<void>((res, rej) => {
       this.planTimer = setTimeout(async () => {
         const { data: u } = await sb.auth.getUser();
-        const { error } = await sb.from("social_plan").update({ inhalt: this.plan, geaendert: new Date().toISOString(), geaendert_von: u.user?.id ?? null }).eq("id", 1);
+        const { error } = await sb.from("social_plan").update({ inhalt: this.planEigen, geaendert: new Date().toISOString(), geaendert_von: u.user?.id ?? null }).eq("id", 1);
         error ? rej(new Error(error.message)) : res();
       }, 700);
     });
+  }
+
+  // ---------- Kunden: Farbe, Kanäle, Aufträge an Claude
+  async kundeSetzen(id: string, werte: Partial<Pick<SocialKunde, "farbe">>) {
+    const { error } = await sb.from("social_kunden").update(werte).eq("id", id);
+    if (error) throw new Error(error.message);
+    const k = this.kunden.find((x) => x.id === id); if (k) Object.assign(k, werte);
+  }
+  async kanalSpeichern(k: Partial<Kanal> & { kunde_id: string; plattform: string }) {
+    const werte = { kunde_id: k.kunde_id, plattform: k.plattform, name: (k.name ?? "").trim(), url: (k.url ?? "").trim() };
+    const q = k.id ? sb.from("social_kanaele").update(werte).eq("id", k.id).select().single() : sb.from("social_kanaele").insert(werte).select().single();
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    this.kanaele = merk("social:kanaele", [...this.kanaele.filter((x) => x.id !== data.id), data as Kanal]);
+    return data as Kanal;
+  }
+  async kanalWeg(k: Kanal) {
+    const { error } = await sb.from("social_kanaele").delete().eq("id", k.id);
+    if (error) throw new Error(error.message);
+    this.kanaele = merk("social:kanaele", this.kanaele.filter((x) => x.id !== k.id));
+  }
+  /** Auftrag anlegen und dem Agenten Bescheid geben (er legt Stil, Kanäle und offene Aufträge für Claude bereit) */
+  async beauftragen(a: Pick<Auftrag, "kunde_id" | "art" | "anzahl" | "kanaele" | "thema" | "hinweise">) {
+    const { data: u } = await sb.auth.getUser();
+    const { data, error } = await sb.from("social_auftraege").insert({ ...a, erstellt_von: u.user?.id }).select().single();
+    if (error) throw new Error(error.message);
+    this.auftraege = merk("social:auftraege", [data as Auftrag, ...this.auftraege.filter((x) => x.id !== data.id)]);
+    await befehl("social", { auftrag: data.id }, a.kunde_id);
+    return data as Auftrag;
+  }
+  async auftragSetzen(x: Auftrag, status: "abgebrochen" | "offen") {
+    const { error } = await sb.from("social_auftraege").update({ status }).eq("id", x.id);
+    if (error) throw new Error(error.message);
+    x.status = status; merk("social:auftraege", this.auftraege);
+    await befehl("social", { auftrag: x.id, status }, x.kunde_id);
+  }
+  async auftragWeg(x: Auftrag) {
+    const { error } = await sb.from("social_auftraege").delete().eq("id", x.id);
+    if (error) throw new Error(error.message);
+    this.auftraege = merk("social:auftraege", this.auftraege.filter((a) => a.id !== x.id));
   }
 
   // ---------- Herunterladen
