@@ -5,6 +5,8 @@ Je Ordner der Lieferung eins davon:
   creative.json  ein Creative (optional kunde_id und auftrag_id: zählt beim Auftrag als geliefert)
   profil.json    Stilprofil eines Social-Kunden {kunde_id, profil, auftrag_id?, ergebnis?} (Ergebnis von „Anlernen“)
   meldung.json   Stand eines Auftrags {auftrag_id, status: in_arbeit|fertig|fehler, ergebnis?}
+  kunde.json     Social-Kunden einrichten {name, website?, kanaele: [{plattform, name, url}], profil}: legt den Kunden mit der
+                 Kategorie „Social Media“ an (oder nimmt den gleichnamigen), trägt Kanäle und Stil ein
 
 Umgebung: SUPABASE_ACCESS_TOKEN, PROJECT_REF. Ausgaben: nur Kennungen und Anzahlen.
 """
@@ -67,6 +69,9 @@ def main():
             {**kopf, "Content-Type": "application/json", "Prefer": prefer})
         geliefert: dict[str, int] = {}
         for slug, dateien in sorted(ordner.items()):
+            if "kunde.json" in dateien:
+                kunde_einrichten(rest, slug, json.loads(t.extractfile(dateien["kunde.json"]).read()))
+                continue
             if "profil.json" in dateien or "meldung.json" in dateien:
                 melden(rest, slug, json.loads(t.extractfile(dateien.get("profil.json") or dateien["meldung.json"]).read()), "profil.json" in dateien)
                 continue
@@ -116,6 +121,41 @@ def main():
             rest(f"social_auftraege?id=eq.{aid}", "PATCH", neu)
             print(f"Auftrag {aid[:8]}: {g}/{a['anzahl']} geliefert")
     print(f"Fertig: {len(ordner)} Lieferungen, {n_dateien} Dateien.")
+
+
+def kunde_einrichten(rest, slug, m):
+    """Kunden mit Kategorie „Social Media“ anlegen bzw. markieren, dann Kanäle und Stilprofil eintragen."""
+    name = str(m.get("name") or "").strip()[:120]
+    if not name or not isinstance(m.get("profil", {}), dict):
+        sys.exit(f"{slug}: name fehlt")
+    lies = lambda pfad: json.loads(rest(pfad)[1] or b"[]")  # noqa: E731
+    kat = (lies("kundenkategorien?bereich=eq.social&select=id") or [None])[0]
+    if not kat:
+        sys.exit(f"{slug}: Kategorie Social Media fehlt")
+    c = (lies(f"customers?name=ilike.{urllib.parse.quote(name)}&select=id,kategorien") or [None])[0]
+    if c:
+        if kat["id"] not in (c.get("kategorien") or []):
+            rest(f"customers?id=eq.{c['id']}", "PATCH", {"kategorien": (c.get("kategorien") or []) + [kat["id"]]})
+    else:
+        firma = (lies("settings?select=user_id&order=updated_at.asc&limit=1") or [None])[0]
+        if not firma:
+            sys.exit(f"{slug}: Firmenkonto nicht gefunden")
+        code, body = rest("customers", "POST", {"user_id": firma["user_id"], "name": name, "website": m.get("website") or None,
+                                                "kategorien": [kat["id"]]}, "return=representation")
+        if code >= 300:
+            sys.exit(f"{slug}: Kunde nicht angelegt (HTTP {code}) {body[:300]!r}")
+        c = json.loads(body)[0]
+    k = (lies(f"social_kunden?customer_id=eq.{c['id']}&select=id,profil") or [None])[0]
+    if not k:
+        sys.exit(f"{slug}: Social-Bereich nicht angelegt")
+    if m.get("profil"):
+        rest(f"social_kunden?id=eq.{k['id']}", "PATCH", {"profil": {**(k.get("profil") or {}), **m["profil"]},
+                                                         "angelernt": datetime.now(timezone.utc).isoformat()})
+    da = {(x["plattform"], x["name"]) for x in lies(f"social_kanaele?kunde_id=eq.{k['id']}&select=plattform,name")}
+    for kn in m.get("kanaele") or []:
+        if (kn.get("plattform"), kn.get("name", "")) not in da:
+            rest("social_kanaele", "POST", {"kunde_id": k["id"], "plattform": kn["plattform"], "name": kn.get("name", ""), "url": kn.get("url", "")})
+    print(f"✓ Social-Kunde eingerichtet ({len(m.get('kanaele') or [])} Kanäle)")
 
 
 def melden(rest, slug, m, profil):

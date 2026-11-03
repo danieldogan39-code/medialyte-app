@@ -24,7 +24,7 @@ def git(*a, cwd=REPO):
 
 
 def vorbereiten(ordner: str, ziel: str) -> str:
-    for nur in ("profil.json", "meldung.json"):
+    for nur in ("kunde.json", "profil.json", "meldung.json"):
         if os.path.exists(os.path.join(ordner, nur)):
             slug = os.path.basename(os.path.normpath(ordner))
             os.makedirs(os.path.join(ziel, slug)); shutil.copy(os.path.join(ordner, nur), os.path.join(ziel, slug, nur))
