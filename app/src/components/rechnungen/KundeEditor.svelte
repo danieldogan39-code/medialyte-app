@@ -9,6 +9,8 @@
   import { frage } from "../../lib/frage.svelte";
   import { eur, fmtDate, isOn } from "../../lib/rechnungen/kern";
   import { oeffneRechnung } from "../../lib/rechnungen/oeffnen";
+  import KundenLogo from "../KundenLogo.svelte";
+  import { logoAusDatei } from "../../lib/logo";
 
   // vorlage: Angaben für einen neuen Kunden (z. B. aus dem Impressum der Website), kundeSlug: gleich mit der Website verknüpfen
   // kategorienVorab: Kategorien für einen neuen Kunden (z. B. „Social Media“, wenn er im Social-Bereich angelegt wird)
@@ -17,6 +19,16 @@
   const K = ["number", "name", "contact", "email", "street", "zip", "city", "country", "vat_id", "website"] as const;
   let f = $state<Record<string, string>>(Object.fromEntries(K.map((k) => [k, k === "number" ? (c?.number ?? (neu ? R.nextCustomerNumber() : "")) : k === "country" ? (c?.country ?? "Deutschland") : (c?.[k] ?? vorlage[k] ?? "")])));
   let start = $state(String(c?.invoice_start ?? 1));
+  // Logo: hochladen ersetzt das automatisch geholte, „Entfernen“ lässt den Abruf es neu von der Website holen
+  let logo = $state<string | null>(c?.logo ?? null), logoQuelle = $state<string | null>(c?.logo_quelle ?? null);
+  let logoFeld: HTMLInputElement | undefined = $state(), logoFehler = $state("");
+  async function logoGewaehlt(e: Event) {
+    const datei = (e.currentTarget as HTMLInputElement).files?.[0];
+    (e.currentTarget as HTMLInputElement).value = "";
+    if (!datei) return;
+    logoFehler = "";
+    try { logo = await logoAusDatei(datei); logoQuelle = "hochgeladen"; } catch (err: any) { logoFehler = err?.message ?? String(err); }
+  }
   let kategorien = $state<string[]>([...(c?.kategorien ?? [...(kundeSlug && R.webKategorie ? [R.webKategorie.id] : []), ...kategorienVorab])]);
   let feld: HTMLInputElement | undefined = $state();
   $effect(() => { if (neu) setTimeout(() => feld?.focus(), 200); });
@@ -32,6 +44,7 @@
     if (!d.name) throw new Error("Bitte einen Namen eintragen.");
     if (neu && kundeSlug) d.kunde_slug = kundeSlug;
     if (R.kategorien.length) d.kategorien = kategorien;
+    if (logo !== (c?.logo ?? null)) { d.logo = logo; d.logo_quelle = logo ? logoQuelle : null; }
     const r = neu ? await R.write("customers", "insert", d) : await R.write("customers", "update", d, [["id", c.id]]);
     if (r.error) throw r.error;
     zu(); await R.loadAll().catch(() => {}); gespeichert?.(r.data); daten.melden("Kunde gespeichert");
@@ -45,6 +58,19 @@
 </script>
 
 <Blatt titel={neu ? "Neuer Kunde" : (c.number ? c.number + " · " : "") + c.name} {zu}>
+  <div class="logo">
+    <KundenLogo {logo} name={f.name || "Neuer Kunde"} demo={logo ? null : (c?.kunde_slug ?? kundeSlug)} size={64} />
+    <div class="logo__t">
+      <b>Logo</b>
+      <small class="muted">{logo ? (logoQuelle === "website" ? "Automatisch von der Website geholt" : logoQuelle === "demo" ? "Aus der Demo übernommen" : "Von Hand hochgeladen") : "Noch keins: wird automatisch von der Website geholt, oder hier hochladen"}</small>
+      {#if logoFehler}<small class="rot">{logoFehler}</small>{/if}
+      <span class="logo__k">
+        <button class="btn btn--s" type="button" onclick={() => logoFeld?.click()}>{logo ? "Anderes Logo" : "Logo hochladen"}</button>
+        {#if logo}<button class="btn btn--s btn--quiet" type="button" onclick={() => { logo = null; logoQuelle = null; }}>Entfernen</button>{/if}
+      </span>
+      <input bind:this={logoFeld} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif" hidden onchange={logoGewaehlt}>
+    </div>
+  </div>
   <div class="drei"><label class="field"><span>Kundennr.</span><input class="input" bind:value={f.number}></label><label class="field"><span>Firma oder Name</span><input class="input" bind:this={feld} bind:value={f.name} required></label></div>
   <label class="field"><span>Ansprechpartner (für die Anrede)</span><input class="input" bind:value={f.contact} placeholder="z. B. Frau Schulz"></label>
   <label class="field"><span>E-Mail für Rechnungen</span><input class="input" type="email" inputmode="email" bind:value={f.email}></label>
@@ -82,6 +108,10 @@
 </Blatt>
 
 <style>
+  .logo { display: flex; align-items: center; gap: 14px; }
+  .logo__t { display: grid; gap: 4px; min-width: 0; }
+  .logo__k { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .rot { color: var(--rot, #ff6b6b); }
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .drei { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
   @media (max-width: 520px) { .zwei { grid-template-columns: 1fr; } }

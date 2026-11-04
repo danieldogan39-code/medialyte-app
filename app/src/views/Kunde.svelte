@@ -171,7 +171,7 @@
     .sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit)).slice(0, 12));
 </script>
 
-<Head titel={name} text={s.stand ? (STAND[s.stand]?.name ?? s.stand) + (s.domain ? " · www." + s.domain : "") : "Aus der Demo wird die echte Website"} zurueck="#/kunden">
+<Head titel={name} text={s.stand ? (STAND[s.stand]?.name ?? s.stand) + (s.domain ? " · www." + s.domain : "") : "Aus der Demo wird die echte Website"} zurueck="#/kunden" logo={{ bild: rk?.logo, demo: slug }}>
   {#if demo?.url}<a class="btn" href={demo.url} target="_blank" rel="noopener"><Icon name="external" size={16} />Demo</a>{/if}
   {#if demo?.betrieb_id}<a class="btn btn--quiet" href="#/akquise/betrieb/{demo.betrieb_id}">Betrieb</a>{/if}
 </Head>

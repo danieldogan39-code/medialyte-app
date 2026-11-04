@@ -109,3 +109,14 @@ tools/test/run.sh                            # Datenbank-Regeln gegen lokales Po
 2. Alle Cockpit-Funktionen in die App (Briefe, Nachfassen, Zähler, Stimme, Kundenübernahme); altes Cockpit abschalten
 3. Agent für alle Branchen: Suche je Kategorie, Demo-Vorlagen und Briefe je Branche
 4. Rechnungen und Angebote in die App
+
+## Kundenlogos
+
+Jeder Kunde hat sein eigenes Logo (Kundenliste, Kundenakte, Rechnungskunde). Es steht als kleines Bild
+(längste Seite 256 px, als data-URL) in `customers.logo`, kommt also mit den Kunden mit, auch offline.
+
+- **Automatisch:** „Kundenlogos holen“ (`tools/logos/holen.py`) läuft jede Nacht und nach jedem Datenbank-Update. Für
+  Kunden ohne Logo sucht es auf der Website das Logo (Logo-Bild im Kopf, Logo aus den strukturierten Daten, App-Symbol,
+  großes Favicon), sonst nimmt es das Logo der Demo. Von Hand hochgeladene Logos fasst es nie an.
+- **Von Hand:** Kunde bearbeiten → „Logo hochladen“ (PNG, JPEG, WebP, SVG). „Entfernen“ lässt den Abruf es neu holen.
+- Ohne Logo zeigt die App die Anfangsbuchstaben in einer festen Farbe.

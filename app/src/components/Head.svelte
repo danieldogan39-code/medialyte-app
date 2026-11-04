@@ -1,15 +1,16 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import Icon from "./Icon.svelte";
+  import KundenLogo from "./KundenLogo.svelte";
   import { router } from "../lib/router.svelte";
   import { bereichVon } from "../lib/bereiche";
   const b = $derived(bereichVon(router.pfad));
-  let { titel, text = "", zurueck = "", children }: { titel: string; text?: string; zurueck?: string; children?: Snippet } = $props();
+  let { titel, text = "", zurueck = "", logo = undefined, children }: { titel: string; text?: string; zurueck?: string; logo?: { bild?: string | null; demo?: string | null }; children?: Snippet } = $props();
 </script>
 <div class="head">
   <div class="head__t">
     {#if zurueck}<a class="head__back" href={zurueck}>← Zurück</a>{/if}
-    <h1><span class="hi" style="--f: {b.farbe}" aria-hidden="true"><Icon name={b.icon} size={18} /></span><span>{titel}</span></h1>
+    <h1>{#if logo}<KundenLogo logo={logo.bild} name={titel} demo={logo.demo} size={44} />{:else}<span class="hi" style="--f: {b.farbe}" aria-hidden="true"><Icon name={b.icon} size={18} /></span>{/if}<span>{titel}</span></h1>
     {#if text}<p class="muted">{text}</p>{/if}
   </div>
   {#if children}<div class="head__a">{@render children()}</div>{/if}

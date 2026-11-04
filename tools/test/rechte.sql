@@ -410,3 +410,20 @@ end $$;
 reset role;
 \ir ../../supabase/migrations/122_social_kunden.sql
 do $$ begin raise notice 'OK Social-Kunden wiederholbar'; end $$;
+
+-- Kundenlogos: kleines Bild beim Kunden, nur echte Bild-data-URLs, im Protokoll nur als Prüfsumme
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare p jsonb; begin
+  update public.customers set logo = 'data:image/png;base64,iVBORw0KGgoAAAA=', logo_quelle = 'hochgeladen' where name = 'Fakten-Test 2';
+  if (select logo_quelle from public.customers where name = 'Fakten-Test 2') <> 'hochgeladen' then raise exception 'Logo nicht gespeichert'; end if;
+  select aenderungen into p from public.beleg_protokoll where tabelle = 'customers' and aenderungen ? 'logo' order by zeit desc limit 1;
+  if p -> 'logo' ->> 'neu' like 'data:%' or length(p -> 'logo' ->> 'neu') <> 32 then raise exception 'Logo im Protokoll als Bild statt Prüfsumme'; end if;
+  begin update public.customers set logo = 'javascript:alert(1)' where name = 'Fakten-Test 2'; raise exception 'falsches Logo angenommen';
+  exception when check_violation then null; end;
+  begin update public.customers set logo_quelle = 'irgendwas' where name = 'Fakten-Test 2'; raise exception 'falsche Quelle angenommen';
+  exception when check_violation then null; end;
+  raise notice 'OK Kundenlogos';
+end $$;
+reset role;
+\ir ../../supabase/migrations/123_kundenlogos.sql
+do $$ begin raise notice 'OK Kundenlogos wiederholbar'; end $$;

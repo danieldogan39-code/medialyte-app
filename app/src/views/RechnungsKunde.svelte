@@ -30,7 +30,7 @@
   <Head titel="Kunde nicht gefunden" zurueck="#/kunden" />
   <div class="card empty"><b>Diesen Kunden gibt es nicht (mehr).</b></div>
 {:else}
-  <Head titel={c.name} text={[c.contact, c.city].filter(Boolean).join(" · ") || "Rechnungskunde"} zurueck="#/kunden" />
+  <Head titel={c.name} text={[c.contact, c.city].filter(Boolean).join(" · ") || "Rechnungskunde"} zurueck="#/kunden" logo={{ bild: c.logo, demo: c.kunde_slug }} />
   <KundeAkte {c} />
   {#if frei.length}
     <section class="card web">

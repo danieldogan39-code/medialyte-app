@@ -1,0 +1,40 @@
+# Holt die Logos der Kunden von ihren Websites (tools/logos/holen.py). Von Hand hochgeladene Logos bleiben.
+# Ausgaben im Protokoll: nur Anzahlen (das Repository ist öffentlich).
+name: Kundenlogos holen
+
+on:
+  workflow_dispatch:
+    inputs:
+      neu:
+        description: "Auch schon automatisch geholte Logos neu holen"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "41 3 * * *"   # täglich: neue Kunden bekommen ihr Logo über Nacht
+  workflow_run:   # nach dem Einspielen der Datenbank (dort entsteht die Spalte customers.logo)
+    workflows: ["Supabase aktualisieren"]
+    types: [completed]
+
+concurrency:
+  group: kundenlogos
+  cancel-in-progress: false
+
+jobs:
+  holen:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_REF: bddogrluopqgeqvqzqmy
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pakete
+        run: |
+          sudo apt-get install -y -qq libcairo2 >/dev/null || true
+          pip install -q pillow cairosvg
+      - name: Logos holen
+        run: python3 tools/logos/holen.py ${{ inputs.neu && '--neu' || '' }}

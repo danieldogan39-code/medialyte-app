@@ -1,4 +1,5 @@
 <script lang="ts">
+  import KundenLogo from "../components/KundenLogo.svelte";
   import { hat, lies, merk } from "../lib/speicher";
   import Head from "../components/Head.svelte";
   import Icon from "../components/Icon.svelte";
@@ -146,7 +147,7 @@
       {#each liste as e (e.key)}
         {@const k = e.web}{@const s = k?.stand ?? {}}{@const l = k ? lokale?.[k.slug] : undefined}{@const of = offenVon(e.rk?.id)}{@const ue = of.some((i) => invStatus(i).key === "overdue")}
         <a class="card kk" class:heiss={wartet(l) || ue} href={e.href} animate:flip={{ duration: ruhig() ? 0 : fk.ms, easing: fk.easing }} in:fly={{ y: ruhig() ? 0 : 12, duration: ruhig() ? 0 : fk.ms, easing: fk.easing, opacity: 0 }}>
-          <span class="kk__h"><b>{e.name}</b>
+          <span class="kk__h"><span class="kk__n"><KundenLogo logo={e.rk?.logo} name={e.name} demo={k?.slug ?? e.rk?.kunde_slug ?? null} size={38} /><b>{e.name}</b></span>
             {#if k && STAND[s.stand ?? ""]}<span class="pill pill--{STAND[s.stand ?? ''].ton}">{STAND[s.stand ?? ""].name}</span>
             {:else if !k && !katVon(e).length}<span class="pill pill--plain">Rechnungskunde</span>{/if}</span>
           {#if katVon(e).length}<span class="kats">{#each katVon(e) as id (id)}{@const kk = R.kategorie(id)}{#if kk}<span class="kp" style="--k: {kk.farbe}"><i></i>{kk.name}</span>{/if}{/each}</span>{/if}
@@ -197,6 +198,8 @@
   .neu b, .kk b { color: var(--text); font-weight: 600; }
   .kk { display: grid; gap: 8px; padding: 16px; color: inherit; align-content: start; }
   .kk__h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .kk__n { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .kk__n b { overflow: hidden; text-overflow: ellipsis; }
   .werte { display: flex; gap: 18px; padding-top: 2px; }
   .werte > span { display: grid; font-size: .78rem; color: var(--steel); }
   .werte b { font-size: 1.15rem; color: var(--text); font-weight: 600; }
