@@ -236,19 +236,61 @@ def logo_von_demo(slug: str) -> str | None:
     return png_aus(got[0], "svg") if got and b"<svg" in got[0][:500].lower() else None
 
 
+# --------------------------------------------------------------------------- Website finden, wenn keine eingetragen ist
+FREEMAIL = {"gmail.com", "googlemail.com", "web.de", "gmx.de", "gmx.net", "gmx.com", "t-online.de", "outlook.com",
+            "outlook.de", "hotmail.com", "hotmail.de", "live.com", "live.de", "yahoo.com", "yahoo.de", "icloud.com",
+            "me.com", "aol.com", "aol.de", "freenet.de", "posteo.de", "mail.de", "arcor.de", "proton.me", "protonmail.com"}
+
+
+def website_aus_mail(email: str) -> str:
+    m = re.search(r"@([a-z0-9.-]+\.[a-z]{2,24})\s*$", (email or "").strip().lower())
+    return m.group(1) if m and m.group(1) not in FREEMAIL else ""
+
+
+def _woerter(t: str) -> set[str]:
+    t = t.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+    return {w for w in re.findall(r"[a-z0-9]{3,}", t) if w not in {"gmbh", "und", "der", "die", "das", "co", "kg", "the", "inh"}}
+
+
+def website_aus_google(name: str, ort: str) -> str:
+    key = os.environ.get("GOOGLE_PLACES_API_KEY", "")
+    if not key or not name:
+        return ""
+    req = urllib.request.Request("https://places.googleapis.com/v1/places:searchText", method="POST",
+                                 data=json.dumps({"textQuery": f"{name} {ort}".strip(), "languageCode": "de", "regionCode": "DE",
+                                                  "pageSize": 3}).encode(),
+                                 headers={"X-Goog-Api-Key": key, "Content-Type": "application/json",
+                                          "X-Goog-FieldMask": "places.displayName,places.websiteUri"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            orte = json.loads(r.read()).get("places") or []
+    except Exception:
+        return ""
+    for o in orte:  # nur, wenn der Name wirklich passt
+        if o.get("websiteUri") and _woerter(name) & _woerter((o.get("displayName") or {}).get("text", "")):
+            return o["websiteUri"]
+    return ""
+
+
 # --------------------------------------------------------------------------- Ablauf
 def main(argv: list[str]) -> int:
     neu = "--neu" in argv
     bedingung = "c.logo is null" if not neu else "(c.logo is null or c.logo_quelle in ('website', 'demo'))"
     zeilen = sql(f"""select c.id::text as id, coalesce(nullif(btrim(c.website), ''), k.stand->>'domain', k.eingaben->>'domain', '') as website,
-                            coalesce(c.kunde_slug, '') as slug
+                            coalesce(c.kunde_slug, '') as slug, coalesce(c.name, '') as name, coalesce(c.city, '') as ort,
+                            coalesce(c.email, '') as email
                      from public.customers c left join public.kunden k on k.slug = c.kunde_slug
                      where {bedingung}""")
     stand = {"kunden": len(zeilen), "website": 0, "demo": 0, "ohne": 0}
     for z in zeilen:
         if not UUID.match(z.get("id", "")):
             continue
-        url, quelle = logo_von_website(z.get("website") or ""), "website"
+        web = z.get("website") or website_aus_mail(z.get("email") or "")
+        if not web:
+            web = website_aus_google(z.get("name") or "", z.get("ort") or "")
+            if web:
+                _grund("website_ueber_google")
+        url, quelle = logo_von_website(web), "website"
         if not url and z.get("slug"):
             url, quelle = logo_von_demo(z["slug"]), "demo"
         if not url:

@@ -27,6 +27,7 @@ jobs:
     env:
       PROJECT_REF: bddogrluopqgeqvqzqmy
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}   # optional: Website finden, wenn keine eingetragen ist
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
