@@ -175,14 +175,25 @@ def png_aus(daten: bytes, art: str) -> str | None:
     return None
 
 
+GRUND: dict[str, int] = {}
+
+
+def _grund(g: str) -> None:
+    GRUND[g] = GRUND.get(g, 0) + 1
+
+
 def logo_von_website(website: str) -> str | None:
     basis = website.strip()
     if not basis:
+        _grund("keine_website")
         return None
     if not re.match(r"^https?://", basis):
         basis = "https://" + basis
     seite = laden(basis, 3_000_000)
+    if not seite and basis.startswith("https://") and not basis.startswith("https://www."):
+        seite = laden(basis.replace("https://", "https://www.", 1), 3_000_000)
     if not seite:
+        _grund("website_nicht_erreichbar")
         return None
     html_text = seite[0].decode("utf-8", "replace")
     p = Seite()
@@ -214,6 +225,7 @@ def logo_von_website(website: str) -> str | None:
                 url = png_aus(got[0], got[1] + " " + absolut.lower()) if got else None
         if url:
             return url
+    _grund(f"kein_logo_gefunden_{len(kand)}_kandidaten")
     return None
 
 
@@ -246,7 +258,7 @@ def main(argv: list[str]) -> int:
         schutz = "logo is null" if not neu else "(logo is null or logo_quelle in ('website', 'demo'))"
         sql(f"update public.customers set logo = '{url}', logo_quelle = '{quelle}' where id = '{z['id']}' and {schutz}")
         stand[quelle] += 1
-    print(json.dumps(stand))
+    print(json.dumps({**stand, "gruende": GRUND}))
     return 0
 
 
