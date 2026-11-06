@@ -1,5 +1,8 @@
 """Schlüssel für den Creative-Eingang.
 
+Nach einem neuen SUPABASE_ACCESS_TOKEN muss schluessel.pub neu abgeleitet werden: dafür reicht eine beliebige Änderung
+unter tools/creatives auf main – der Ablauf „Creatives einspielen“ schreibt den neuen öffentlichen Schlüssel dann selbst.
+
 Neue Creatives kommen verschlüsselt über den Zweig `creatives-eingang` an (das Repository ist öffentlich).
 Verschlüsselt wird mit einem öffentlichen Schlüssel (tools/creatives/schluessel.pub, darf jeder sehen);
 entschlüsseln kann nur der Ablauf in GitHub Actions. Den privaten Schlüssel leitet er bei jedem Lauf
