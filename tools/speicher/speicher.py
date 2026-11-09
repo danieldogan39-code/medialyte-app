@@ -22,7 +22,7 @@ def bericht():
     r["db"] = sql("select pg_database_size(current_database()) bytes")
     r["tabellen"] = sql("select n.nspname||'.'||c.relname t, pg_total_relation_size(c.oid) bytes from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind='r' order by 2 desc limit 15")
     r["objekte"] = sql("select bucket_id, name, (metadata->>'size')::bigint bytes, created_at, updated_at from storage.objects order by bucket_id, name")
-    try: r["creatives"] = sql("select c.slug, c.titel, c.status, c.art, c.created_at, c.dateien, c.vorschau, k.name kunde from public.social_creatives c left join public.social_kunden k on k.id=c.kunde_id order by c.created_at")
+    try: r["creatives"] = sql("select c.slug, c.titel, c.status, c.art, c.serie, c.erstellt, c.geaendert, c.geplant, c.favorit, c.eigen, c.hochgeladen_von, c.plattformen, c.dateien, c.vorschau, k.name kunde from public.social_creatives c left join public.social_kunden k on k.id=c.kunde_id order by c.erstellt")
     except SystemExit as e: r["creatives_fehler"] = str(e)
     try: r["spalten_creatives"] = sql("select column_name from information_schema.columns where table_schema='public' and table_name='social_creatives'")
     except SystemExit: pass
