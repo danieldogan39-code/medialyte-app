@@ -1,0 +1,32 @@
+# Supabase-Speicher aufräumen: Bericht (verschlüsselt als Artefakt) oder gezieltes Löschen einer verschlüsselten Liste.
+# Wird von Claude von Hand gestartet; das GoBD-Archiv „belege“ ist ausgenommen.
+name: Speicher aufräumen
+
+on:
+  workflow_dispatch:
+    inputs:
+      modus: { description: "bericht oder loeschen", required: true, default: bericht }
+      pub: { description: "öffentlicher Schlüssel für den Bericht", required: false, default: "" }
+      liste: { description: "verschlüsselte Löschliste (base64)", required: false, default: "" }
+
+concurrency:
+  group: creatives
+  cancel-in-progress: false
+
+env:
+  PROJECT_REF: bddogrluopqgeqvqzqmy
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+jobs:
+  speicher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q cryptography
+      - name: Ausführen
+        env: { PUB: "${{ inputs.pub }}", LISTE: "${{ inputs.liste }}" }
+        run: python3 tools/speicher/speicher.py "${{ inputs.modus }}"
+      - uses: actions/upload-artifact@v4
+        if: inputs.modus == 'bericht'
+        with: { name: bericht, path: bericht.bin, retention-days: 1 }
