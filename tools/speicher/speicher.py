@@ -46,6 +46,15 @@ def loeschen():
             if code >= 300: sys.exit(f"{bucket}: Löschen fehlgeschlagen (HTTP {code})")
             gesamt += len(json.loads(body or b"[]"))
         print(f"{bucket}: {len(pfade)} Pfade angefragt")
+    for slug in auftrag.get("nur_video", []):   # Video-Datei aus dem Eintrag nehmen, Titelbild und Text bleiben
+        code, body = anfrage(f"{BASIS}/rest/v1/social_creatives?slug=eq.{urllib.parse.quote(slug)}&select=dateien,notiz", kopf=kopf)
+        zeile = (json.loads(body or b"[]") or [None])[0] if code < 300 else None
+        if not zeile: print("Creative nicht gefunden – übersprungen"); continue
+        neu = {"dateien": [d for d in zeile["dateien"] or [] if d.get("art") != "video"],
+               "notiz": ((zeile.get("notiz") or "") + "\n\nVideo-Datei am 09.11.2026 aus dem App-Speicher entfernt (bereits gepostet).").strip()}
+        code, _ = anfrage(f"{BASIS}/rest/v1/social_creatives?slug=eq.{urllib.parse.quote(slug)}", "PATCH", json.dumps(neu).encode(), {**kopf, "Prefer": "return=minimal"})
+        if code >= 300: sys.exit(f"Creative-Eintrag: Ändern fehlgeschlagen (HTTP {code})")
+    print(f"Videos aus {len(auftrag.get('nur_video', []))} Einträgen genommen.")
     for slug in auftrag.get("creatives", []):   # Einträge in der App entfernen
         code, _ = anfrage(f"{BASIS}/rest/v1/social_creatives?slug=eq.{urllib.parse.quote(slug)}", "DELETE", None, {**kopf, "Prefer": "return=minimal"})
         if code >= 300: sys.exit(f"Creative-Eintrag: Löschen fehlgeschlagen (HTTP {code})")
