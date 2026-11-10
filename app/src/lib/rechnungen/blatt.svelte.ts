@@ -16,5 +16,5 @@ export const B = new Blaetter();
 
 /** Aktion mit Fehlermeldung als Hinweis (wie run() in der Rechnungs-App) */
 export async function versuche(fn: () => Promise<unknown> | unknown) {
-  try { await fn(); } catch (e: any) { console.error(e); daten.melden(e?.message || String(e)); }
+  try { await fn(); } catch (e: any) { console.error(e); daten.melden(e?.message || String(e), e?.aktion, true); }
 }

@@ -18,6 +18,21 @@
   import { federKurve, gleiter, ruhig } from "../lib/bewegung";
   // Seitenwechsel: neue Seite gleitet sanft herein (Unterreiter derselben Seite bleiben stehen)
   const rein = federKurve(0.5, 0), toastRein = federKurve(0.45, 0.18);
+  // Hinweise müssen über offenen Fenstern liegen: Ein Fenster (dialog) liegt in der obersten Ebene des Browsers,
+  // darunter wäre der Hinweis verdeckt – dann sieht ein Fehler aus, als hätte der Knopf nichts getan.
+  // Darum kommt der Hinweis selbst in die oberste Ebene, bei jedem neuen Text wieder ganz nach vorn.
+  function obenauf(el: HTMLElement, _text: string) {
+    const kann = typeof el.showPopover === "function";
+    if (!kann) el.removeAttribute("popover");
+    const zeigen = () => {
+      if (kann) { try { if (el.matches(":popover-open")) el.hidePopover(); el.showPopover(); } catch { /* bleibt, wo er ist */ } return; }
+      // ältere Browser kennen das nicht: Hinweis in das oberste offene Fenster hängen (nicht in eins, das gerade schließt)
+      const offen = [...document.querySelectorAll<HTMLDialogElement>("dialog[open]")].filter((d) => !d.dataset.zu), d = offen[offen.length - 1];
+      if (d && el.parentNode !== d) d.append(el);
+    };
+    zeigen();
+    return { update: zeigen };
+  }
   // Rechnungsdaten im Hintergrund (für Rechnungen und das Kundenmenü), auch ohne Internet
   $effect(() => { if (auth.darf("rechnungen")) { R.meldung = (t) => daten.melden(t); R.starten(); } });
   $effect(() => { setTimeout(() => { appUpdate.pruefen(); appUpdate.beobachten(); }, 4000); });
@@ -244,7 +259,7 @@
   </main>
 </div>
 
-{#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} role="status" in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
+{#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} class:toast--schlecht={daten.toastSchlecht} role="status" popover="manual" use:obenauf={daten.toast} in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
 <div class="ziehen" bind:this={kreis} aria-hidden="true"><Icon name="refresh" size={18} /></div>
 <Ebenen />
 <Rueckfrage />

@@ -8,7 +8,7 @@
   import { daten } from "../../lib/daten.svelte";
   import { frage } from "../../lib/frage.svelte";
   import { HISTORY_START, fmtDate, positionsOf, todayISO, type Posten } from "../../lib/rechnungen/kern";
-  import { oeffneKunde } from "../../lib/rechnungen/oeffnen";
+  import { oeffneKunde, oeffneRechnung } from "../../lib/rechnungen/oeffnen";
 
   let { zu, inv = null, kunde = "" }: { zu: () => void; inv?: any; kunde?: string } = $props();
   const neu = !inv;
@@ -44,7 +44,18 @@
     const was = `${issue_date < todayISO() ? ` mit Datum ${fmtDate(issue_date)}` : ""}${f.paid ? `, bezahlt am ${fmtDate(paid_at)}` : ""}`;
     if (!(await frage(senden ? "Abschließen und senden?" : "Nur abschließen?", senden ? `Rechnung${was} abschließen und an ${c.email} senden?` : `Rechnung${was} abschließen, ohne sie zu versenden?`, senden ? "Abschließen & senden" : "Abschließen"))) return;
     await sichern();
-    const r = await R.act("issue", { id, send: senden, issue_date, paid: f.paid, paid_at });
+    let r: any;
+    try { r = await R.act("issue", { id, send: senden, issue_date, paid: f.paid, paid_at }); }
+    catch (e: any) {
+      // Der Server schließt erst ab und verschickt dann. Scheitert nur der Versand, ist die Rechnung trotzdem
+      // ausgestellt: Entwurf schließen (er ließe sich nicht noch einmal abschließen) und sagen, wie es weitergeht.
+      await R.loadAll().catch(() => {});
+      const fertig = R.invoice(id);
+      if (!fertig || fertig.status === "draft") throw e;
+      zu();
+      throw Object.assign(new Error(`Rechnung ${fertig.number} ist abgeschlossen, aber nicht verschickt. ${e?.message || e}`),
+        { aktion: { label: "Rechnung öffnen", fn: () => oeffneRechnung(fertig) } });
+    }
     zu(); await R.loadAll().catch(() => {});
     daten.melden(r.queued ? QUEUED_MSG : senden ? `Rechnung ${r.invoice.number} an ${c.email} gesendet` : `Rechnung ${r.invoice.number} abgeschlossen`);
   }
