@@ -91,6 +91,7 @@
   {#snippet fuss()}
     {#if !neu}
       <button class="btn btn--quiet btn--gefahr links" type="button" onclick={loeschen}><Icon name="trash" size={16} />Löschen</button>
+      {#if aktuell && !aktuell.erledigt && aktuell.dauer_min > 90}<button class="btn btn--quiet" type="button" title="In Teile von 90 Minuten zerlegen und einzeln einplanen" onclick={async () => { if (aktuell) await org.aufteilen(aktuell); fenster?.zu(); }}>Aufteilen</button>{/if}
       <button class="btn" type="button" onclick={async () => { if (aktuell) await org.erledigen(aktuell); fenster?.zu(); }}><Icon name="check" size={16} />{aktuell?.erledigt ? "Wieder öffnen" : "Erledigt"}</button>
     {/if}
     <button class="btn btn--primary org-primary" type="button" disabled={!titel.trim() || laeuft} onclick={() => speichern()}>{neu ? "Anlegen" : "Speichern"}</button>

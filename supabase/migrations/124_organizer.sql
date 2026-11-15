@@ -3,9 +3,7 @@
 -- Grundsatz: Jeder sieht nur seine eigenen Einträge – auch der Inhaber sieht nicht die eines anderen Mitglieds.
 -- Zusätzlich gilt wie überall: aktives Mitglied, Zwei-Faktor bestätigt, Recht „organizer“.
 
--- Recht: neuer Bereich „organizer“, zunächst nur für den Inhaber (in „Team & Rechte“ für andere Rollen freischaltbar)
-insert into public.rechte (rolle, bereich, lesen, schreiben) values ('inhaber', 'organizer', true, true)
-on conflict (rolle, bereich) do nothing;
+-- Zugang: seit 125 pro Konto (mitglieder.organizer), nicht über Rollenrechte
 
 -- Darf ich in meinem Organizer arbeiten? (eigene Zeile + Recht + 2FA)
 create or replace function public.org_meins(p_user uuid) returns boolean

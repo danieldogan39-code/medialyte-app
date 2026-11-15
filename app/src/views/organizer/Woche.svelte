@@ -21,7 +21,7 @@
 
   /** Überschneidungen nebeneinander legen */
   function spalten(bl: Block[]) {
-    const z = bl.filter((b) => !b.ganztag), out: { b: Block; s: number; n: number }[] = [];
+    const z = bl.filter((b) => !b.ganztag && b.art !== "routine"), out: { b: Block; s: number; n: number }[] = [];
     let gruppe: { b: Block; s: number }[] = [], ende = 0;
     const schliessen = () => { const n = Math.max(1, ...gruppe.map((g) => g.s + 1)); for (const g of gruppe) out.push({ ...g, n }); gruppe = []; };
     for (const b of z) {
@@ -35,6 +35,7 @@
   }
   const last = (bl: Block[]) => bl.filter((b) => b.art === "aufgabe").reduce((n, b) => n + (b.ende.getTime() - b.start.getTime()) / MIN, 0);
   function oeffnen(b: Block) {
+    if (b.art === "fahrt" || b.art === "routine") return;
     if (b.aufgabe) blatt.auf({ art: "aufgabe", a: b.aufgabe }); else if (b.termin) blatt.auf({ art: "termin", t: b.termin }); else if (b.gewohnheit) blatt.auf({ art: "gewohnheit", g: b.gewohnheit });
   }
   function neuBei(d: Date, e: MouseEvent) {
@@ -92,9 +93,12 @@
     {@const k = tagKey(d)}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div class="spalte" class:heute={k === heuteKey} style="height: {stunden.length * H}px; --h: {H}px" ondblclick={(e) => neuBei(d, e)}>
+      {#each proTag[i].filter((b) => b.art === "routine" && b.leer) as b (b.id)}
+        <div class="band" style="top: {oben(b.start)}px; height: {((b.ende.getTime() - b.start.getTime()) / 36e5) * H}px" title="{b.titel} · frei"><span>{b.titel.replace(/ \(.*\)/, "")}</span></div>
+      {/each}
       {#each spalten(proTag[i]) as { b, s, n } (b.id)}
         {@const h = Math.max(20, ((b.ende.getTime() - b.start.getTime()) / 36e5) * H - 2)}
-        <button class="blk" class:fertig={b.erledigt} class:termin={b.art === "termin"} class:klein={h < 40} style="--f: {b.farbe}; top: {oben(b.start)}px; height: {h}px; left: calc({(s / n) * 100}% + 2px); width: calc({100 / n}% - 4px)"
+        <button class="blk" class:fertig={b.erledigt} class:termin={b.art === "termin"} class:fahrt={b.art === "fahrt"} class:klein={h < 40} style="--f: {b.farbe}; top: {oben(b.start)}px; height: {h}px; left: calc({(s / n) * 100}% + 2px); width: calc({100 / n}% - 4px)"
           title="{uhr(b.start)}–{uhr(b.ende)} {b.titel}" onclick={(e) => { e.stopPropagation(); oeffnen(b); }} ondblclick={(e) => e.stopPropagation()}>
           <b>{b.titel}</b>{#if h >= 40}<small>{uhr(b.start)}–{uhr(b.ende)}</small>{/if}
         </button>
@@ -128,6 +132,9 @@
   .blk { position: absolute; display: grid; align-content: start; gap: 1px; padding: 4px 6px; overflow: hidden; border: 0; border-left: 3px solid var(--f); border-radius: 7px; text-align: left; font: inherit; cursor: pointer;
     background: color-mix(in srgb, var(--f) 22%, var(--panel)); color: var(--text); transition: transform .35s var(--feder-schnell), filter .2s ease, opacity .2s ease; }
   .blk.termin { background: color-mix(in srgb, var(--f) 12%, var(--panel-2)); border-left-style: solid; background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(255, 255, 255, .025) 8px 16px); }
+  .blk.fahrt { border-left-color: #5A6880; background: repeating-linear-gradient(135deg, rgba(139, 152, 173, .12) 0 6px, rgba(139, 152, 173, .05) 6px 12px); color: var(--steel); }
+  .band { position: absolute; left: 2px; right: 2px; border-radius: 7px; border: 1px dashed rgba(142, 124, 255, .3); background: rgba(142, 124, 255, .05); pointer-events: none; }
+  .band span { position: absolute; top: 3px; left: 6px; font-size: .66rem; color: rgba(185, 174, 255, .7); }
   .blk b { font-weight: 500; font-size: .78rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .blk.klein b { -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; }
   .blk small { font-size: .7rem; color: var(--text-2); }

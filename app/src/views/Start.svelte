@@ -14,8 +14,8 @@
   // Organizer-Stand im Hintergrund auffrischen, damit die Karte stimmt
   $effect(() => { if (auth.darf("organizer")) org.laden(); });
 
-  const heute = $derived(org.bloecke(new Date(org.jetzt)).filter((b) => !b.ganztag));
-  const offenHeute = $derived(heute.filter((b) => b.art !== "termin" && !b.erledigt).length);
+  const heute = $derived(org.bloecke(new Date(org.jetzt)).filter((b) => !b.ganztag && b.art !== "routine"));
+  const offenHeute = $derived(heute.filter((b) => (b.art === "aufgabe" || b.art === "gewohnheit") && !b.erledigt).length);
   const naechster = $derived(heute.find((b) => b.ende.getTime() > org.jetzt));
   const pruefung = $derived(org.pruefungen[0]);
   const anfragen = $derived(daten.neueAnfragen);

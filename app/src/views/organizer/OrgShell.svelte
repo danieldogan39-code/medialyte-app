@@ -13,6 +13,7 @@
   import Aufgaben from "./Aufgaben.svelte";
   import Ziele from "./Ziele.svelte";
   import Pruefungen from "./Pruefungen.svelte";
+  import Faecher from "./Faecher.svelte";
   import OrgEinstellungen from "./OrgEinstellungen.svelte";
   import { auth } from "../../lib/auth.svelte";
   import { daten } from "../../lib/daten.svelte";
@@ -31,6 +32,7 @@
   $effect(() => { if (router.pfad === "/o" || router.pfad === "/o/") router.geh("/o/heute"); });
 
   const seite = $derived(router.teile[1] ?? "heute");
+  const seiteKey = $derived(seite + "/" + (router.teile[2] ?? ""));
   const b = $derived(orgBereich(router.pfad));
   const aktiv = (p: string) => router.pfad.startsWith(p);
   const offenAufgaben = $derived(org.offen.filter((a) => !a.geplant || org.liegengeblieben.includes(a)).length);
@@ -87,12 +89,13 @@
     {#if appUpdate.bereit && !appUpdate.neu}<div class="upd"><span>Version {appUpdate.bereit.v} ist bereit und startet beim nächsten Öffnen.</span><button class="btn btn--s btn--primary org-primary" onclick={() => appUpdate.neuStarten().catch((e) => daten.melden(String(e?.message || e)))}>Jetzt neu starten</button></div>{/if}
     {#if appUpdate.neu}<div class="upd"><span>Neue App-Version {appUpdate.neu.v} ist da.</span><button class="btn btn--s btn--primary org-primary" disabled={appUpdate.fortschritt != null} onclick={async () => { const f = await appUpdate.installieren().catch((e) => String(e?.message || e)); if (f) daten.melden(f); }}>{appUpdate.fortschritt != null ? `Lädt … ${Math.round(appUpdate.fortschritt * 100)} %` : "Jetzt aktualisieren"}</button></div>{/if}
     <div class="buehne">
-      {#key seite}
+      {#key seiteKey}
         <div class="seite" in:fly={{ y: ruhig() ? 0 : 10, duration: ruhig() ? 0 : rein.ms, easing: rein.easing, opacity: 0 }} out:fade={{ duration: ruhig() ? 0 : 120 }}>
           {#if seite === "woche"}<Woche />
           {:else if seite === "aufgaben"}<Aufgaben />
           {:else if seite === "ziele"}<Ziele />
           {:else if seite === "pruefungen"}<Pruefungen />
+          {:else if seite === "faecher"}{#key router.teile[2]}<Faecher id={router.teile[2] ?? ""} />{/key}
           {:else if seite === "einstellungen"}<OrgEinstellungen />
           {:else}<Heute />{/if}
         </div>

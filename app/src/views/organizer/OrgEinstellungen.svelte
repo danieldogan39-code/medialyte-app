@@ -7,21 +7,14 @@
   import { frage } from "../../lib/frage.svelte";
   import { lesen as planLesen } from "../../lib/organizer/import";
   import { relativTag, uhr } from "../../lib/organizer/zeit";
-  import { FARBEN, type Kalender } from "../../lib/organizer/typen";
+  import type { Kalender } from "../../lib/organizer/typen";
 
   // Planung
   let e = $state({ ...org.einst });
   $effect(() => { e = { ...org.einst }; });
   const geaendert = $derived(JSON.stringify(e) !== JSON.stringify(org.einst));
 
-  // Fächer
-  let neuesFach = $state("");
-  async function fachAnlegen(ev: Event) { ev.preventDefault(); if (!neuesFach.trim()) return; if (await org.fachSpeichern({ name: neuesFach })) neuesFach = ""; }
-  async function fachWeg(id: string) {
-    const f = org.fach(id); if (!f) return;
-    if (!(await frage(`„${f.name}“ löschen?`, "Aufgaben und Termine bleiben, verlieren aber ihre Farbe und Zuordnung.", "Löschen", true))) return;
-    org.fachLoeschen(f);
-  }
+  let passt = $state(false);
 
   // Kalender
   let kArt = $state<Kalender["art"]>("ism"), kName = $state(""), kUrl = $state(""), kLaeuft = $state(false);
@@ -102,23 +95,34 @@
   </section>
 
   <section class="card blk">
-    <h2><Icon name="layers" size={18} />Fächer und Bereiche</h2>
-    <ul class="faecher">
-      {#each org.faecher as f (f.id)}
-        <li>
-          <details class="farbwahl"><summary style="--c: {f.farbe}" aria-label="Farbe"></summary>
-            <div>{#each FARBEN as c}<button style="--c: {c}" aria-label="Farbe {c}" onclick={(ev) => { org.fachSpeichern({ ...f, farbe: c }); (ev.currentTarget as HTMLElement).closest("details")?.removeAttribute("open"); }}></button>{/each}</div>
-          </details>
-          <input class="input" value={f.name} onchange={(ev) => { const v = (ev.currentTarget as HTMLInputElement).value.trim(); if (v && v !== f.name) org.fachSpeichern({ ...f, name: v }); }} aria-label="Name">
-          <span class="muted num">{org.fachStand(f.id).alle}</span>
-          <button class="btn btn--quiet btn--icon" aria-label="Löschen" onclick={() => fachWeg(f.id)}><Icon name="trash" size={16} /></button>
-        </li>
-      {/each}
-    </ul>
-    <form class="zeile2" onsubmit={fachAnlegen}>
-      <input class="input" bind:value={neuesFach} placeholder="z. B. Mathe, Rechnungswesen, Medialyte" maxlength="60">
-      <button class="btn" type="submit" disabled={!neuesFach.trim()}><Icon name="plus" size={15} />Anlegen</button>
-    </form>
+    <h2><Icon name="sun" size={18} />Tagesroutine</h2>
+    <p class="muted klein">Dein fester Tagesablauf. In die <b>Fokusblöcke</b> plant die App deine Aufgaben – schwere Fächer in den Block mit dem höchsten Niveau. Was mit Uni oder Weg kollidiert, fällt an dem Tag aus.</p>
+    {#if org.routine.length}
+      <ul class="rt">
+        {#each org.routine as r (r.id)}
+          <li class:block={r.art === "block"} class:aus={!r.aktiv}>
+            <input class="input zeit" type="time" value={r.start} onchange={(ev) => org.routineSpeichern({ ...r, start: (ev.currentTarget as HTMLInputElement).value })} aria-label="Beginn">
+            <input class="input min" type="number" min="5" max="600" step="5" value={r.dauer_min} onchange={(ev) => org.routineSpeichern({ ...r, dauer_min: Number((ev.currentTarget as HTMLInputElement).value) || r.dauer_min })} aria-label="Minuten">
+            <input class="input name" value={r.titel} onchange={(ev) => org.routineSpeichern({ ...r, titel: (ev.currentTarget as HTMLInputElement).value || r.titel })} aria-label="Titel">
+            <select class="input art" value={r.art === "block" ? "b" + (r.niveau ?? 2) : r.art} onchange={(ev) => { const v = (ev.currentTarget as HTMLSelectElement).value; org.routineSpeichern({ ...r, art: v.startsWith("b") ? "block" : (v as any), niveau: v.startsWith("b") ? Number(v.slice(1)) : null }); }} aria-label="Art">
+              <option value="b1">Fokusblock · hoch</option><option value="b2">Fokusblock · mittel</option><option value="b3">Fokusblock · niedrig</option><option value="fix">Fester Punkt</option><option value="flex">Flexibel</option>
+            </select>
+            <span class="tg">{#each ["M", "D", "M", "D", "F", "S", "S"] as t, i}<button class:on={r.tage.includes(i + 1)} aria-label="Tag {i + 1}" onclick={() => org.routineSpeichern({ ...r, tage: r.tage.includes(i + 1) ? r.tage.filter((x) => x !== i + 1) : [...r.tage, i + 1].sort() })}>{t}</button>{/each}</span>
+            <button class="btn btn--quiet btn--icon" aria-label="Löschen" onclick={() => org.routineLoeschen(r)}><Icon name="trash" size={15} /></button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    <div class="aktion">
+      <button class="btn" onclick={() => org.routineSpeichern({ titel: "Neuer Punkt", start: "12:00" })}><Icon name="plus" size={15} />Punkt</button>
+      <button class="btn btn--primary org-primary" disabled={!org.routine.some((r) => r.art === "block") || passt} onclick={async () => { passt = true; const n = await org.anRoutineAnpassen(); passt = false; if (n != null) daten.melden(`${n} Lernblöcke in deine Routine eingepasst`); }}><Icon name="wand" size={15} />{passt ? "Passt an …" : "Feste Lernblöcke einpassen"}</button>
+    </div>
+  </section>
+
+  <section class="card blk">
+    <h2><Icon name="note" size={18} />Fächer</h2>
+    <p class="muted klein">{org.aktiveFaecher.length} Fächer. Details, Dozenten, Prüfungen und die Verbindung zum Kalender findest du unter <a href="#/o/faecher">Fächer</a>.</p>
+    <div class="aktion"><a class="btn" href="#/o/faecher">Fächer öffnen</a><button class="btn" onclick={() => org.zuordnen(false)}><Icon name="refresh" size={15} />Termine und Aufgaben zuordnen</button></div>
   </section>
 
   <section class="card blk">
@@ -127,6 +131,7 @@
       <label class="field"><span>Arbeitsbeginn</span><input class="input" type="time" bind:value={e.tag_start} step="900"></label>
       <label class="field"><span>Arbeitsende</span><input class="input" type="time" bind:value={e.tag_ende} step="900"></label>
       <label class="field"><span>Puffer zwischen Blöcken (Min.)</span><input class="input" type="number" min="0" max="120" step="5" bind:value={e.puffer_min}></label>
+      <label class="field"><span>Weg zur Uni, eine Richtung (Min.)</span><input class="input" type="number" min="0" max="180" step="5" bind:value={e.fahrzeit_min}></label>
       <label class="field"><span>Höchstens pro Tag (Std.)</span><input class="input" type="number" min="1" max="12" step="0.5" value={e.tag_max_min / 60} oninput={(ev) => (e.tag_max_min = Math.round(Number((ev.currentTarget as HTMLInputElement).value) * 60) || 360)}></label>
     </div>
     <div class="schalter"><span>Auch am Wochenende planen</span><Schalter an={e.wochenende} label="Wochenende" onchange={(v) => (e.wochenende = v)} /></div>
@@ -180,6 +185,15 @@
   .kal small { color: var(--steel); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; }
   .fehler { color: #FF8080 !important; }
   .datei { justify-self: start; cursor: pointer; }
+  .rt { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 520px; overflow: auto; }
+  .rt li { display: grid; grid-template-columns: 92px 64px minmax(120px, 1fr) 150px auto auto; gap: 6px; align-items: center; padding: 4px; border-radius: 10px; }
+  .rt li.block { background: rgba(142, 124, 255, .08); }
+  .rt li.aus { opacity: .5; }
+  .rt .input { min-height: 34px; padding: 4px 8px; font-size: .86rem; }
+  .tg { display: flex; gap: 2px; }
+  .tg button { width: 22px; height: 26px; border: 0; border-radius: 6px; background: var(--bg-2); color: var(--steel); font: inherit; font-size: .72rem; cursor: pointer; }
+  .tg button.on { background: var(--org); color: #fff; }
+  @media (max-width: 700px) { .rt li { grid-template-columns: 86px 60px 1fr auto; } .rt .art, .tg { grid-column: span 2; } }
   .faecher li { display: flex; align-items: center; gap: 8px; }
   .faecher .input { min-height: 36px; }
   .farbwahl { position: relative; }

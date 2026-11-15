@@ -6,12 +6,12 @@ import { auth } from "../auth.svelte";
 import { daten } from "../daten.svelte";
 import { lies, merk } from "../speicher";
 import { haptik } from "../haptik";
-import { planen, gewohnheitsZeiten, type Iv } from "./planer";
+import { planen, gewohnheitsZeiten, routineZeiten, type Iv } from "./planer";
 import { MIN, TAG, beiMinute, minuten, plusTage, tagBeginn, tagKey, wochenBeginn, wochentag } from "./zeit";
 import { lesen as icsLesen } from "./ics";
 import { fachFuer, norm } from "./schnell";
 import type { ImportPlan } from "./import";
-import { EINST_STANDARD, FARBEN, type Aufgabe, type Block, type Einstellungen, type Fach, type Gewohnheit, type Kalender, type Log, type Termin } from "./typen";
+import { EINST_STANDARD, FARBEN, type Aufgabe, type Block, type Einstellungen, type Fach, type Gewohnheit, type Kalender, type Log, type Routine, type Termin } from "./typen";
 
 const uuid = () => crypto.randomUUID();
 const TABELLEN = ["org_faecher", "org_termine", "org_aufgaben", "org_gewohnheiten", "org_gewohnheit_log", "org_kalender"] as const;
@@ -30,7 +30,8 @@ class Organizer {
   gewohnheiten = $state<Gewohnheit[]>(lies("org:gewohnheiten", []));
   log = $state<Log[]>(lies("org:log", []));
   kalender = $state<Kalender[]>(lies("org:kalender", []));
-  einst = $state<Einstellungen>(lies("org:einst", EINST_STANDARD));
+  routine = $state<Routine[]>(lies("org:routine", []));
+  einst = $state<Einstellungen>({ ...EINST_STANDARD, ...lies("org:einst", EINST_STANDARD) });
   geladen = $state(lies("org:geladen", false));
   jetzt = $state(Date.now());           // tickt jede Minute: „Jetzt“-Linie, Countdowns
   plant = $state(false);
@@ -47,16 +48,17 @@ class Organizer {
   async laden() {
     const von = plusTage(tagBeginn(Date.now()), -45).toISOString(), bis = plusTage(tagBeginn(Date.now()), 240).toISOString();
     const erledigtSeit = plusTage(Date.now(), -90).toISOString();
-    const [f, t, a, g, l, k, e] = await Promise.all([
+    const [f, t, a, g, l, k, e, r] = await Promise.all([
       sb.from("org_faecher").select("*").order("position").order("name"),
-      sb.from("org_termine").select("id,titel,start,ende,ganztag,ort,art,fach_id,notiz,kalender_id").gte("ende", von).lte("start", bis).order("start").limit(3000),
+      sb.from("org_termine").select("id,titel,start,ende,ganztag,ort,art,fach_id,notiz,kalender_id,fahrt").gte("ende", von).lte("start", bis).order("start").limit(3000),
       sb.from("org_aufgaben").select("*").or(`erledigt.is.null,erledigt.gte.${erledigtSeit}`).order("position").limit(2000),
       sb.from("org_gewohnheiten").select("*").order("position").order("erstellt"),
       sb.from("org_gewohnheit_log").select("gewohnheit_id,tag").gte("tag", tagKey(plusTage(Date.now(), -120))),
       sb.from("org_kalender").select("*").order("erstellt"),
-      sb.from("org_einstellungen").select("tag_start,tag_ende,puffer_min,tag_max_min,wochenende").maybeSingle(),
+      sb.from("org_einstellungen").select("tag_start,tag_ende,puffer_min,tag_max_min,wochenende,fahrzeit_min").maybeSingle(),
+      sb.from("org_routine").select("*").order("start"),
     ]);
-    const fehler = [f, t, a, g, l, k, e].find((r) => r.error)?.error;
+    const fehler = [f, t, a, g, l, k, e].find((x) => x.error)?.error;
     if (fehler) { if (!this.geladen) daten.melden("Organizer nicht geladen: " + fehlerText(fehler), undefined, true); return; }
     this.faecher = merk("org:faecher", (f.data ?? []) as Fach[]);
     this.termine = merk("org:termine", (t.data ?? []) as Termin[]);
@@ -64,6 +66,7 @@ class Organizer {
     this.gewohnheiten = merk("org:gewohnheiten", (g.data ?? []) as Gewohnheit[]);
     this.log = merk("org:log", (l.data ?? []) as Log[]);
     this.kalender = merk("org:kalender", (k.data ?? []) as Kalender[]);
+    if (!r.error) this.routine = merk("org:routine", ((r.data ?? []) as any[]).map((x) => ({ ...x, start: String(x.start).slice(0, 5) })) as Routine[]);
     if (e.data) this.einst = merk("org:einst", { ...EINST_STANDARD, ...(e.data as any), tag_start: String(e.data.tag_start).slice(0, 5), tag_ende: String(e.data.tag_ende).slice(0, 5) });
     this.geladen = merk("org:geladen", true);
     // Kalender-Abos: höchstens alle 30 Minuten still im Hintergrund abgleichen
@@ -83,11 +86,11 @@ class Organizer {
 
   #merken() {
     merk("org:faecher", this.faecher); merk("org:termine", this.termine); merk("org:aufgaben", this.aufgaben);
-    merk("org:gewohnheiten", this.gewohnheiten); merk("org:log", this.log); merk("org:kalender", this.kalender);
+    merk("org:gewohnheiten", this.gewohnheiten); merk("org:log", this.log); merk("org:kalender", this.kalender); merk("org:routine", this.routine);
   }
 
   /** Optimistisch ändern, speichern, bei Fehler zurück */
-  async #schreiben<T extends { id?: string }>(liste: "faecher" | "termine" | "aufgaben" | "gewohnheiten" | "kalender", tabelle: (typeof TABELLEN)[number], zeile: T, loeschen = false): Promise<boolean> {
+  async #schreiben<T extends { id?: string }>(liste: "faecher" | "termine" | "aufgaben" | "gewohnheiten" | "kalender" | "routine", tabelle: (typeof TABELLEN)[number] | "org_routine", zeile: T, loeschen = false): Promise<boolean> {
     const vorher = [...(this as any)[liste]] as any[];
     const i = vorher.findIndex((x) => x.id === zeile.id);
     if (loeschen) (this as any)[liste] = vorher.filter((x) => x.id !== zeile.id);
@@ -103,10 +106,27 @@ class Organizer {
   get aktiveFaecher() { return this.faecher.filter((f) => !f.archiviert); }
   naechsteFarbe() { const benutzt = new Set(this.faecher.map((f) => f.farbe)); return FARBEN.find((c) => !benutzt.has(c)) ?? FARBEN[this.faecher.length % FARBEN.length]; }
   async fachSpeichern(f: Partial<Fach> & { name: string }) {
-    const z = { id: f.id ?? uuid(), name: f.name.trim(), farbe: f.farbe ?? this.naechsteFarbe(), position: f.position ?? this.faecher.length, archiviert: f.archiviert ?? false };
+    const z = { id: f.id ?? uuid(), name: f.name.trim(), farbe: f.farbe ?? this.naechsteFarbe(), position: f.position ?? this.faecher.length, archiviert: f.archiviert ?? false,
+      name_lang: f.name_lang?.trim() || null, dozent: f.dozent?.trim() || null, pruefung: f.pruefung?.trim() || null, link: f.link?.trim() || null, notiz: f.notiz?.trim() || null, niveau: f.niveau ?? 2 };
     return (await this.#schreiben("faecher", "org_faecher", z)) ? z : null;
   }
   fachLoeschen(f: Fach) { return this.#schreiben("faecher", "org_faecher", { id: f.id }, true); }
+  /** Fächer mit Kalender und Aufgaben verbinden: Termine und Aufgaben ohne Fach bekommen das passende (Name oder voller Name im Titel) */
+  async zuordnen(still = true) {
+    const t = this.termine.filter((x) => !x.fach_id).map((x) => [x, fachFuer(this.faecher, x.titel)] as const).filter(([, f]) => f);
+    const a = this.aufgaben.filter((x) => !x.fach_id && !x.erledigt).map((x) => [x, fachFuer(this.faecher, x.titel)] as const).filter(([, f]) => f);
+    const res = await Promise.all([
+      ...t.map(([x, f]) => sb.from("org_termine").update({ fach_id: f!.id }).eq("id", x.id)),
+      ...a.map(([x, f]) => sb.from("org_aufgaben").update({ fach_id: f!.id }).eq("id", x.id)),
+    ]);
+    const ok = new Set(res.map((r, i) => (r.error ? null : i)).filter((i) => i != null));
+    this.termine = this.termine.map((x) => { const i = t.findIndex(([y]) => y.id === x.id); return i >= 0 && ok.has(i) ? { ...x, fach_id: t[i][1]!.id } : x; });
+    this.aufgaben = this.aufgaben.map((x) => { const i = a.findIndex(([y]) => y.id === x.id); return i >= 0 && ok.has(t.length + i) ? { ...x, fach_id: a[i][1]!.id } : x; });
+    this.#merken();
+    if (!still) daten.melden(t.length + a.length ? `${t.length} Termine und ${a.length} Aufgaben zugeordnet` : "Alles ist schon zugeordnet");
+    if (this.kalender.length) await this.abgleichen(undefined, true);
+    return t.length + a.length;
+  }
 
   // ---------- Aufgaben
   get offen() { return this.aufgaben.filter((a) => !a.erledigt); }
@@ -260,13 +280,39 @@ class Organizer {
 
   // ---------- Auto-Planung
   /** Belegte Zeiten (Termine mit Uhrzeit) ab jetzt */
-  belegt(): Iv[] { const j = this.jetzt - TAG; return this.termine.filter((t) => !t.ganztag && Date.parse(t.ende) > j).map((t) => [Date.parse(t.start), Date.parse(t.ende)] as Iv); }
+  belegt(): Iv[] {
+    const j = this.jetzt - TAG;
+    return [...this.termine.filter((t) => !t.ganztag && Date.parse(t.ende) > j).map((t) => [Date.parse(t.start), Date.parse(t.ende)] as Iv), ...this.fahrten(j).map((f) => [f.von, f.bis] as Iv)];
+  }
+  /** Braucht der Termin einen Weg? Von Hand gesetzt, sonst: Vorlesungen und Prüfungen vor Ort (nicht Zoom/online) */
+  brauchtFahrt(t: Termin) {
+    if (t.ganztag) return false;
+    if (t.fahrt != null) return t.fahrt;
+    return (t.art === "vorlesung" || t.art === "klausur") && !/zoom|online|teams|webex|meet\b|digital/i.test(t.ort ?? "") && !/\(online/i.test(t.titel);
+  }
+  /** Hin- und Rückwege (je Fahrzeit) um zusammenhängende Termine vor Ort; liegen zwei nah beieinander, bleibt man dort */
+  fahrten(ab = this.jetzt - TAG, bis = Infinity): { von: number; bis: number; hin: boolean; ziel: string }[] {
+    const f = (this.einst.fahrzeit_min ?? 45) * MIN; if (!f) return [];
+    const vorOrt = this.termine.filter((t) => this.brauchtFahrt(t) && Date.parse(t.ende) > ab && Date.parse(t.start) < bis).sort((a, b) => a.start.localeCompare(b.start));
+    const out: { von: number; bis: number; hin: boolean; ziel: string }[] = [];
+    let g: { s: number; e: number; ort: string } | null = null;
+    const zu = () => { if (g) { out.push({ von: g.s - f, bis: g.s, hin: true, ziel: g.ort }, { von: g.e, bis: g.e + f, hin: false, ziel: g.ort }); } };
+    for (const t of vorOrt) {
+      const s = Date.parse(t.start), e = Date.parse(t.ende);
+      if (g && s - g.e < 2 * f && tagKey(s) === tagKey(g.e)) g.e = Math.max(g.e, e);
+      else { zu(); g = { s, e, ort: t.ort || "Uni" }; }
+    }
+    zu();
+    return out;
+  }
+  /** Niveau, das eine Aufgabe braucht: wichtig = 1, unwichtig = 3, sonst das Niveau des Fachs */
+  niveauVon = (a: Aufgabe) => (a.prio === 1 ? 1 : a.prio === 3 ? 3 : this.fach(a.fach_id)?.niveau ?? 2);
 
   /** Offene Aufgaben einplanen. nur = nur diese (sonst alle, die nicht fixiert sind); loesen = auch feste Zeiten neu vergeben (Liegengebliebenes) */
   async planen(nur?: Set<string>, still = false, loesen = false) {
     if (this.plant) return; this.plant = true;
     try {
-      const r = planen({ aufgaben: this.aufgaben, belegt: this.belegt(), gewohnheiten: this.gewohnheiten, einst: this.einst, jetzt: Date.now(), tage: 75, nur, loesen: loesen ? nur : undefined });
+      const r = planen({ aufgaben: this.aufgaben, belegt: this.belegt(), gewohnheiten: this.gewohnheiten, einst: this.einst, routine: this.routine, niveauVon: this.niveauVon, jetzt: Date.now(), tage: 75, nur, loesen: loesen ? nur : undefined });
       const aend = [...r.neu.entries()];
       if (aend.length) {
         const vorher = this.aufgaben;
@@ -287,7 +333,7 @@ class Organizer {
   }
   /** Nach neuen Terminen/Gewohnheiten: Aufgaben, die jetzt kollidieren, still neu einplanen */
   async #konflikteNeuPlanen() {
-    const busy = [...this.belegt(), ...gewohnheitsZeiten(this.gewohnheiten, new Date(), 76)];
+    const busy = [...this.belegt(), ...gewohnheitsZeiten(this.gewohnheiten, new Date(), 76), ...routineZeiten(this.routine, new Date(), 76)];
     const j = Date.now();
     const kollidiert = this.offen.filter((a) => {
       if (a.fixiert || !a.geplant) return false;
@@ -316,7 +362,72 @@ class Organizer {
       const s = beiMinute(new Date(d0), minuten(g.uhrzeit));
       out.push({ art: "gewohnheit", id: g.id + key, titel: g.name, start: s, ende: new Date(s.getTime() + g.dauer_min * MIN), farbe: g.farbe, erledigt: this.hatLog(g, key), gewohnheit: g });
     }
+    // Wege zur Uni
+    for (const f of this.fahrten(d0 - TAG, d1)) {
+      if (f.bis <= d0 || f.von >= d1) continue;
+      out.push({ art: "fahrt", id: "fahrt" + f.von, titel: f.hin ? "Weg zur Uni" : "Rückweg", start: new Date(f.von), ende: new Date(f.bis), farbe: "#8B98AD", unter: f.hin ? f.ziel : "nach Hause" });
+    }
+    // Tagesroutine: fällt aus, wo ein Termin oder ein Weg liegt; Fokusblöcke nur, wenn noch nichts drin ist
+    const belegtHeute = out.filter((b) => !b.ganztag && (b.art === "termin" || b.art === "fahrt")).map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
+    const aufgabenHeute = out.filter((b) => b.art === "aufgabe").map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
+    for (const r of this.routine) {
+      if (!r.aktiv || !r.tage.includes(w)) continue;
+      const s = beiMinute(new Date(d0), minuten(r.start)), e = new Date(s.getTime() + r.dauer_min * MIN);
+      const faellt = belegtHeute.some(([x, y]) => x < e.getTime() && y > s.getTime());
+      if (faellt) continue;
+      if (r.art === "block" && aufgabenHeute.some(([x, y]) => x < e.getTime() && y > s.getTime())) continue;
+      out.push({ art: "routine", id: "r" + r.id + key, titel: r.titel, start: s, ende: e, farbe: r.art === "block" ? "#8E7CFF" : "#5A6880", routine: r, leer: r.art === "block" });
+    }
     return out.sort((a, b) => Number(!!b.ganztag) - Number(!!a.ganztag) || a.start.getTime() - b.start.getTime() || a.ende.getTime() - b.ende.getTime());
+  }
+
+  // ---------- Tagesroutine
+  async routineSpeichern(r: Partial<Routine> & { titel: string; start: string }) {
+    const neu = !r.id || !this.routine.some((x) => x.id === r.id);
+    const z: any = { ...(neu ? { id: r.id ?? uuid(), dauer_min: 30, tage: [1, 2, 3, 4, 5], art: "fix", niveau: null, aktiv: true } : {}), ...r, titel: r.titel.trim() };
+    if (z.art !== "block") z.niveau = null; else z.niveau = z.niveau ?? 2;
+    const ok = await this.#schreiben("routine", "org_routine", z);
+    if (ok) { this.routine = [...this.routine].sort((a, b) => a.start.localeCompare(b.start)); merk("org:routine", this.routine); }
+    return ok;
+  }
+  routineLoeschen(r: Routine) { return this.#schreiben("routine", "org_routine", { id: r.id }, true); }
+
+  /** Lange Aufgabe in Teile zerlegen (z. B. 3 Std. → 2 × 90 Min.), die Teile plant die App einzeln */
+  async aufteilen(a: Aufgabe, teil = 90, planenDanach = true) {
+    const n = Math.ceil(a.dauer_min / teil); if (n < 2) return [a.id];
+    const basis = a.titel.replace(/ \(Teil \d+\/\d+\)$/, "");
+    const rest = a.dauer_min - teil * (n - 1);
+    const neue = Array.from({ length: n - 1 }, (_, i) => ({ id: uuid(), titel: `${basis} (Teil ${i + 2}/${n})`.slice(0, 300), notiz: a.notiz, fach_id: a.fach_id, dauer_min: i === n - 2 ? rest : teil,
+      frist: a.frist, prio: a.prio, geplant: null, fixiert: false, erledigt: null, position: a.position + (i + 1) / 100, erstellt: a.erstellt, ab: a.ab ?? null }));
+    const r1 = await sb.from("org_aufgaben").update({ titel: `${basis} (Teil 1/${n})`.slice(0, 300), dauer_min: teil, fixiert: false }).eq("id", a.id);
+    const r2 = r1.error ? r1 : await sb.from("org_aufgaben").insert(neue);
+    if (r2.error) { daten.melden("Nicht aufgeteilt: " + fehlerText(r2.error), undefined, true); return []; }
+    this.aufgaben = [...this.aufgaben.map((x) => (x.id === a.id ? { ...x, titel: `${basis} (Teil 1/${n})`, dauer_min: teil, fixiert: false } : x)), ...(neue as Aufgabe[])];
+    merk("org:aufgaben", this.aufgaben);
+    const ids = [a.id, ...neue.map((x) => x.id)];
+    if (planenDanach) await this.planen(new Set(ids), true);
+    return ids;
+  }
+
+  /** Feste Lernblöcke (z. B. aus dem Lernplan) in die Tagesroutine einpassen: gleicher Tag, aber in die Fokusblöcke,
+   *  zu lange Blöcke werden in Teile von höchstens der Blocklänge zerlegt. Fahrten und Termine bleiben frei. */
+  async anRoutineAnpassen() {
+    const bloecke = this.routine.filter((r) => r.aktiv && r.art === "block");
+    if (!bloecke.length) { daten.melden("Erst eine Tagesroutine mit Fokusblöcken anlegen.", undefined, true); return; }
+    const teil = Math.max(30, ...bloecke.map((r) => r.dauer_min));   // so lang wie der längste Fokusblock
+    const j = Date.now();
+    const kandidaten = this.offen.filter((a) => a.fixiert && a.geplant && Date.parse(a.geplant) > j);
+    const ids = new Set<string>();
+    for (const a of kandidaten) {
+      const tag = tagKey(a.geplant!);
+      await sb.from("org_aufgaben").update({ fixiert: false, ab: tag, frist: a.frist && a.frist < tag ? a.frist : tag }).eq("id", a.id);
+      const x = { ...a, fixiert: false, ab: tag, frist: a.frist && a.frist < tag ? a.frist : tag };
+      this.aufgaben = this.aufgaben.map((y) => (y.id === a.id ? x : y));
+      for (const id of a.dauer_min > teil ? await this.aufteilen(x, teil, false) : [a.id]) ids.add(id);
+    }
+    merk("org:aufgaben", this.aufgaben);
+    await this.planen(ids, false, true);
+    return ids.size;
   }
   /** Fortschritt eines Fachs: erledigte/alle Aufgaben, Stunden */
   fachStand(fachId: string) {

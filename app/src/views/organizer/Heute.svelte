@@ -9,11 +9,12 @@
 
   const heute = $derived(new Date(org.jetzt));
   const bloecke = $derived(org.bloecke(heute));
-  const machbar = $derived(bloecke.filter((b) => b.art !== "termin"));
+  const machbar = $derived(bloecke.filter((b) => b.art === "aufgabe" || b.art === "gewohnheit"));
   const fertig = $derived(machbar.filter((b) => b.erledigt).length);
-  const jetzt = $derived(bloecke.find((b) => !b.ganztag && b.start.getTime() <= org.jetzt && b.ende.getTime() > org.jetzt && !b.erledigt));
-  const naechster = $derived(bloecke.find((b) => !b.ganztag && b.start.getTime() > org.jetzt));
-  const morgen = $derived(org.bloecke(plusTage(heute, 1)).filter((b) => !b.ganztag));
+  const wichtig = $derived(bloecke.filter((b) => b.art !== "routine"));
+  const jetzt = $derived(wichtig.find((b) => !b.ganztag && b.start.getTime() <= org.jetzt && b.ende.getTime() > org.jetzt && !b.erledigt));
+  const naechster = $derived(wichtig.find((b) => !b.ganztag && b.start.getTime() > org.jetzt));
+  const morgen = $derived(org.bloecke(plusTage(heute, 1)).filter((b) => !b.ganztag && b.art !== "routine"));
   const ungeplant = $derived(org.offen.filter((a) => !a.geplant));
   const liegen = $derived(org.liegengeblieben);
   const neuHier = $derived(org.geladen && !org.faecher.length && !org.aufgaben.length && !org.termine.length);

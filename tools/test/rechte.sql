@@ -447,7 +447,7 @@ do $$ declare f uuid; g uuid; begin
 end $$;
 select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
 do $$ begin if exists (select 1 from public.org_aufgaben) then raise exception 'Organizer ohne 2FA lesbar'; end if; raise notice 'OK Organizer ohne 2FA leer'; end $$;
--- Buchhaltung hat (noch) kein Recht organizer
+-- Buchhaltung ist nicht freigeschaltet
 select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
 do $$ begin
   if exists (select 1 from public.org_aufgaben) or exists (select 1 from public.org_termine) or exists (select 1 from public.org_faecher) then raise exception 'Fremde Organizer-Daten sichtbar'; end if;
@@ -455,9 +455,9 @@ do $$ begin
   exception when insufficient_privilege then null; end;
   raise notice 'OK Organizer ohne Recht gesperrt';
 end $$;
--- Auch mit Recht sieht ein anderes Mitglied Daniels Einträge nicht und kann nicht an seine Fächer hängen
+-- Auch freigeschaltet sieht ein anderes Mitglied Daniels Einträge nicht und kann nicht an seine Fächer hängen
 reset role;
-insert into public.rechte (rolle, bereich, lesen, schreiben) values ('buchhaltung', 'organizer', true, true) on conflict do nothing;
+update public.mitglieder set organizer = true where user_id = '00000000-0000-0000-0000-0000000000f1';
 set role authenticated;
 select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
 do $$ declare fremdes uuid; begin
@@ -469,7 +469,24 @@ do $$ declare fremdes uuid; begin
   if (select count(*) from public.org_aufgaben) <> 1 then raise exception 'Finn sieht falsch viele'; end if;
   raise notice 'OK Organizer: jeder nur seins';
 end $$;
+-- Freischalten geht nicht über die App, auch nicht für sich selbst
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ begin
+  begin update public.mitglieder set organizer = true where user_id = '00000000-0000-0000-0000-0000000000a1'; raise exception 'über App freigeschaltet';
+  exception when raise_exception then if sqlerrm not like 'Der Organizer wird nicht%' then raise; end if; end;
+  if (select public.ich() -> 'rechte' ->> 'organizer') <> 'schreiben' then raise exception 'ich() ohne organizer'; end if;
+  insert into public.org_routine (titel, start, dauer_min, art, niveau) values ('Block 1', '09:30', 90, 'block', 1);
+  raise notice 'OK Organizer nur pro Konto, Routine';
+end $$;
 reset role;
-delete from public.rechte where rolle = 'buchhaltung' and bereich = 'organizer';
+update public.mitglieder set organizer = false where user_id = '00000000-0000-0000-0000-0000000000f1';
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ begin
+  if exists (select 1 from public.org_aufgaben) or (public.ich() -> 'rechte') ? 'organizer' then raise exception 'ohne Freischaltung Zugriff'; end if;
+  raise notice 'OK Organizer ohne Freischaltung gesperrt';
+end $$;
+reset role;
 \ir ../../supabase/migrations/124_organizer.sql
+\ir ../../supabase/migrations/125_organizer_routine.sql
 do $$ begin raise notice 'OK Organizer wiederholbar'; end $$;

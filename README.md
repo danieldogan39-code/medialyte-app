@@ -24,7 +24,10 @@ Welten mit eigener Navigation in derselben App (`app/src/views/Start.svelte`, `a
 - **Auto-Planung** (`app/src/lib/organizer/planer.ts`): verteilt Aufgaben ohne feste Zeit in freie Lücken zwischen Terminen und Gewohnheiten – früheste Frist zuerst, mit Puffer und Tagesgrenze; Liegengebliebenes lässt sich mit einem Tipp neu einplanen.
 - **Schnelleingabe**: „Mathe Kapitel 4 90min bis Fr !“ erkennt Fach, Dauer, Frist, feste Zeit und Wichtigkeit.
 - **Kalender-Abos**: ISM-Stundenplan, Google („Geheime Adresse im iCal-Format“) oder jeder andere iCal-Link; die Cloud-Funktion `kalender` liest sie (Zeitzonen, Wiederholungen) und schreibt `org_termine`. `.ics`-Dateien lassen sich auch direkt einlesen.
-- **Nur eigene Daten**: Tabellen `org_*` (Migration `124_organizer.sql`) – jede Zeile gehört genau einem Konto, auch der Inhaber sieht nicht die anderer.
+- **Tagesroutine** (`org_routine`): feste Punkte und Fokusblöcke mit Niveau; die Auto-Planung plant nur in die Blöcke, schwere Fächer in Block 1. „Feste Lernblöcke einpassen“ zerlegt lange Blöcke und verteilt sie am selben Tag in die Routine.
+- **Fahrzeit zur Uni**: um Vorlesungen und Prüfungen vor Ort wird je Weg die eingestellte Fahrzeit (Standard 45 Min.) freigehalten; Online-Termine (Zoom) brauchen keinen Weg.
+- **Fächer** mit vollem Kalendernamen, Dozent, Prüfungsform, Link und Schwierigkeit; Termine und Aufgaben werden darüber automatisch zugeordnet.
+- **Nur für freigeschaltete Konten**: Zugang über `mitglieder.organizer` (Migration 125, zunächst nur Daniel), nicht über Rollenrechte; freischalten nur direkt in der Datenbank. Jede Zeile in `org_*` gehört genau einem Konto.
 
 ## Sicherheit
 

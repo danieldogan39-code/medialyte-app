@@ -71,8 +71,9 @@ Deno.serve(async (req) => {
 
   const db = admin();
   const user = abos[0].user_id as string;
-  const { data: faecher } = await db.from("org_faecher").select("id,name").eq("user_id", user).eq("archiviert", false);
-  const fachListe = (faecher ?? []).map((f) => ({ id: f.id as string, n: norm(f.name as string) })).filter((f) => f.n.length >= 3);
+  const { data: faecher } = await db.from("org_faecher").select("id,name,name_lang").eq("user_id", user).eq("archiviert", false);
+  // zuerst der volle Name („Wirtschaftsmathematik“), dann der kurze („Mathe“)
+  const fachListe = (faecher ?? []).flatMap((f) => [f.name_lang, f.name].filter(Boolean).map((x) => ({ id: f.id as string, n: norm(x as string) }))).filter((f) => f.n.length >= 3);
   const von = new Date(Date.now() - VORHER_TAGE * 864e5), bis = new Date(Date.now() + NACHHER_TAGE * 864e5);
 
   const ergebnis: { id: string; name: string; anzahl: number; fehler: string | null }[] = [];

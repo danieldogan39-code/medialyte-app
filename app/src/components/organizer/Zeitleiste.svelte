@@ -4,8 +4,8 @@
   import Icon from "../Icon.svelte";
   import { org } from "../../lib/organizer/org.svelte";
   import { blatt } from "../../lib/organizer/blatt.svelte";
-  import { MIN, dauer, minuten, tagBeginn, tagKey, uhr } from "../../lib/organizer/zeit";
-  import { TERMIN_ART, type Block } from "../../lib/organizer/typen";
+  import { MIN, dauer, minuten, tagBeginn, tagKey, uhr, wochentag } from "../../lib/organizer/zeit";
+  import { NIVEAU, TERMIN_ART, type Block } from "../../lib/organizer/typen";
   import { fly } from "svelte/transition";
   import { flip } from "svelte/animate";
   import { federKurve, ruhig } from "../../lib/bewegung";
@@ -23,15 +23,16 @@
     const fruehestens = Math.max(tagBeginn(tag).getTime() + minuten(org.einst.tag_start) * MIN, heute ? j : 0);
     const spaetestens = tagBeginn(tag).getTime() + minuten(org.einst.tag_ende) * MIN;
     let ende = fruehestens, jetztGesetzt = !heute;
+    const mitRoutine = org.routine.some((r) => r.aktiv && r.tage.includes(wochentag(tag)));
     for (const b of rest) {
       if (!jetztGesetzt && b.start.getTime() > j) { out.push({ typ: "jetzt" }); jetztGesetzt = true; }
       const luecke = (b.start.getTime() - ende) / MIN;
-      if (luecke >= 45 && ende < spaetestens) out.push({ typ: "frei", von: new Date(ende), min: Math.min(luecke, (spaetestens - ende) / MIN), key: "f" + ende });
+      if (!mitRoutine && luecke >= 45 && ende < spaetestens) out.push({ typ: "frei", von: new Date(ende), min: Math.min(luecke, (spaetestens - ende) / MIN), key: "f" + ende });
       out.push({ typ: "block", b });
       ende = Math.max(ende, b.ende.getTime());
     }
     if (!jetztGesetzt && j < tagBeginn(tag).getTime() + 86_400_000) out.push({ typ: "jetzt" });
-    if (spaetestens - ende >= 45 * MIN) out.push({ typ: "frei", von: new Date(ende), min: (spaetestens - ende) / MIN, key: "f" + ende });
+    if (!mitRoutine && spaetestens - ende >= 45 * MIN) out.push({ typ: "frei", von: new Date(ende), min: (spaetestens - ende) / MIN, key: "f" + ende });
     return out;
   });
   const laeuft = (b: Block) => !b.ganztag && b.start.getTime() <= org.jetzt && b.ende.getTime() > org.jetzt;
@@ -60,6 +61,13 @@
           <div class="jetzt" aria-label="Jetzt"><span>{uhr(org.jetzt)}</span><i></i></div>
         {:else if z.typ === "frei"}
           <button class="frei" onclick={() => blatt.auf({ art: "schnell" })}><span class="zeit">{uhr(z.von)}</span><span>Frei · {dauer(z.min)}</span><Icon name="plus" size={14} /></button>
+        {:else if z.typ === "block" && (z.b.art === "fahrt" || z.b.art === "routine")}
+          {@const b = z.b}
+          {#if b.art === "routine" && b.leer}
+            <button class="frei block" onclick={() => blatt.auf({ art: "schnell" })}><span class="zeit">{uhr(b.start)}</span><span><b>{b.titel.replace(/ \(.*\)$/, "")}</b> · {NIVEAU[b.routine?.niveau ?? 2]} · frei</span><Icon name="plus" size={14} /></button>
+          {:else}
+            <div class="duenn" class:fahrt={b.art === "fahrt"} class:lauf={laeuft(b)}><span class="zeit">{uhr(b.start)}</span><Icon name={b.art === "fahrt" ? "car" : "clock"} size={13} /><span>{b.titel}{b.unter ? ` · ${b.unter}` : ""} · {dauer((b.ende.getTime() - b.start.getTime()) / MIN)}</span></div>
+          {/if}
         {:else}
           {@const b = z.b}
           <div class="zeile" class:lauf={laeuft(b)} class:fertig={b.erledigt} class:termin={b.art === "termin"} style="--f: {b.farbe}" role="button" tabindex="0"
@@ -128,5 +136,12 @@
   .frei { display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; width: 100%; padding: 6px 12px 6px 10px; border: 1px dashed var(--line); border-radius: 12px;
     background: transparent; color: var(--steel); font: inherit; font-size: .82rem; text-align: left; cursor: pointer; transition: border-color .2s ease, color .2s ease; }
   .frei .zeit { text-align: right; font-size: .78rem; }
+  .frei.block { border-color: rgba(142, 124, 255, .35); color: #B9AEFF; }
+  .frei.block b { font-weight: 600; }
+  .duenn { display: grid; grid-template-columns: 54px auto 1fr; gap: 8px 12px; align-items: center; padding: 3px 12px 3px 10px; color: var(--steel); font-size: .8rem; }
+  .duenn .zeit { text-align: right; font-size: .76rem; }
+  .duenn :global(svg) { opacity: .8; }
+  .duenn.fahrt { color: #AEB9CA; padding: 7px 12px 7px 10px; border-radius: 10px; background: repeating-linear-gradient(135deg, rgba(139, 152, 173, .07) 0 8px, transparent 8px 16px); }
+  .duenn.lauf { color: var(--text); }
   @media (hover: hover) and (pointer: fine) { .frei:hover { border-color: var(--line-2); color: var(--text-2); } }
 </style>
