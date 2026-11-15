@@ -28,6 +28,8 @@ async function ausSpeicher(id: KursId): Promise<{ kurs: Kurs; text: string } | n
   try { return { kurs: JSON.parse(text), text }; } catch { return null; }
 }
 
+/** Zeit für eine Lektion im Plan: Lesen + Abfrage (etwa 45 Sekunden je Frage), auf 5 Minuten gerundet */
+export const lektionsDauer = (l: Lektion) => Math.max(15, Math.ceil((l.dauer_min + l.fragen.length * 0.75) / 5) * 5);
 export type Lauf = { id: string; kurs: KursId; punkte: number; max: number; dauer_s: number; fehler: string[]; erstellt: string };
 export type Eintrag = { kurs: Kurs; lektion: Lektion; frage: Frage; schluessel: string };
 
@@ -141,7 +143,7 @@ class Lernen {
       const ende = plusTage(klausur, -3), spanne = Math.max(1, Math.round((ende.getTime() - heute.getTime()) / 86_400_000));
       for (let i = 0; i < lek.length; i++) {
         const l = lek[i], frist = tagKey(plusTage(heute, Math.max(0, Math.ceil(((i + 1) / lek.length) * spanne) - 1)));
-        const dauer = Math.min(90, Math.ceil((l.dauer_min + l.fragen.length * 1.5) / 15) * 15);
+        const dauer = lektionsDauer(l);
         const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: ${l.titel}`.slice(0, 300), fach_id: fach?.id ?? null, dauer_min: dauer, frist, prio: 2, lektion: `${id}/${l.id}`, position: Date.now() / 1e6 + n++ }, false);
         if (r) neu.add(r.id);
       }
