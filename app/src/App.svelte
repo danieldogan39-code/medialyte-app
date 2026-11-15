@@ -5,6 +5,11 @@
   import Willkommen from "./views/Willkommen.svelte";
   import Shell from "./views/Shell.svelte";
   import Intro from "./components/Intro.svelte";
+  import Start from "./views/Start.svelte";
+  import OrgShell from "./views/organizer/OrgShell.svelte";
+  import { modus } from "./lib/modus.svelte";
+  import { router } from "./lib/router.svelte";
+  import { fade } from "svelte/transition";
 </script>
 
 <div class="aura" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -25,8 +30,12 @@
       <button class="btn" onclick={() => auth.abmelden()}>Abmelden</button>
     </div>
   </div>
+{:else if auth.darf("organizer") && !modus.gewaehlt}
+  <div in:fade={{ duration: 250 }}><Start /></div>
+{:else if auth.darf("organizer") && (router.pfad === "/o" || router.pfad.startsWith("/o/"))}
+  <div in:fade={{ duration: 300 }}><OrgShell /></div>
 {:else}
-  <Shell />
+  <div in:fade={{ duration: 300 }}><Shell /></div>
 {/if}
 
 <style>

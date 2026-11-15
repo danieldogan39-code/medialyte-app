@@ -14,6 +14,18 @@ Dieselbe Oberfläche läuft im Browser (app.medialyte.de), als Programm auf Mac 
 | Cloud-Funktionen | `supabase/functions/` | `anfrage` (Buchungen von medialyte.de), `team` (Einladen, 2FA zurücksetzen, sperren) |
 | Agent | Repo `website-agent` | sucht, baut Demos, Briefe; überträgt seinen Stand per `agent/cloud.py` |
 
+## Organizer (persönlicher Bereich)
+
+Nach dem Anmelden wählt man auf dem Startbildschirm zwischen **Medialyte** (Agentur) und dem **Organizer** – zwei eigenständige
+Welten mit eigener Navigation in derselben App (`app/src/views/Start.svelte`, `app/src/views/organizer/`). Wer das Recht
+`organizer` nicht hat, landet direkt in Medialyte.
+
+- **Heute, Woche, Aufgaben, Gewohnheiten, Prüfungen.** Termine, Aufgaben mit Dauer/Frist/Wichtigkeit, Gewohnheiten (z. B. Training 3×/Woche) und Klausuren mit Countdown.
+- **Auto-Planung** (`app/src/lib/organizer/planer.ts`): verteilt Aufgaben ohne feste Zeit in freie Lücken zwischen Terminen und Gewohnheiten – früheste Frist zuerst, mit Puffer und Tagesgrenze; Liegengebliebenes lässt sich mit einem Tipp neu einplanen.
+- **Schnelleingabe**: „Mathe Kapitel 4 90min bis Fr !“ erkennt Fach, Dauer, Frist, feste Zeit und Wichtigkeit.
+- **Kalender-Abos**: ISM-Stundenplan, Google („Geheime Adresse im iCal-Format“) oder jeder andere iCal-Link; die Cloud-Funktion `kalender` liest sie (Zeitzonen, Wiederholungen) und schreibt `org_termine`. `.ics`-Dateien lassen sich auch direkt einlesen.
+- **Nur eigene Daten**: Tabellen `org_*` (Migration `124_organizer.sql`) – jede Zeile gehört genau einem Konto, auch der Inhaber sieht nicht die anderer.
+
 ## Sicherheit
 
 - **Keine Daten ohne Anmeldung.** Jede Tabelle hat Row Level Security. Zugriff nur für aktive Team-Mitglieder,

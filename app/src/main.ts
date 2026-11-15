@@ -9,6 +9,7 @@ import { federCss } from "./lib/bewegung";
 import { modalZu } from "./lib/bewegung";
 import { haptik } from "./lib/haptik";
 import { bestaetigen, beobachten, suchen } from "./lib/liveupdate";
+import { modus } from "./lib/modus.svelte";
 
 // Federkurven als CSS-Variablen (für Übergänge in den Stilen)
 document.documentElement.style.setProperty("--feder", federCss(0.5, 0.08));
@@ -67,7 +68,10 @@ if (cap?.isNativePlatform?.()) {
     if (offen.length) { modalZu(offen[offen.length - 1]); return; }
     if (B.liste.length) return B.zu(B.liste[B.liste.length - 1].id);
     if (R.pdf) { URL.revokeObjectURL(R.pdf.url); R.pdf = null; return; }
-    if (location.hash && location.hash !== "#/" && history.length > 1) return history.back();
+    // Organizer und Medialyte: von der obersten Seite eines Bereichs zurück zur Auswahl, von dort in den Hintergrund
+    const oberste = /^#\/o\/[^/]*$/.test(location.hash) || !location.hash || location.hash === "#/";
+    if (oberste && modus.gewaehlt && auth.darf("organizer")) { modus.auswahl(); return; }
+    if (!oberste && history.length > 1) return history.back();
     App.minimizeApp();
   });
 }

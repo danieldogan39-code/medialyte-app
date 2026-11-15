@@ -13,6 +13,8 @@
   import { social } from "../lib/social.svelte";
   import { haptik } from "../lib/haptik";
   import { bereichVon, BEREICHE } from "../lib/bereiche";
+  import { modus } from "../lib/modus.svelte";
+  import OrgZeichen from "../components/organizer/OrgZeichen.svelte";
   const farbe = (p: string) => BEREICHE.find((b) => b.pfad === p)?.farbe ?? "#8B98AD";
   import { fly, fade } from "svelte/transition";
   import { federKurve, gleiter, ruhig } from "../lib/bewegung";
@@ -213,6 +215,9 @@
       {#if auth.darf("team")}<a href="#/team" style="--f: {farbe("/team")}" class:on={aktiv("/team")} class:in-reiter={imReiter("/team")}><span class="ni"><Icon name="shield" size={15} /></span>Team & Rechte</a>{/if}
       <a href="#/einstellungen" style="--f: {farbe("/einstellungen")}" class:on={aktiv("/einstellungen")} class:in-reiter={imReiter("/einstellungen")}><span class="ni"><Icon name="settings" size={15} /></span>Einstellungen</a>
     </div>
+    {#if auth.darf("organizer")}
+      <button class="zu-org" onclick={() => modus.oeffnen("organizer")}><OrgZeichen size={30} /><span><b>Zum Organizer</b><small>Dein Tag, Aufgaben, Prüfungen</small></span><Icon name="right" size={16} /></button>
+    {/if}
     <div class="me">
       <span class="me__av" aria-hidden="true">{auth.ich?.name?.[0] ?? "?"}</span>
       <span class="me__t"><b>{auth.ich?.name}</b><small>{ROLLEN[auth.ich?.rolle ?? ""] ?? ""}</small></span>
@@ -294,6 +299,13 @@
   @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 60% { opacity: 1; } }
   .badge--b { background: var(--info) !important; color: #06101F !important; }
   .badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--coral); color: #fff; font-size: .75rem; font-weight: 600; display: grid; place-items: center; }
+  .zu-org { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 14px; border: 1px solid rgba(142, 124, 255, .3); background: linear-gradient(120deg, rgba(142, 124, 255, .12), rgba(79, 209, 181, .04));
+    color: var(--text-2); font: inherit; text-align: left; cursor: pointer; transition: border-color .2s ease, transform .4s var(--feder-schnell); }
+  .zu-org > span { flex: 1; display: grid; line-height: 1.25; }
+  .zu-org b { color: var(--text); font-weight: 500; font-size: .9rem; }
+  .zu-org small { color: var(--steel); font-size: .76rem; }
+  .zu-org:active { transform: scale(.98); }
+  @media (hover: hover) and (pointer: fine) { .zu-org:hover { border-color: rgba(142, 124, 255, .6); } }
   .me { display: flex; align-items: center; gap: 10px; padding: 10px 6px 0 8px; border-top: 1px solid var(--line); }
   .me__av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-2); color: var(--text); font-weight: 600; flex: none; }
   .me__t { display: grid; flex: 1; min-width: 0; line-height: 1.25; }

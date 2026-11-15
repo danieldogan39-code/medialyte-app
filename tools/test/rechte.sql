@@ -427,3 +427,49 @@ end $$;
 reset role;
 \ir ../../supabase/migrations/123_kundenlogos.sql
 do $$ begin raise notice 'OK Kundenlogos wiederholbar'; end $$;
+
+-- Organizer: jeder sieht nur seine eigenen Einträge, nur mit Recht „organizer“ und 2FA
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare f uuid; g uuid; begin
+  insert into public.org_faecher (name, farbe) values ('Mathe', '#6FA8F0') returning id into f;
+  insert into public.org_aufgaben (titel, fach_id, dauer_min, frist) values ('Kapitel 1 rechnen', f, 90, current_date + 3);
+  insert into public.org_termine (titel, start, ende, art, fach_id) values ('Klausur Mathe', now() + interval '30 days', now() + interval '30 days 2 hours', 'klausur', f);
+  insert into public.org_gewohnheiten (name, pro_woche, tage, uhrzeit) values ('Training', 3, '{2,5,7}', '16:30') returning id into g;
+  insert into public.org_gewohnheit_log (gewohnheit_id, tag) values (g, current_date);
+  insert into public.org_einstellungen default values;
+  if (select user_id from public.org_aufgaben limit 1) <> '00000000-0000-0000-0000-00000000000d' then raise exception 'user_id nicht gesetzt'; end if;
+  begin insert into public.org_aufgaben (titel, user_id) values ('fremd', '00000000-0000-0000-0000-0000000000f1'); raise exception 'für andere angelegt';
+  exception when insufficient_privilege then null; end;
+  begin insert into public.org_kalender (name, url) values ('X', 'file:///etc/passwd'); raise exception 'falsche Kalender-Adresse angenommen';
+  exception when check_violation then null; end;
+  raise notice 'OK Organizer: Inhaber legt eigene Einträge an';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
+do $$ begin if exists (select 1 from public.org_aufgaben) then raise exception 'Organizer ohne 2FA lesbar'; end if; raise notice 'OK Organizer ohne 2FA leer'; end $$;
+-- Buchhaltung hat (noch) kein Recht organizer
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ begin
+  if exists (select 1 from public.org_aufgaben) or exists (select 1 from public.org_termine) or exists (select 1 from public.org_faecher) then raise exception 'Fremde Organizer-Daten sichtbar'; end if;
+  begin insert into public.org_aufgaben (titel) values ('x'); raise exception 'ohne Recht angelegt';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Organizer ohne Recht gesperrt';
+end $$;
+-- Auch mit Recht sieht ein anderes Mitglied Daniels Einträge nicht und kann nicht an seine Fächer hängen
+reset role;
+insert into public.rechte (rolle, bereich, lesen, schreiben) values ('buchhaltung', 'organizer', true, true) on conflict do nothing;
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare fremdes uuid; begin
+  if exists (select 1 from public.org_aufgaben) then raise exception 'Mitglied sieht Daniels Aufgaben'; end if;
+  insert into public.org_aufgaben (titel) values ('Finns Aufgabe');
+  reset role; select id into fremdes from public.org_faecher where name = 'Mathe'; set role authenticated;
+  begin insert into public.org_aufgaben (titel, fach_id) values ('angehängt', fremdes); raise exception 'fremdes Fach angehängt';
+  exception when raise_exception then if sqlerrm not like 'Fach gehört%' then raise; end if; end;
+  if (select count(*) from public.org_aufgaben) <> 1 then raise exception 'Finn sieht falsch viele'; end if;
+  raise notice 'OK Organizer: jeder nur seins';
+end $$;
+reset role;
+delete from public.rechte where rolle = 'buchhaltung' and bereich = 'organizer';
+\ir ../../supabase/migrations/124_organizer.sql
+do $$ begin raise notice 'OK Organizer wiederholbar'; end $$;
