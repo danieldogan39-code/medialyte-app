@@ -320,6 +320,12 @@ class Organizer {
     }
     return out.filter((f) => f.bis > ab && f.von < bis);
   }
+  /** Harte Grenze einer Lernaufgabe: Beginn der nächsten Klausur im selben Fach */
+  spaetestens = (a: Aufgabe): number | null => {
+    if (!a.lektion || !a.fach_id) return null;
+    const j = this.jetzt, k = this.termine.filter((t) => t.art === "klausur" && t.fach_id === a.fach_id && Date.parse(t.start) > j).map((t) => Date.parse(t.start)).sort((x, y) => x - y)[0];
+    return k ?? null;
+  };
   /** Niveau, das eine Aufgabe braucht: wichtig = 1, unwichtig = 3, sonst das Niveau des Fachs */
   niveauVon = (a: Aufgabe) => (a.prio === 1 ? 1 : a.prio === 3 ? 3 : this.fach(a.fach_id)?.niveau ?? 2);
 
@@ -327,7 +333,7 @@ class Organizer {
   async planen(nur?: Set<string>, still = false, loesen = false) {
     if (this.plant) return; this.plant = true;
     try {
-      const r = planen({ aufgaben: this.aufgaben, belegt: this.belegt(), gewohnheiten: this.gewohnheiten, einst: this.einst, routine: this.routine, niveauVon: this.niveauVon, jetzt: Date.now(), tage: 75, nur, loesen: loesen ? nur : undefined });
+      const r = planen({ aufgaben: this.aufgaben, belegt: this.belegt(), gewohnheiten: this.gewohnheiten, einst: this.einst, routine: this.routine, niveauVon: this.niveauVon, jetzt: Date.now(), tage: 75, nur, loesen: loesen ? nur : undefined, spaetestens: this.spaetestens });
       const aend = [...r.neu.entries()];
       if (aend.length) {
         const vorher = this.aufgaben;

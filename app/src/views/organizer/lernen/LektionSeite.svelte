@@ -85,4 +85,5 @@
   .nachbar a span { display: grid; min-width: 0; }
   .nachbar small { color: var(--steel); font-size: .74rem; }
   .nachbar .r { text-align: right; margin-left: auto; }
+  @media (max-width: 560px) { .nachbar { flex-direction: column; } .nachbar a { max-width: none; } .nachbar .r { justify-content: space-between; } }
 </style>

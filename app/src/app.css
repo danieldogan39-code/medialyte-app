@@ -93,7 +93,15 @@ input, textarea, select, [contenteditable] { -webkit-user-select: text; user-sel
 textarea.input { min-height: 90px; resize: vertical; line-height: 1.5; }
 select.input { appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B98AD' stroke-width='2.4'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center; }
-@media (pointer: coarse) { .input { font-size: 16px; } }
+/* Handy: Eingaben in 16 px (sonst zoomt iOS beim Antippen), größere Trefferflächen für kleine Bedienelemente */
+@media (pointer: coarse), (max-width: 700px) {
+  input, textarea, select, .input { font-size: 16px !important; }
+  .btn--s { min-height: 38px; }
+  .btn--icon { min-width: 40px; min-height: 40px; }
+  .haken { position: relative; }
+  .haken::after { content: ""; position: absolute; inset: -10px; }
+  a.zurueck, .brot a { display: inline-flex; align-items: center; min-height: 40px; }
+}
 
 /* Flächen */
 .card { background-color: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);

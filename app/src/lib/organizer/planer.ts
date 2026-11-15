@@ -52,6 +52,8 @@ export function routineZeiten(r: Routine[], von: Date, tage: number): Iv[] {
 export function planen(opt: {
   aufgaben: Aufgabe[]; belegt: Iv[]; gewohnheiten: Gewohnheit[]; einst: Einstellungen; routine?: Routine[]; niveauVon?: (a: Aufgabe) => number;
   jetzt?: number; tage?: number; nur?: Set<string>; loesen?: Set<string>;
+  /** harte Grenze (z. B. Klausurbeginn bei Lernaufgaben): danach ist die Aufgabe wertlos, also nie dahinter planen */
+  spaetestens?: (a: Aufgabe) => number | null;
 }): Ergebnis {
   const { aufgaben, einst } = opt, jetzt = opt.jetzt ?? Date.now(), tage = opt.tage ?? 60, routine = (opt.routine ?? []).filter((r) => r.aktiv);
   const start = hoch(jetzt, 15 * MIN);
@@ -71,7 +73,9 @@ export function planen(opt: {
     zuPlanen.push(a);
   }
   const fristMs = (a: Aufgabe) => (a.frist ? keyZuDatum(a.frist).getTime() : Infinity);
-  zuPlanen.sort((a, b) => fristMs(a) - fristMs(b) || a.prio - b.prio || a.position - b.position || a.erstellt.localeCompare(b.erstellt));
+  // Aufgaben mit engem Zeitfenster (ab … Frist höchstens 2 Tage, z. B. Schreibplan-Etappen) zuerst – sonst füllen flexible Lernaufgaben den Tag
+  const eng = (a: Aufgabe) => (a.ab && a.frist && keyZuDatum(a.frist).getTime() - keyZuDatum(a.ab).getTime() <= 2 * TAG ? 0 : 1);
+  zuPlanen.sort((a, b) => eng(a) - eng(b) || fristMs(a) - fristMs(b) || a.prio - b.prio || a.position - b.position || a.erstellt.localeCompare(b.erstellt));
 
   const ws = minuten(einst.tag_start), we = minuten(einst.tag_ende);
   const mitBloecken = routine.some((r) => r.art === "block");
@@ -96,14 +100,14 @@ export function planen(opt: {
   const neu = new Map<string, string | null>(), zuSpaet = new Set<string>(), ohnePlatz = new Set<string>();
   const tagIdx = (t: number) => Math.round((tagBeginn(t).getTime() - tagBeginn(start).getTime()) / TAG);
   /** Suche in einem Tagesbereich [von, bis] (Indizes ab heute): Fokusblöcke oder (extra) die ganze freie Arbeitszeit */
-  const suche = (a: Aufgabe, von: number, bis: number, extra: boolean): number | null => {
+  const suche = (a: Aufgabe, von: number, bis: number, extra: boolean, ueberlast = false): number | null => {
     const dauer = a.dauer_min * MIN, soll = opt.niveauVon?.(a) ?? (a.prio === 1 ? 1 : a.prio === 3 ? 3 : 2);
     for (let i = Math.max(0, von); i <= Math.min(tage, bis); i++) {
       const tag = plusTage(tagBeginn(start), i), w = wochentag(tag);
       if (!einst.wochenende && w >= 6) continue;
-      if ((last.get(tagKey(tag)) ?? 0) + a.dauer_min > einst.tag_max_min && (last.get(tagKey(tag)) ?? 0) > 0) continue;
+      if (!ueberlast && (last.get(tagKey(tag)) ?? 0) + a.dauer_min > einst.tag_max_min && (last.get(tagKey(tag)) ?? 0) > 0) continue;
       // freie Tage der Routine (keine Fokusblöcke) bleiben frei; „kleine“ Tage mit ein, zwei Blöcken (z. B. Sonntag) bekommen keine Zusatzzeit
-      if (extra && mitBloecken && fensterVon(tag).length < 3) continue;
+      if (extra && !ueberlast && mitBloecken && fensterVon(tag).length < 3) continue;
       const fenster = extra ? [{ von: beiMinute(tag, ws).getTime(), bis: beiMinute(tag, we).getTime(), niveau: 2 }]
         : fensterVon(tag).sort((x, y) => Math.abs(x.niveau - soll) - Math.abs(y.niveau - soll) || x.von - y.von);
       for (const f of fenster) { const c = luecke(f, dauer); if (c != null) return c; }
@@ -113,15 +117,20 @@ export function planen(opt: {
   for (const a of zuPlanen) {
     const dauer = a.dauer_min * MIN;
     const ab = a.ab ? Math.max(0, tagIdx(keyZuDatum(a.ab).getTime())) : 0;
-    const frist = a.frist ? tagIdx(keyZuDatum(a.frist).getTime()) : tage;
-    // 1. Fokusblöcke ab „ab“ bis zur Frist, 2. sonstige freie Zeit, 3. notfalls früher als „ab“, 4. erst danach nach der Frist
+    const harte = opt.spaetestens?.(a) ?? null;
+    const grenze = harte != null ? Math.min(tage, tagIdx(harte) - 1) : tage;   // letzter erlaubter Tag (Tag vor der Klausur)
+    const frist = Math.min(a.frist ? tagIdx(keyZuDatum(a.frist).getTime()) : tage, grenze);
+    // 1. Fokusblöcke ab „ab“ bis zur Frist, 2. sonstige freie Zeit, 3. notfalls früher als „ab“, 4. nach der Frist (aber nie nach der harten Grenze),
+    // 5. bei harter Grenze notfalls über das Tageslimit hinaus – lieber ein voller Tag als eine Lektion nach der Klausur
     let gefunden = suche(a, ab, frist, false);
     if (gefunden == null && mitBloecken) gefunden = suche(a, ab, frist, true);
     if (gefunden == null && ab > 0) gefunden = suche(a, 0, ab - 1, false) ?? (mitBloecken ? suche(a, 0, ab - 1, true) : null);
-    if (gefunden == null && frist < tage) gefunden = suche(a, frist + 1, tage, false) ?? (mitBloecken ? suche(a, frist + 1, tage, true) : null);
+    if (gefunden == null && frist < grenze) gefunden = suche(a, frist + 1, grenze, false) ?? (mitBloecken ? suche(a, frist + 1, grenze, true) : null);
+    if (gefunden == null && harte != null) gefunden = suche(a, 0, grenze, true, true);
     if (gefunden == null) { ohnePlatz.add(a.id); if (a.geplant && Date.parse(a.geplant) < jetzt) neu.set(a.id, null); continue; }
     busy.push([gefunden, gefunden + dauer, 0]); addLast(gefunden, a.dauer_min);
-    if (a.frist && gefunden > keyZuDatum(a.frist).getTime() + TAG - 1) zuSpaet.add(a.id);
+    // Lernaufgaben: deren Frist ist nur ein Richtwert – zu spät ist nur, was nach der Klausur läge
+    if (harte != null ? gefunden + dauer > harte : a.frist && gefunden > keyZuDatum(a.frist).getTime() + TAG - 1) zuSpaet.add(a.id);
     const iso = new Date(gefunden).toISOString();
     if (a.geplant == null || Date.parse(a.geplant) !== gefunden) neu.set(a.id, iso);
   }

@@ -59,6 +59,8 @@
   async function kopieren(text: string, was: string) { try { await navigator.clipboard.writeText(text); daten.melden(`${was} kopiert`); } catch { daten.melden("Kopieren nicht möglich", undefined, true); } }
   let seite = $state<Record<string, string>>({}), direkt = $state<Record<string, boolean>>({});
   const min = $derived(arbeit.min_quellen ?? (rw?.quellen.min_je_1000_woerter && arbeit.woerter_ziel ? Math.round((rw.quellen.min_je_1000_woerter * arbeit.woerter_ziel) / 1000) : null));
+  // Formular beim Öffnen ins Bild holen (auf dem Handy liegt es sonst unterhalb)
+  const zeigen = (n: HTMLElement) => { setTimeout(() => n.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
 </script>
 
 <div class="qk">
@@ -72,7 +74,7 @@
 </div>
 
 {#if e}
-  <section class="form card">
+  <section class="form card" use:zeigen>
     <div class="ft"><b>{e.id ? "Quelle bearbeiten" : "Neue Quelle"}</b><button class="btn btn--quiet btn--icon" aria-label="Schließen" onclick={() => (e = null)}><Icon name="x" size={16} /></button></div>
     <div class="typen">{#each TYPEN as [t, l]}<button class:an={e.typ === t} onclick={() => (e!.typ = t)}>{l}</button>{/each}</div>
     <div class="felder">

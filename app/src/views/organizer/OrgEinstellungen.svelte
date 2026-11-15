@@ -204,7 +204,16 @@
   .tg { display: flex; gap: 2px; }
   .tg button { width: 22px; height: 26px; border: 0; border-radius: 6px; background: var(--bg-2); color: var(--steel); font: inherit; font-size: .72rem; cursor: pointer; }
   .tg button.on { background: var(--org); color: #fff; }
-  @media (max-width: 700px) { .rt li { grid-template-columns: 86px 60px 1fr auto; } .rt .art, .tg { grid-column: span 2; } }
+  @media (max-width: 700px) {
+    .rt { max-height: none; overflow: visible; gap: 10px; }
+    .rt li { grid-template-columns: 96px 72px minmax(0, 1fr) 40px; padding: 10px; background: var(--bg-2); }
+    .rt li.block { background: rgba(142, 124, 255, .1); }
+    .rt .input { min-height: 40px; font-size: 16px; }
+    .rt .art { grid-column: 1 / -1; }
+    .tg { grid-column: 1 / -1; gap: 4px; }
+    .tg button { flex: 1; width: auto; height: 40px; font-size: .8rem; }
+    .rt li > .btn--icon { grid-row: 1; grid-column: 4; }
+  }
   .faecher li { display: flex; align-items: center; gap: 8px; }
   .faecher .input { min-height: 36px; }
   .farbwahl { position: relative; }

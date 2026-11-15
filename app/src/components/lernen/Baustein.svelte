@@ -38,8 +38,8 @@
 {:else if b.t === "tabelle"}
   <div class="tab">
     {#if b.titel}<span class="kopf tt">{@html mdZeile(b.titel)}</span>{/if}
-    <div class="tw"><table><thead><tr>{#each b.kopf as k}<th>{@html mdZeile(k)}</th>{/each}</tr></thead>
-      <tbody>{#each b.zeilen as z}<tr>{#each z as c}<td class:num={typeof c === "number"}>{@html mdZeile(typeof c === "number" ? c.toLocaleString("de-DE") : c)}</td>{/each}</tr>{/each}</tbody></table></div>
+    <div class="tw"><table class:karten={b.kopf.length > 2 && b.zeilen.flat().filter((c) => typeof c === "number").length * 3 < b.zeilen.flat().length}><thead><tr>{#each b.kopf as k}<th>{@html mdZeile(k)}</th>{/each}</tr></thead>
+      <tbody>{#each b.zeilen as z}<tr>{#each z as c, ci}<td class:num={typeof c === "number"} data-k={(b.kopf[ci] ?? "").replace(/[*$\\]/g, "")}>{@html mdZeile(typeof c === "number" ? c.toLocaleString("de-DE") : c)}</td>{/each}</tr>{/each}</tbody></table></div>
   </div>
 {:else if b.t === "grafik"}
   <div class="gw"><Grafik g={b.g} {farbe} />{#if b.unter}<div class="md unter">{@html md(b.unter)}</div>{/if}</div>
@@ -83,6 +83,16 @@
   .tab .tt :global(b) { color: var(--text-2); }
   .tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
   table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  td :global(.katex) { white-space: nowrap; }
+  @media (max-width: 560px) {
+    .tw table.karten thead { display: none; }
+    .tw table.karten, .tw table.karten tbody, .tw table.karten tr, .tw table.karten td { display: block; width: 100%; }
+    .tw table.karten tr { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .tw table.karten td { padding: 3px 0 !important; border: 0 !important; text-align: left !important; }
+    .tw table.karten td::before { content: attr(data-k); display: block; font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--steel); }
+    .tw table.karten td:first-child { font-weight: 600; color: var(--text); }
+    .tw table.karten td:first-child::before { display: none; }
+  }
   th { text-align: left; padding: 9px 12px; background: var(--panel-2); color: var(--text); font-weight: 600; border-bottom: 1px solid var(--line-2); }
   td { padding: 8px 12px; border-top: 1px solid var(--line); color: var(--text-2); vertical-align: top; }
   td.num { text-align: right; }

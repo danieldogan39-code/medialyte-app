@@ -115,7 +115,7 @@
       <div class="bs__s"><b>Soll</b>
         {#each soll as z, i}<div class="bs__z"><select class="input" bind:value={z[0]} disabled={!!ergebnis}><option value="">Konto …</option>{#each frage.konten as k}<option>{k}</option>{/each}</select><input class="input num" inputmode="decimal" placeholder="Betrag" bind:value={z[1]} disabled={!!ergebnis} /></div>{/each}
       </div>
-      <span class="an">an</span>
+      <span class="anw">an</span>
       <div class="bs__s"><b>Haben</b>
         {#each haben as z, i}<div class="bs__z"><select class="input" bind:value={z[0]} disabled={!!ergebnis}><option value="">Konto …</option>{#each frage.konten as k}<option>{k}</option>{/each}</select><input class="input num" inputmode="decimal" placeholder="Betrag" bind:value={z[1]} disabled={!!ergebnis} /></div>{/each}
       </div>
@@ -186,6 +186,7 @@
   .opt:active:not(:disabled) { transform: scale(.985); }
   .opt:disabled { cursor: default; }
   .opt .md { flex: 1; color: var(--text); }
+  .opt .md :global(.katex) { font-size: 1.22em; }
   .nr { width: 24px; height: 24px; flex: none; border-radius: 8px; display: grid; place-items: center; font-size: .76rem; font-weight: 700; background: var(--bg-2); color: var(--steel); }
   .opt.an { border-color: #A598FF; background: rgba(142, 124, 255, .12); }
   .opt.an .nr { background: #8E7CFF; color: #fff; }
@@ -199,7 +200,7 @@
   .bs__s { display: grid; gap: 6px; }
   .bs__s > b { font-size: .76rem; text-transform: uppercase; letter-spacing: .06em; color: var(--steel); }
   .bs__z { display: grid; grid-template-columns: 1fr 110px; gap: 6px; }
-  .an { align-self: center; font-weight: 700; color: var(--text-2); padding-top: 18px; }
+  .anw { align-self: center; font-weight: 700; color: var(--text-2); padding-top: 18px; }
   .zo { display: grid; gap: 8px; }
   .zo__z { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
   .seg { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -228,5 +229,5 @@
   .selbst { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .s0 { border-color: rgba(242, 122, 106, .5); } .s1 { border-color: rgba(231, 185, 74, .5); } .s2 { border-color: rgba(76, 195, 138, .6); }
   textarea.input { min-height: 120px; resize: vertical; font: inherit; line-height: 1.5; }
-  @media (max-width: 560px) { .bs { grid-template-columns: 1fr; } .an { padding: 0; } .bs__z { grid-template-columns: 1fr 96px; } }
+  @media (max-width: 560px) { .bs { grid-template-columns: 1fr; } .anw { padding: 0; } .bs__z { grid-template-columns: 1fr 96px; } }
 </style>

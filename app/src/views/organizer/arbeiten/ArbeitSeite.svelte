@@ -133,6 +133,7 @@
   .reiter a { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; color: var(--text-2); text-decoration: none; font-size: .9rem; font-weight: 500; white-space: nowrap; }
   .reiter a:hover { color: var(--text); background: var(--hover); }
   .reiter a.an { background: rgba(231, 185, 74, .16); color: var(--text); font-weight: 600; }
+  @media (max-width: 560px) { .reiter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; } .reiter a { justify-content: center; padding: 10px 6px; font-size: .84rem; gap: 5px; } }
   .ueb { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
   .rechts { display: grid; gap: 14px; }
   .blk { display: grid; gap: 12px; padding: 16px; border-radius: 18px; }
@@ -157,5 +158,5 @@
   .fertig b { text-decoration: line-through; color: var(--steel); }
   .haken { width: 20px; height: 20px; margin-top: 1px; border-radius: 6px; border: 1.5px solid var(--line-2); background: transparent; color: #0A1220; display: grid; place-items: center; cursor: pointer; flex: none; }
   .fertig .haken { background: var(--ok); border-color: var(--ok); }
-  @media (max-width: 860px) { .ueb { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) { .ueb { grid-template-columns: minmax(0, 1fr); } .rechts { order: -1; } }
 </style>

@@ -35,6 +35,8 @@
     try { await navigator.clipboard.write([new ClipboardItem({ "text/html": new Blob([html], { type: "text/html" }), "text/plain": new Blob([text], { type: "text/plain" }) })]); daten.melden("Tabelle kopiert – in Word einfügen"); }
     catch { try { await navigator.clipboard.writeText(text); daten.melden("Als Text kopiert"); } catch { daten.melden("Kopieren nicht möglich", undefined, true); } }
   }
+  // Formular beim Öffnen ins Bild holen (auf dem Handy liegt es sonst unterhalb)
+  const zeigen = (n: HTMLElement) => { setTimeout(() => n.scrollIntoView({ behavior: "smooth", block: "start" }), 60); };
 </script>
 
 {#if rw?.ki}
@@ -47,7 +49,7 @@
 </div>
 
 {#if e}
-  <section class="form card">
+  <section class="form card" use:zeigen>
     <div class="zeile">
       <label><span>Datum</span><input class="input" type="date" bind:value={e.datum} /></label>
       <label class="w"><span>Tool (mit Version, wenn bekannt)</span><input class="input" list="ki-tools" bind:value={e.tool} placeholder="z. B. ChatGPT (GPT-5)" /><datalist id="ki-tools">{#each TOOLS as t}<option value={t}></option>{/each}</datalist></label>

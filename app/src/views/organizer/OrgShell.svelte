@@ -107,7 +107,8 @@
     </div>
   </main>
 
-  <button class="fab" aria-label="Neu" onclick={() => blatt.auf({ art: "schnell" })}><Icon name="plus" size={24} /></button>
+  <!-- beim Lesen/Abfragen und in einer Hausarbeit stört der Plus-Knopf über dem Text -->
+  {#if !((seite === "lernen" || seite === "arbeiten") && router.teile[2])}<button class="fab" aria-label="Neu" onclick={() => blatt.auf({ art: "schnell" })}><Icon name="plus" size={24} /></button>{/if}
   <nav class="tabbar" aria-label="Seiten">
     {#each REITER as x (x.pfad)}
       <a href={"#" + x.pfad} class:on={aktiv(x.pfad)} style="--f: {x.farbe}" aria-current={aktiv(x.pfad) ? "page" : undefined}>
@@ -188,7 +189,7 @@
     .wechsel:active { opacity: .6; }
     .top__t { text-align: center; color: var(--text); font-weight: 600; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .4s var(--feder-schnell); }
     .top.kompakt .top__t { opacity: 1; transform: none; }
-    .main { padding: 12px 16px calc(96px + env(safe-area-inset-bottom)); }
+    .main { padding: 12px 16px calc(140px + env(safe-area-inset-bottom)); }
     .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; inset: auto 0 0 0; z-index: 45; height: calc(58px + env(safe-area-inset-bottom));
       padding: 4px 4px env(safe-area-inset-bottom); background: rgba(12, 21, 36, .82); -webkit-backdrop-filter: saturate(170%) blur(22px); backdrop-filter: saturate(170%) blur(22px); border-top: 1px solid var(--line); }
     .tabbar a { display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--steel); }

@@ -108,6 +108,8 @@
   .aufbau { margin: 0; padding-left: 1.4em; display: grid; gap: 4px; font-size: .92rem; }
   .aufbau li::marker { color: var(--warn); font-weight: 700; }
   .aufbau small { display: block; color: var(--steel); font-size: .78rem; }
+  .aufbau li { display: list-item; background: none; padding: 5px 0 5px 4px; border-radius: 0; border-bottom: 1px solid var(--line); }
+  .aufbau li:last-child { border-bottom: 0; }
   .bedingt b { color: var(--text-2); font-weight: 500; }
   .seg { display: flex; gap: 4px; flex-wrap: wrap; }
   .seg button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-size: .82rem; cursor: pointer; }
