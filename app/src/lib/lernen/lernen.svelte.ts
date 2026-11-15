@@ -28,8 +28,8 @@ async function ausSpeicher(id: KursId): Promise<{ kurs: Kurs; text: string } | n
   try { return { kurs: JSON.parse(text), text }; } catch { return null; }
 }
 
-/** Zeit für eine Lektion im Plan: Lesen + Abfrage (etwa 45 Sekunden je Frage), auf 5 Minuten gerundet */
-export const lektionsDauer = (l: Lektion) => Math.max(15, Math.ceil((l.dauer_min + l.fragen.length * 0.75) / 5) * 5);
+/** Zeit für eine Lektion im Plan: Lesen + Abfrage (etwa 35 Sekunden je Frage), auf 5 Minuten gerundet */
+export const lektionsDauer = (l: Lektion) => Math.max(15, Math.ceil((l.dauer_min + l.fragen.length * 0.6) / 5) * 5);
 export type Lauf = { id: string; kurs: KursId; punkte: number; max: number; dauer_s: number; fehler: string[]; erstellt: string };
 export type Eintrag = { kurs: Kurs; lektion: Lektion; frage: Frage; schluessel: string };
 
@@ -147,11 +147,13 @@ class Lernen {
         const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: ${l.titel}`.slice(0, 300), fach_id: fach?.id ?? null, dauer_min: dauer, frist, prio: 2, lektion: `${id}/${l.id}`, position: Date.now() / 1e6 + n++ }, false);
         if (r) neu.add(r.id);
       }
-      for (const [tage, nr] of [[5, 1], [2, 2]] as const) {
-        if (vorhanden.has(`${id}/pruefung`) ) break;
-        const frist = tagKey(plusTage(klausur, -tage)); if (frist < tagKey(heute)) continue;
-        const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: Prüfungssimulation ${nr}`, fach_id: fach?.id ?? null, dauer_min: 90, frist, prio: 1, lektion: `${id}/pruefung`, position: Date.now() / 1e6 + n++ }, false);
-        if (r) neu.add(r.id);
+      // eine Prüfungssimulation in den letzten Tagen vor der Klausur (wichtig: vor den letzten Lektionen eingeplant)
+      if (!vorhanden.has(`${id}/pruefung`)) {
+        const frist = tagKey(plusTage(klausur, -5));
+        if (frist >= tagKey(heute)) {
+          const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: Prüfungssimulation (kurz)`, fach_id: fach?.id ?? null, dauer_min: 35, frist, prio: 1, lektion: `${id}/pruefung`, position: 0 }, false);
+          if (r) neu.add(r.id);
+        }
       }
     }
     if (neu.size) await org.planen(neu, true);

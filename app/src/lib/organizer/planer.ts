@@ -86,8 +86,8 @@ export function planen(opt: {
       const tag = plusTage(tagBeginn(start), i), w = wochentag(tag);
       if (!einst.wochenende && w >= 6) continue;
       if ((last.get(tagKey(tag)) ?? 0) + a.dauer_min > einst.tag_max_min && (last.get(tagKey(tag)) ?? 0) > 0) continue;
-      // freie Tage der Routine (keine Fokusblöcke) bleiben frei; Tage mit nur einem Block (z. B. Sonntag-Nachmittag) bekommen keine Zusatzzeit
-      if (extra && mitBloecken && fensterVon(tag).length < 2) continue;
+      // freie Tage der Routine (keine Fokusblöcke) bleiben frei; „kleine“ Tage mit ein, zwei Blöcken (z. B. Sonntag) bekommen keine Zusatzzeit
+      if (extra && mitBloecken && fensterVon(tag).length < 3) continue;
       const fenster = extra ? [{ von: beiMinute(tag, ws).getTime(), bis: beiMinute(tag, we).getTime(), niveau: 2 }]
         : fensterVon(tag).sort((x, y) => Math.abs(x.niveau - soll) - Math.abs(y.niveau - soll) || x.von - y.von);
       for (const f of fenster) { const c = luecke(f, dauer); if (c != null) return c; }

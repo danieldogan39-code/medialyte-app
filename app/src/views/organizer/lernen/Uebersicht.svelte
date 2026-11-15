@@ -49,7 +49,7 @@
 
 {#if ungeplant}
   <div class="planen card">
-    <span><b>{ungeplant} Lektionen sind noch nicht in deinem Kalender</b><small>Ich verteile sie bis 3 Tage vor jeder Klausur in deine Lernzeiten – dazu je zwei Prüfungssimulationen.</small></span>
+    <span><b>{ungeplant} Lektionen sind noch nicht in deinem Kalender</b><small>Ich verteile sie bis 3 Tage vor jeder Klausur in deine Lernzeiten – dazu je eine Prüfungssimulation.</small></span>
     <button class="btn btn--primary org-primary" disabled={plant} onclick={planLegen}><Icon name="calendar" size={15} />{plant ? "Plant …" : "Lernplan einplanen"}</button>
   </div>
 {/if}
