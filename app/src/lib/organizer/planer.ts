@@ -78,18 +78,31 @@ export function planen(opt: {
   };
 
   const neu = new Map<string, string | null>(), zuSpaet = new Set<string>(), ohnePlatz = new Set<string>();
-  for (const a of zuPlanen) {
+  const tagIdx = (t: number) => Math.round((tagBeginn(t).getTime() - tagBeginn(start).getTime()) / TAG);
+  /** Suche in einem Tagesbereich [von, bis] (Indizes ab heute): Fokusblöcke oder (extra) die ganze freie Arbeitszeit */
+  const suche = (a: Aufgabe, von: number, bis: number, extra: boolean): number | null => {
     const dauer = a.dauer_min * MIN, soll = opt.niveauVon?.(a) ?? (a.prio === 1 ? 1 : a.prio === 3 ? 3 : 2);
-    const ab = a.ab ? Math.max(start, keyZuDatum(a.ab).getTime()) : start;
-    let gefunden: number | null = null;
-    for (let i = 0; i <= tage && gefunden == null; i++) {
-      const tag = plusTage(tagBeginn(ab), i), w = wochentag(tag);
+    for (let i = Math.max(0, von); i <= Math.min(tage, bis); i++) {
+      const tag = plusTage(tagBeginn(start), i), w = wochentag(tag);
       if (!einst.wochenende && w >= 6) continue;
       if ((last.get(tagKey(tag)) ?? 0) + a.dauer_min > einst.tag_max_min && (last.get(tagKey(tag)) ?? 0) > 0) continue;
-      // passendes Niveau zuerst, dann früh am Tag
-      const fenster = fensterVon(tag).sort((x, y) => Math.abs(x.niveau - soll) - Math.abs(y.niveau - soll) || x.von - y.von);
-      for (const f of fenster) { const c = luecke(f, dauer); if (c != null) { gefunden = c; break; } }
+      // freie Tage der Routine (keine Fokusblöcke, z. B. Sonntag) bleiben frei – auch für Zusatzzeit
+      if (extra && mitBloecken && !fensterVon(tag).length) continue;
+      const fenster = extra ? [{ von: beiMinute(tag, ws).getTime(), bis: beiMinute(tag, we).getTime(), niveau: 2 }]
+        : fensterVon(tag).sort((x, y) => Math.abs(x.niveau - soll) - Math.abs(y.niveau - soll) || x.von - y.von);
+      for (const f of fenster) { const c = luecke(f, dauer); if (c != null) return c; }
     }
+    return null;
+  };
+  for (const a of zuPlanen) {
+    const dauer = a.dauer_min * MIN;
+    const ab = a.ab ? Math.max(0, tagIdx(keyZuDatum(a.ab).getTime())) : 0;
+    const frist = a.frist ? tagIdx(keyZuDatum(a.frist).getTime()) : tage;
+    // 1. Fokusblöcke ab „ab“ bis zur Frist, 2. sonstige freie Zeit, 3. notfalls früher als „ab“, 4. erst danach nach der Frist
+    let gefunden = suche(a, ab, frist, false);
+    if (gefunden == null && mitBloecken) gefunden = suche(a, ab, frist, true);
+    if (gefunden == null && ab > 0) gefunden = suche(a, 0, ab - 1, false) ?? (mitBloecken ? suche(a, 0, ab - 1, true) : null);
+    if (gefunden == null && frist < tage) gefunden = suche(a, frist + 1, tage, false) ?? (mitBloecken ? suche(a, frist + 1, tage, true) : null);
     if (gefunden == null) { ohnePlatz.add(a.id); if (a.geplant && Date.parse(a.geplant) < jetzt) neu.set(a.id, null); continue; }
     busy.push([gefunden, gefunden + dauer, 0]); addLast(gefunden, a.dauer_min);
     if (a.frist && gefunden > keyZuDatum(a.frist).getTime() + TAG - 1) zuSpaet.add(a.id);

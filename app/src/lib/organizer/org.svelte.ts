@@ -370,8 +370,9 @@ class Organizer {
     // Tagesroutine: fällt aus, wo ein Termin oder ein Weg liegt; Fokusblöcke nur, wenn noch nichts drin ist
     const belegtHeute = out.filter((b) => !b.ganztag && (b.art === "termin" || b.art === "fahrt")).map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
     const aufgabenHeute = out.filter((b) => b.art === "aufgabe").map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
+    const vergangen = d1 <= tagBeginn(this.jetzt).getTime();   // vergangene Tage: Routine nicht mehr zeigen
     for (const r of this.routine) {
-      if (!r.aktiv || !r.tage.includes(w)) continue;
+      if (vergangen || !r.aktiv || !r.tage.includes(w)) continue;
       const s = beiMinute(new Date(d0), minuten(r.start)), e = new Date(s.getTime() + r.dauer_min * MIN);
       const faellt = belegtHeute.some(([x, y]) => x < e.getTime() && y > s.getTime());
       if (faellt) continue;
