@@ -12,6 +12,7 @@ export type Aufgabe = {
 };
 export type Gewohnheit = {
   id: string; name: string; icon: string; farbe: string; pro_woche: number; dauer_min: number; uhrzeit: string | null;
+  zeiten?: Record<string, string> | null;   // eigene Uhrzeit je Wochentag ("1"–"7"), sonst gilt uhrzeit
   tage: number[]; aktiv: boolean; position: number;
 };
 export type Log = { gewohnheit_id: string; tag: string };

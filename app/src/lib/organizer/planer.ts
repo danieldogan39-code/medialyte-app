@@ -14,12 +14,28 @@ type Fenster = { von: number; bis: number; niveau: number };
 const RASTER = 5 * MIN;
 const hoch = (t: number, r = RASTER) => Math.ceil(t / r) * r;
 
-/** Belegte Zeiten durch Gewohnheiten mit fester Uhrzeit (z. B. Training Di/Fr/So 16:00) */
-export function gewohnheitsZeiten(g: Gewohnheit[], von: Date, tage: number): Iv[] {
+/** Uhrzeit einer Gewohnheit an einem Wochentag (eigene Zeit je Tag, sonst die allgemeine) */
+export const zeitAm = (g: Gewohnheit, w: number): string | null => g.zeiten?.[String(w)] || g.uhrzeit || null;
+/** Wann eine Gewohnheit an einem Tag stattfindet. Liegt zur Wunschzeit ein Termin oder Weg, rückt sie dahinter
+ *  (bis spätestens 21:30 Ende) oder, wenn das nicht geht, davor – so kollidiert z. B. Training nie mit Vorlesung oder Kirche. */
+export function gewohnheitAm(g: Gewohnheit, tag: Date | number, belegt: Iv[] = [], puffer = 15 * MIN): Iv | null {
+  const d = tagBeginn(tag), w = wochentag(d), z = zeitAm(g, w);
+  if (!g.aktiv || !z || !g.tage.includes(w)) return null;
+  const dauer = g.dauer_min * MIN, s0 = beiMinute(d, minuten(z)).getTime();
+  const d0 = d.getTime(), heute = belegt.filter(([s, e]) => e > d0 && s < d0 + TAG).sort((a, b) => a[0] - b[0]);
+  const frei = (s: number) => !heute.some(([x, y]) => x - puffer < s + dauer && y + puffer > s);
+  if (frei(s0)) return [s0, s0 + dauer];
+  const spaet = beiMinute(d, 21 * 60 + 30).getTime(), frueh = beiMinute(d, 7 * 60 + 30).getTime();
+  for (const [, y] of heute) { const s = hoch(y + puffer, 15 * MIN); if (s > s0 && s + dauer <= spaet && frei(s)) return [s, s + dauer]; }
+  for (const [x] of [...heute].reverse()) { const s = Math.floor((x - puffer - dauer) / (15 * MIN)) * 15 * MIN; if (s < s0 && s >= frueh && frei(s)) return [s, s + dauer]; }
+  return [s0, s0 + dauer];   // geht nicht anders: Wunschzeit (wird als Überschneidung gemeldet)
+}
+/** Belegte Zeiten durch Gewohnheiten mit fester Uhrzeit (z. B. Training Mo/Mi/Sa) */
+export function gewohnheitsZeiten(g: Gewohnheit[], von: Date, tage: number, belegt: Iv[] = []): Iv[] {
   const out: Iv[] = [];
   for (let i = 0; i < tage; i++) {
-    const d = plusTage(tagBeginn(von), i), w = wochentag(d);
-    for (const x of g) if (x.aktiv && x.uhrzeit && x.tage.includes(w)) { const s = beiMinute(d, minuten(x.uhrzeit)).getTime(); out.push([s, s + x.dauer_min * MIN]); }
+    const d = plusTage(tagBeginn(von), i);
+    for (const x of g) { const iv = gewohnheitAm(x, d, belegt); if (iv) out.push(iv); }
   }
   return out;
 }
@@ -42,7 +58,7 @@ export function planen(opt: {
   // belegte Zeiten; Puffer nur zu Terminen und Fahrten (Routine-Punkte und eigene Blöcke sind schon die Pause)
   const puffer = einst.puffer_min * MIN;
   const busy: [number, number, number][] = [...opt.belegt.map(([s, e]) => [s, e, puffer] as [number, number, number]),
-    ...[...gewohnheitsZeiten(opt.gewohnheiten, new Date(jetzt), tage + 1), ...routineZeiten(routine, new Date(jetzt), tage + 1)].map(([s, e]) => [s, e, 0] as [number, number, number])];
+    ...[...gewohnheitsZeiten(opt.gewohnheiten, new Date(jetzt), tage + 1, opt.belegt), ...routineZeiten(routine, new Date(jetzt), tage + 1)].map(([s, e]) => [s, e, 0] as [number, number, number])];
   const last = new Map<string, number>();   // geplante Minuten je Tag
   const addLast = (s: number, min: number) => { const k = tagKey(s); last.set(k, (last.get(k) ?? 0) + min); };
 

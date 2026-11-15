@@ -9,7 +9,8 @@
   let fenster: Fenster | undefined = $state();
   const neu = !g.id || !org.gewohnheiten.some((x) => x.id === g.id);
   let name = $state(g.name ?? ""), proWoche = $state(g.pro_woche ?? 3), tage = $state<number[]>([...(g.tage ?? [])]), uhrzeit = $state(g.uhrzeit?.slice(0, 5) ?? ""),
-    dauerMin = $state(g.dauer_min ?? 60), icon = $state(g.icon ?? "dumbbell"), farbe = $state(g.farbe ?? "#4CC38A"), laeuft = $state(false);
+    dauerMin = $state(g.dauer_min ?? 60), icon = $state(g.icon ?? "dumbbell"), farbe = $state(g.farbe ?? "#4CC38A"), laeuft = $state(false),
+    zeiten = $state<Record<string, string>>({ ...(g.zeiten ?? {}) }), jeTag = $state(Object.keys(g.zeiten ?? {}).length > 0);
   const TAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const ICONS = ["dumbbell", "flame", "sun", "note", "star", "users", "phone", "home"];
   const FARBEN = ["#4CC38A", "#8E7CFF", "#6FA8F0", "#E7B94A", "#FB923C", "#F08FC0", "#4FC7D4"];
@@ -19,7 +20,7 @@
     e?.preventDefault();
     if (!name.trim() || laeuft) return;
     laeuft = true;
-    const ok = await org.gewohnheitSpeichern({ ...(neu ? {} : { id: g.id }), name, pro_woche: proWoche, tage, uhrzeit: uhrzeit || null, dauer_min: dauerMin, icon, farbe });
+    const ok = await org.gewohnheitSpeichern({ ...(neu ? {} : { id: g.id }), name, pro_woche: proWoche, tage, uhrzeit: uhrzeit || null, zeiten: jeTag ? Object.fromEntries(Object.entries(zeiten).filter(([t, z]) => z && tage.includes(+t) && z !== uhrzeit)) : {}, dauer_min: dauerMin, icon, farbe });
     laeuft = false;
     if (ok) fenster?.zu();
   }
@@ -47,7 +48,13 @@
       <label class="field"><span>Uhrzeit (optional)</span><input class="input" type="time" bind:value={uhrzeit} step="300"></label>
       <label class="field"><span>Dauer (Min.)</span><input class="input" type="number" min="5" max="480" step="5" bind:value={dauerMin}></label>
     </div>
-    {#if uhrzeit && tage.length}<div class="hinweis"><Icon name="wand" size={16} /><span>Die Auto-Planung hält {tage.map((t) => TAGE[t - 1]).join(", ")} ab {uhrzeit} Uhr frei.</span></div>{/if}
+    {#if uhrzeit && tage.length > 1}
+      <label class="je"><input type="checkbox" bind:checked={jeTag}>An einzelnen Tagen andere Uhrzeit</label>
+      {#if jeTag}
+        <div class="zeiten">{#each tage as t (t)}<label><span>{TAGE[t - 1]}</span><input class="input" type="time" step="300" value={zeiten[t] ?? uhrzeit} oninput={(e) => (zeiten[t] = (e.currentTarget as HTMLInputElement).value)}></label>{/each}</div>
+      {/if}
+    {/if}
+    {#if uhrzeit && tage.length}<div class="hinweis"><Icon name="wand" size={16} /><span>Die Auto-Planung hält {tage.map((t) => `${TAGE[t - 1]} ${jeTag && zeiten[t] ? zeiten[t] : uhrzeit}`).join(", ")} Uhr frei. Liegt dann ein Termin oder Weg, rückt die Gewohnheit automatisch dahinter.</span></div>{/if}
     <div class="field"><span>Symbol und Farbe</span>
       <div class="chips">
         {#each ICONS as x}<button type="button" class="chip sym" class:on={icon === x} aria-label={x} onclick={() => (icon = x)}><Icon name={x} size={16} /></button>{/each}
@@ -76,4 +83,8 @@
   .farbe.on { border-color: var(--c); }
   .farbe:active { transform: scale(.88); }
   input[type="time"] { color-scheme: dark; }
+  .je { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--text-2); }
+  .zeiten { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+  .zeiten label { display: grid; gap: 4px; }
+  .zeiten span { font-size: .78rem; color: var(--steel); font-weight: 600; }
 </style>

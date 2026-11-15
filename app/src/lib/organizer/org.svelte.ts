@@ -6,7 +6,7 @@ import { auth } from "../auth.svelte";
 import { daten } from "../daten.svelte";
 import { lies, merk } from "../speicher";
 import { haptik } from "../haptik";
-import { planen, gewohnheitsZeiten, routineZeiten, type Iv } from "./planer";
+import { planen, gewohnheitsZeiten, gewohnheitAm, zeitAm, routineZeiten, type Iv } from "./planer";
 import { MIN, TAG, beiMinute, minuten, plusTage, tagBeginn, tagKey, wochenBeginn, wochentag } from "./zeit";
 import { lesen as icsLesen } from "./ics";
 import { fachFuer, norm } from "./schnell";
@@ -168,7 +168,7 @@ class Organizer {
   async gewohnheitSpeichern(g: Partial<Gewohnheit> & { name: string }) {
     const neu = !g.id || !this.gewohnheiten.some((x) => x.id === g.id);
     const z: any = neu ? { id: g.id ?? uuid(), name: g.name.trim(), icon: g.icon ?? "dumbbell", farbe: g.farbe ?? "#4CC38A", pro_woche: g.pro_woche ?? 3, dauer_min: g.dauer_min ?? 60,
-      uhrzeit: g.uhrzeit || null, tage: g.tage ?? [], aktiv: g.aktiv ?? true, position: g.position ?? this.gewohnheiten.length } : { ...g, uhrzeit: g.uhrzeit || null };
+      uhrzeit: g.uhrzeit || null, zeiten: g.zeiten ?? {}, tage: g.tage ?? [], aktiv: g.aktiv ?? true, position: g.position ?? this.gewohnheiten.length } : { ...g, uhrzeit: g.uhrzeit || null };
     const ok = await this.#schreiben("gewohnheiten", "org_gewohnheiten", z);
     if (ok) await this.#konflikteNeuPlanen();
     return ok;
@@ -348,7 +348,7 @@ class Organizer {
   }
   /** Nach neuen Terminen/Gewohnheiten: Aufgaben, die jetzt kollidieren, still neu einplanen */
   async #konflikteNeuPlanen() {
-    const busy = [...this.belegt(), ...gewohnheitsZeiten(this.gewohnheiten, new Date(), 76), ...routineZeiten(this.routine, new Date(), 76)];
+    const busy = [...this.belegt(), ...gewohnheitsZeiten(this.gewohnheiten, new Date(), 76, this.belegt()), ...routineZeiten(this.routine, new Date(), 76)];
     const j = Date.now();
     const kollidiert = this.offen.filter((a) => {
       if (a.fixiert || !a.geplant) return false;
@@ -372,10 +372,11 @@ class Organizer {
       if (s < d0 || s >= d1) continue;
       out.push({ art: "aufgabe", id: a.id, titel: a.titel, start: new Date(s), ende: new Date(s + a.dauer_min * MIN), farbe: this.farbe(a.fach_id, "#A78BFA"), erledigt: !!a.erledigt, unter: this.fach(a.fach_id)?.name, aufgabe: a });
     }
+    const hartHeute: Iv[] = [...out.filter((b) => b.art === "termin" && !b.ganztag).map((b) => [b.start.getTime(), b.ende.getTime()] as Iv), ...this.fahrten(d0 - TAG, d1).map((f) => [f.von, f.bis] as Iv)];
     for (const g of this.gewohnheiten) {
-      if (!g.aktiv || !g.uhrzeit || !g.tage.includes(w)) continue;
-      const s = beiMinute(new Date(d0), minuten(g.uhrzeit));
-      out.push({ art: "gewohnheit", id: g.id + key, titel: g.name, start: s, ende: new Date(s.getTime() + g.dauer_min * MIN), farbe: g.farbe, erledigt: this.hatLog(g, key), gewohnheit: g });
+      const iv = gewohnheitAm(g, d0, hartHeute); if (!iv) continue;
+      const verschoben = zeitAm(g, w) ? iv[0] !== beiMinute(new Date(d0), minuten(zeitAm(g, w)!)).getTime() : false;
+      out.push({ art: "gewohnheit", id: g.id + key, titel: g.name, start: new Date(iv[0]), ende: new Date(iv[1]), farbe: g.farbe, erledigt: this.hatLog(g, key), gewohnheit: g, unter: verschoben ? "verschoben wegen Termin" : undefined });
     }
     // Wege zur Uni
     for (const f of this.fahrten(d0 - TAG, d1)) {
@@ -384,6 +385,7 @@ class Organizer {
     }
     // Tagesroutine: fällt aus, wo ein Termin oder ein Weg liegt; Fokusblöcke nur, wenn noch nichts drin ist
     const belegtHeute = out.filter((b) => !b.ganztag && (b.art === "termin" || b.art === "fahrt")).map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
+    const gewohnheitHeute = out.filter((b) => b.art === "gewohnheit").map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
     const aufgabenHeute = out.filter((b) => b.art === "aufgabe").map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
     const vergangen = d1 <= tagBeginn(this.jetzt).getTime();   // vergangene Tage: Routine nicht mehr zeigen
     for (const r of this.routine) {
@@ -391,6 +393,7 @@ class Organizer {
       const s = beiMinute(new Date(d0), minuten(r.start)), e = new Date(s.getTime() + r.dauer_min * MIN);
       const faellt = belegtHeute.some(([x, y]) => x < e.getTime() && y > s.getTime());
       if (faellt) continue;
+      if (r.art !== "fix" && gewohnheitHeute.some(([x, y]) => x < e.getTime() && y > s.getTime())) continue;   // z. B. Training statt Fokusblock
       if (r.art === "block" && aufgabenHeute.some(([x, y]) => x < e.getTime() && y > s.getTime())) continue;
       out.push({ art: "routine", id: "r" + r.id + key, titel: r.titel, start: s, ende: e, farbe: r.art === "block" ? "#8E7CFF" : "#5A6880", routine: r, leer: r.art === "block" });
     }

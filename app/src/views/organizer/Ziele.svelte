@@ -12,7 +12,7 @@
   const tage = $derived(Array.from({ length: 7 }, (_, i) => plusTage(mo, i)));
   const heute = $derived(tagKey(org.jetzt));
   const verlauf = (g: Gewohnheit) => Array.from({ length: 10 }, (_, i) => { const w = plusTage(wochenBeginn(org.jetzt), -(9 - i) * 7); return { w, n: org.wocheStand(g, w.getTime()).erreicht }; });
-  const plan = (g: Gewohnheit) => [g.pro_woche + "× pro Woche", g.tage.length ? g.tage.map((t) => TAGE[t - 1]).join(", ") : "", g.uhrzeit ? g.uhrzeit.slice(0, 5) + " Uhr" : ""].filter(Boolean).join(" · ");
+  const plan = (g: Gewohnheit) => [g.pro_woche + "× pro Woche", g.tage.length && !Object.keys(g.zeiten ?? {}).length ? g.tage.map((t) => TAGE[t - 1]).join(", ") : "", g.uhrzeit ? (Object.keys(g.zeiten ?? {}).length ? g.tage.map((t) => `${TAGE[t - 1]} ${(g.zeiten?.[t] ?? g.uhrzeit!).slice(0, 5)}`).join(" · ") : g.uhrzeit.slice(0, 5)) + " Uhr" : ""].filter(Boolean).join(" · ");
 </script>
 
 <div class="kopf">
