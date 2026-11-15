@@ -57,10 +57,12 @@ export function planen(opt: {
 }): Ergebnis {
   const { aufgaben, einst } = opt, jetzt = opt.jetzt ?? Date.now(), tage = opt.tage ?? 60, routine = (opt.routine ?? []).filter((r) => r.aktiv);
   const start = hoch(jetzt, 15 * MIN);
-  // belegte Zeiten; Puffer nur zu Terminen und Fahrten (Routine-Punkte und eigene Blöcke sind schon die Pause)
+  // belegte Zeiten; Puffer zu Terminen, Fahrten und Gewohnheiten (Routine-Punkte und eigene Blöcke sind schon die Pause)
   const puffer = einst.puffer_min * MIN;
   const busy: [number, number, number][] = [...opt.belegt.map(([s, e]) => [s, e, puffer] as [number, number, number]),
-    ...[...gewohnheitsZeiten(opt.gewohnheiten, new Date(jetzt), tage + 1, opt.belegt), ...routineZeiten(routine, new Date(jetzt), tage + 1)].map(([s, e]) => [s, e, 0] as [number, number, number])];
+    // Gewohnheiten (z. B. Training) mit Puffer – danach erst duschen/umziehen; Routine-Punkte ohne
+    ...gewohnheitsZeiten(opt.gewohnheiten, new Date(jetzt), tage + 1, opt.belegt).map(([s, e]) => [s, e, puffer] as [number, number, number]),
+    ...routineZeiten(routine, new Date(jetzt), tage + 1).map(([s, e]) => [s, e, 0] as [number, number, number])];
   const last = new Map<string, number>();   // geplante Minuten je Tag
   const addLast = (s: number, min: number) => { const k = tagKey(s); last.set(k, (last.get(k) ?? 0) + min); };
 

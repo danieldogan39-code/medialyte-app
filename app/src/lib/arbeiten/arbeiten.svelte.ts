@@ -117,13 +117,21 @@ class Arbeiten {
       ["Automatische Prüfung im Organizer + Formalia korrigieren", 0.93, 90, "Reiter „Prüfen“: .docx hochladen, alle Fehler beheben, KI-Nachweis vollständig."],
       ["Abgabe vorbereiten und hochladen", 1, 45, "Eidesstattliche Erklärung mit Wortzahl, PDF/Word laut Vorgabe, rechtzeitig in Moodle hochladen."],
     ];
-    let n = 0;
+    // Kurzer Name für die Aufgaben („WiAr – Teilprüfung 3/3: Baustein 3 Hausarbeit (70 %)“ → „Baustein 3 Hausarbeit“)
+    const kurz = a.titel.includes(":") ? a.titel.replace(/^.*:\s*/, "").replace(/\s*\(\d+\s*%\)\s*$/, "") : a.titel;
+    const ids = new Set<string>(); let n = 0, ab = tagKey(heute);
     for (const [titel, anteil, dauer, notiz] of etappen) {
       const frist = tagKey(plusTage(heute, Math.max(0, Math.round(tage * anteil) - (anteil === 1 ? 1 : 0))));
-      const r = await org.aufgabeSpeichern({ titel: `${a.titel}: ${titel}`.slice(0, 300), fach_id: a.fach_id, dauer_min: dauer, frist, prio: anteil === 1 ? 1 : 2, notiz, arbeit_id: a.id, position: Date.now() / 1e6 + n }, false);
-      if (r) n++;
+      // lange Etappen in Arbeitsblöcke von höchstens 90 Min. teilen; jede Etappe beginnt erst nach der vorigen (ab … Frist)
+      const teile = Math.max(1, Math.ceil(dauer / 90));
+      for (let t = 0; t < teile; t++) {
+        const d = t < teile - 1 ? 90 : dauer - 90 * (teile - 1);
+        const r = await org.aufgabeSpeichern({ titel: `${kurz}: ${titel}${teile > 1 ? ` (Teil ${t + 1}/${teile})` : ""}`.slice(0, 300), fach_id: a.fach_id, dauer_min: d, frist, ab: ab <= frist ? ab : frist, prio: anteil === 1 ? 1 : 2, notiz, arbeit_id: a.id, position: Date.now() / 1e6 + n }, false);
+        if (r) { ids.add(r.id); n++; }
+      }
+      ab = tagKey(plusTage(new Date(frist + "T12:00:00"), 1));
     }
-    if (n) { await org.planen(undefined, true); daten.melden(`${n} Etappen in deinen Kalender geplant`); }
+    if (n) { await org.planen(ids, true); daten.melden(`${n} Arbeitsschritte in deinen Kalender geplant`); }
     return n;
   }
 }
