@@ -20,6 +20,7 @@
   import { router } from "../../lib/router.svelte";
   import { modus } from "../../lib/modus.svelte";
   import { org } from "../../lib/organizer/org.svelte";
+  import { lernen } from "../../lib/lernen/lernen.svelte";
   import { blatt } from "../../lib/organizer/blatt.svelte";
   import { ORG_BEREICHE, ORG_FARBE, orgBereich } from "../../lib/organizer/bereiche";
   import { appUpdate } from "../../lib/appupdate.svelte";
@@ -28,6 +29,7 @@
 
   const rein = federKurve(0.5, 0), toastRein = federKurve(0.45, 0.18);
   $effect(() => { org.laden(); return org.live(); });
+  $effect(() => { setTimeout(() => { lernen.laden(); lernen.alleLaden(); }, 1500); });
   $effect(() => { setTimeout(() => { appUpdate.pruefen(); appUpdate.beobachten(); }, 4000); });
   $effect(() => { if (router.pfad === "/o" || router.pfad === "/o/") router.geh("/o/heute"); });
 
@@ -96,6 +98,7 @@
           {:else if seite === "ziele"}<Ziele />
           {:else if seite === "pruefungen"}<Pruefungen />
           {:else if seite === "faecher"}{#key router.teile[2]}<Faecher id={router.teile[2] ?? ""} />{/key}
+          {:else if seite === "lernen"}{#await import("./lernen/Lernen.svelte") then m}<m.default />{/await}
           {:else if seite === "einstellungen"}<OrgEinstellungen />
           {:else}<Heute />{/if}
         </div>

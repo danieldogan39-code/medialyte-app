@@ -476,17 +476,26 @@ do $$ begin
   exception when raise_exception then if sqlerrm not like 'Der Organizer wird nicht%' then raise; end if; end;
   if (select public.ich() -> 'rechte' ->> 'organizer') <> 'schreiben' then raise exception 'ich() ohne organizer'; end if;
   insert into public.org_routine (titel, start, dauer_min, art, niveau) values ('Block 1', '09:30', 90, 'block', 1);
-  raise notice 'OK Organizer nur pro Konto, Routine';
+  insert into public.org_lernstand (schluessel, box, faellig, richtig) values ('mathe/ableitung/f1', 2, current_date + 3, 2);
+  insert into public.org_pruefungslauf (kurs, punkte, max, dauer_s) values ('mathe', 61.5, 100, 3600);
+  insert into public.org_aufgaben (titel, lektion) values ('Lektion lesen', 'mathe/ableitung');
+  begin insert into public.org_aufgaben (titel, lektion) values ('x', 'kunst/abc'); raise exception 'falsche Lektion angenommen';
+  exception when check_violation then null; end;
+  begin insert into public.org_lernstand (user_id, schluessel) values ('00000000-0000-0000-0000-0000000000f1', 'fremd'); raise exception 'fremder Lernstand angelegt';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Organizer nur pro Konto, Routine, Lernstand';
 end $$;
 reset role;
 update public.mitglieder set organizer = false where user_id = '00000000-0000-0000-0000-0000000000f1';
 set role authenticated;
 select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
 do $$ begin
-  if exists (select 1 from public.org_aufgaben) or (public.ich() -> 'rechte') ? 'organizer' then raise exception 'ohne Freischaltung Zugriff'; end if;
+  if exists (select 1 from public.org_aufgaben) or exists (select 1 from public.org_lernstand) or (public.ich() -> 'rechte') ? 'organizer' then raise exception 'ohne Freischaltung Zugriff'; end if;
   raise notice 'OK Organizer ohne Freischaltung gesperrt';
 end $$;
 reset role;
 \ir ../../supabase/migrations/124_organizer.sql
 \ir ../../supabase/migrations/125_organizer_routine.sql
+\ir ../../supabase/migrations/126_organizer_fahrten.sql
+\ir ../../supabase/migrations/127_organizer_lernen.sql
 do $$ begin raise notice 'OK Organizer wiederholbar'; end $$;

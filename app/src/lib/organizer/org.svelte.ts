@@ -136,7 +136,8 @@ class Organizer {
     const neu = !a.id || !this.aufgaben.some((x) => x.id === a.id);
     const z: any = neu
       ? { id: a.id ?? uuid(), titel: a.titel.trim(), notiz: a.notiz ?? null, fach_id: a.fach_id ?? null, dauer_min: a.dauer_min ?? 60, frist: a.frist ?? null, prio: a.prio ?? 2,
-          geplant: a.geplant ?? null, fixiert: a.fixiert ?? !!a.geplant, erledigt: a.erledigt ?? null, position: a.position ?? Date.now() / 1e6, erstellt: new Date().toISOString() }
+          geplant: a.geplant ?? null, fixiert: a.fixiert ?? !!a.geplant, erledigt: a.erledigt ?? null, position: a.position ?? Date.now() / 1e6, erstellt: new Date().toISOString(),
+          ...(a.ab ? { ab: a.ab } : {}), ...(a.lektion ? { lektion: a.lektion } : {}) }
       : { ...a, titel: a.titel.trim() };
     const ok = await this.#schreiben("aufgaben", "org_aufgaben", z);
     if (ok && autoPlanen && !z.geplant && !z.fixiert && !z.erledigt) await this.planen(new Set([z.id]), true);

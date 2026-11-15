@@ -5,6 +5,7 @@ export const ORG_BEREICHE: OrgBereich[] = [
   { pfad: "/o/heute", name: "Heute", kurz: "Heute", icon: "sun", farbe: "#8E7CFF" },
   { pfad: "/o/woche", name: "Woche", kurz: "Woche", icon: "calendar", farbe: "#6FA8F0" },
   { pfad: "/o/aufgaben", name: "Aufgaben", kurz: "Aufgaben", icon: "check", farbe: "#E7B94A" },
+  { pfad: "/o/lernen", name: "Lernen", kurz: "Lernen", icon: "buch", farbe: "#B48CFF" },
   { pfad: "/o/faecher", name: "Fächer", kurz: "Fächer", icon: "note", farbe: "#4FC7D4" },
   { pfad: "/o/ziele", name: "Gewohnheiten", kurz: "Ziele", icon: "flame", farbe: "#4CC38A" },
   { pfad: "/o/pruefungen", name: "Prüfungen", kurz: "Prüfungen", icon: "target", farbe: "#F27A6A" },

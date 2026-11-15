@@ -4,6 +4,7 @@
   import Zeitleiste from "../../components/organizer/Zeitleiste.svelte";
   import { auth } from "../../lib/auth.svelte";
   import { org } from "../../lib/organizer/org.svelte";
+  import { lernen } from "../../lib/lernen/lernen.svelte";
   import { blatt } from "../../lib/organizer/blatt.svelte";
   import { MIN, countdown, dauer, gruss, plusTage, relativTag, tageBis, tagKey, tagLang, uhr, wt } from "../../lib/organizer/zeit";
 
@@ -51,6 +52,12 @@
       <span><small>{p.art === "abgabe" ? "Abgabe" : "Klausur"} · {countdown(n)}</small><b>{p.titel}</b></span>
     </a>
   {/each}
+  {#if lernen.anzahlFaellig()}
+    <a class="hw card lern" href="#/o/lernen/abfrage/faellig">
+      <span class="hw__i"><Icon name="buch" size={18} /></span>
+      <span><small>Lernen · Wiederholung</small><b>{lernen.anzahlFaellig()} {lernen.anzahlFaellig() === 1 ? "Frage ist" : "Fragen sind"} heute fällig</b></span>
+    </a>
+  {/if}
   {#each org.konflikte().slice(0, 3) as k (k.a.id + k.b.id)}
     <a class="hw card warn" href="#/o/woche">
       <span class="hw__i"><Icon name="clock" size={18} /></span>
@@ -84,6 +91,7 @@
     </div>
     <div class="held__a">
       {#if b.aufgabe && !b.erledigt}
+        {#if b.aufgabe.lektion}<a class="btn" href={"#/o/lernen/" + (b.aufgabe.lektion.endsWith("/pruefung") ? "pruefung/" + b.aufgabe.lektion.split("/")[0] : b.aufgabe.lektion)}><Icon name="buch" size={15} />{b.aufgabe.lektion.endsWith("/pruefung") ? "Simulation starten" : "Lektion öffnen"}</a>{/if}
         <button class="btn" onclick={() => blatt.auf({ art: "fokus", a: b.aufgabe! })}><Icon name="play" size={14} fill />Fokus</button>
         <button class="btn btn--primary org-primary" onclick={() => org.erledigen(b.aufgabe!)}><Icon name="check" size={16} />Erledigt</button>
       {:else if b.gewohnheit && !b.erledigt}
@@ -149,6 +157,7 @@
     background: color-mix(in srgb, var(--f) 16%, transparent); flex: none; }
   .hw__i { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--panel-2); color: var(--text-2); flex: none; }
   .hw.warn .hw__i { background: rgba(231, 185, 74, .16); color: var(--warn); }
+  .hw.lern .hw__i { background: rgba(180, 140, 255, .18); color: #C9B2FF; }
   .held { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px; margin-bottom: 22px; border-radius: 20px; border-color: color-mix(in srgb, var(--f) 45%, transparent);
     background: linear-gradient(115deg, color-mix(in srgb, var(--f) 20%, var(--panel)), var(--panel) 65%); box-shadow: 0 24px 60px -36px color-mix(in srgb, var(--f) 90%, transparent); }
   .held__t { flex: 1 1 280px; display: grid; gap: 4px; min-width: 0; }

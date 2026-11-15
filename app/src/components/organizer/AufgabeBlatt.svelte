@@ -45,6 +45,7 @@
   <form class="f" onsubmit={speichern}>
     <!-- svelte-ignore a11y_autofocus -->
     <input class="input titel" bind:value={titel} placeholder="Was ist zu tun?" autofocus={neu} maxlength="300" required>
+    {#if a.lektion}<a class="lek" href={"#/o/lernen/" + (a.lektion.endsWith("/pruefung") ? "pruefung/" + a.lektion.split("/")[0] : a.lektion)} onclick={() => onclose()}><Icon name="buch" size={15} />{a.lektion.endsWith("/pruefung") ? "Prüfungssimulation öffnen" : "Lektion im Lernbereich öffnen"}<Icon name="right" size={14} /></a>{/if}
 
     <div class="field"><span>Fach / Bereich</span>
       <div class="chips">
@@ -104,4 +105,6 @@
   .eigen { display: inline-flex; align-items: center; gap: 6px; }
   .eigen .input { width: 82px; min-height: 34px; padding: 4px 10px; }
   .datum { width: auto; min-height: 34px; padding: 4px 10px; color-scheme: dark; }
+  .lek { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(180, 140, 255, .1); border: 1px solid rgba(180, 140, 255, .35); color: var(--text); text-decoration: none; font-weight: 600; font-size: .9rem; }
+  .lek :global(svg:last-child) { margin-left: auto; color: var(--steel); }
 </style>
