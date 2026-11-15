@@ -12,16 +12,16 @@
 {#if b.t === "text"}
   <div class="md">{@html md(b.md)}</div>
 {:else if b.t === "merke"}
-  <aside class="box merke"><span class="kopf"><Icon name="sparkles" size={15} />{b.titel ?? "Merke"}</span><div class="md">{@html md(b.md)}</div></aside>
+  <aside class="box merke"><span class="kopf"><Icon name="sparkles" size={15} />{@html mdZeile(b.titel ?? "Merke")}</span><div class="md">{@html md(b.md)}</div></aside>
 {:else if b.t === "formel"}
   <div class="formel">
-    {#if b.name}<span class="kopf">{b.name}</span>{/if}
+    {#if b.name}<span class="kopf">{@html mdZeile(b.name)}</span>{/if}
     <div class="f">{@html tex(b.tex, true)}</div>
     {#if b.legende}<dl>{#each b.legende as [z, e]}<dt>{@html mdZeile(z)}</dt><dd>{@html mdZeile(e)}</dd>{/each}</dl>{/if}
   </div>
 {:else if b.t === "beispiel"}
   <section class="box bsp">
-    <span class="kopf"><Icon name="stift" size={15} />{b.titel}</span>
+    <span class="kopf"><Icon name="stift" size={15} />{@html mdZeile(b.titel)}</span>
     {#if b.aufgabe}<div class="md">{@html md(b.aufgabe)}</div>{/if}
     {#if offen || !b.aufgabe}
       <ol class="schritte">{#each b.schritte as s}<li class="md">{@html md(s)}</li>{/each}</ol>
@@ -44,7 +44,7 @@
 {:else if b.t === "grafik"}
   <div class="gw"><Grafik g={b.g} {farbe} />{#if b.unter}<div class="md unter">{@html md(b.unter)}</div>{/if}</div>
 {:else if b.t === "begriffe"}
-  <dl class="begr">{#each b.liste as [w, e]}<div><dt>{w}</dt><dd class="md">{@html md(e)}</dd></div>{/each}</dl>
+  <dl class="begr">{#each b.liste as [w, e]}<div><dt>{@html mdZeile(w)}</dt><dd class="md">{@html md(e)}</dd></div>{/each}</dl>
 {:else if b.t === "quelle"}
   <p class="quelle">{@html mdZeile(b.md)}</p>
 {/if}

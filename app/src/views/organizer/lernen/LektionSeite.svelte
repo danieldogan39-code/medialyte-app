@@ -3,7 +3,7 @@
   import Icon from "../../../components/Icon.svelte";
   import Baustein from "../../../components/lernen/Baustein.svelte";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
-  import { md } from "../../../lib/lernen/md";
+  import { md, mdZeile } from "../../../lib/lernen/md";
   import { router } from "../../../lib/router.svelte";
   import { KURSE, type KursId } from "../../../lib/lernen/typen";
 
@@ -40,7 +40,7 @@
           <Baustein {b} farbe={kopf.farbe} loesung={b.t === "beispiel" && b.aufgabe && n?.t === "grafik" ? n : undefined} />
         {/if}
       {/each}
-      {#if l.quelle}<p class="quelle">Grundlage: {l.quelle}{#if kurs.skripte?.length}
+      {#if l.quelle}<p class="quelle">Grundlage: {@html mdZeile(l.quelle)}{#if kurs.skripte?.length}
         {@const s = lernen.folie(l.quelle)}
         · <button class="skript" onclick={() => lernen.skriptOeffnen(kurs.skripte![0].datei, s)}><Icon name="external" size={13} />{s ? `Im Skript ansehen (Folie ${s})` : "Skript öffnen"}</button>{/if}</p>{/if}
     </article>
