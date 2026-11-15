@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { abmeldenFragen } from "../lib/abmelden";
   import AuthFrame from "../components/AuthFrame.svelte";
   import { auth } from "../lib/auth.svelte";
   import { sb, fehler } from "../lib/supabase";
@@ -40,7 +41,7 @@
     </label>
     {#if meldung}<p class="err" role="alert">{meldung}</p>{/if}
     <button class="btn btn--primary" type="submit" disabled={laeuft || !factorId}>{laeuft ? "Prüfe …" : "Bestätigen"}</button>
-    <button class="btn btn--quiet btn--s" type="button" onclick={() => auth.abmelden()}>Abmelden</button>
+    <button class="btn btn--quiet btn--s" type="button" onclick={abmeldenFragen}>Abmelden</button>
   </form>
 </AuthFrame>
 

@@ -1,11 +1,11 @@
 <script lang="ts">
+  import { abmeldenFragen } from "../lib/abmelden";
   import Icon from "../components/Icon.svelte";
   import { auth } from "../lib/auth.svelte";
   import { daten } from "../lib/daten.svelte";
   import { router } from "../lib/router.svelte";
   import { ROLLEN } from "../lib/status";
   import Uebersicht from "./Uebersicht.svelte";
-  import Rueckfrage from "../components/Rueckfrage.svelte";
   import { appUpdate } from "../lib/appupdate.svelte";
   import Ebenen from "../components/rechnungen/Ebenen.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
@@ -221,7 +221,7 @@
     <div class="me">
       <span class="me__av" aria-hidden="true">{auth.ich?.name?.[0] ?? "?"}</span>
       <span class="me__t"><b>{auth.ich?.name}</b><small>{ROLLEN[auth.ich?.rolle ?? ""] ?? ""}</small></span>
-      <button class="btn btn--quiet btn--icon" title="Abmelden" aria-label="Abmelden" onclick={() => auth.abmelden()}><Icon name="logout" size={17} /></button>
+      <button class="btn btn--quiet btn--icon" title="Abmelden" aria-label="Abmelden" onclick={abmeldenFragen}><Icon name="logout" size={17} /></button>
     </div>
   </nav>
   <button class="scrim" class:is-open={offen} aria-label="Menü schließen" tabindex={offen ? 0 : -1} aria-hidden={!offen} onclick={() => (offen = false)}></button>
@@ -267,7 +267,6 @@
 {#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} class:toast--schlecht={daten.toastSchlecht} role="status" popover="manual" use:obenauf={daten.toast} in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
 <div class="ziehen" bind:this={kreis} aria-hidden="true"><Icon name="refresh" size={18} /></div>
 <Ebenen />
-<Rueckfrage />
 
 <style>
   .upd { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 16px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .12); color: #C4D9F7; font-size: .9rem; }

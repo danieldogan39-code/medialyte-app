@@ -10,10 +10,13 @@
   import { modus } from "./lib/modus.svelte";
   import { router } from "./lib/router.svelte";
   import { fade } from "svelte/transition";
+  import Rueckfrage from "./components/Rueckfrage.svelte";
+  import { abmeldenFragen } from "./lib/abmelden";
 </script>
 
 <div class="aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <Intro bereit={auth.bereit} />
+<Rueckfrage />
 {#if !auth.bereit}
   <div class="splash" aria-busy="true"><img src="./mono.svg" alt="" width="44" height="33"></div>
 {:else if !auth.session}
@@ -27,7 +30,7 @@
     <div class="gate__box card">
       <h1>Kein Zugang</h1>
       <p class="muted">Dieses Konto gehört nicht (mehr) zum Medialyte-Team. Bitte wende dich an Daniel.</p>
-      <button class="btn" onclick={() => auth.abmelden()}>Abmelden</button>
+      <button class="btn" onclick={abmeldenFragen}>Abmelden</button>
     </div>
   </div>
 {:else if auth.darf("organizer") && !modus.gewaehlt}

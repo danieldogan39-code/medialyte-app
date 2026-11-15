@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { abmeldenFragen } from "../lib/abmelden";
   // Startbildschirm: Wohin? Medialyte (Agentur) oder der persönliche Organizer – zwei eigenständige Welten in einer App.
   import Icon from "../components/Icon.svelte";
   import OrgZeichen from "../components/organizer/OrgZeichen.svelte";
@@ -77,7 +78,7 @@
 
   <footer>
     <span class="muted">Tipp: 1 oder 2 drücken · später jederzeit oben wechseln</span>
-    <button class="btn btn--quiet btn--s" onclick={() => auth.abmelden()}><Icon name="logout" size={15} />Abmelden</button>
+    <button class="btn btn--quiet btn--s" onclick={abmeldenFragen}><Icon name="logout" size={15} />Abmelden</button>
   </footer>
 </div>
 

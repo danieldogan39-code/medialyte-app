@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { abmeldenFragen } from "../../lib/abmelden";
   // Rahmen des Organizers: eigene Navigation, eigene Farbe, eigene Fenster – ein eigenständiger Teil der App.
   import Icon from "../../components/Icon.svelte";
   import OrgZeichen from "../../components/organizer/OrgZeichen.svelte";
   import OrgIntro from "../../components/organizer/OrgIntro.svelte";
-  import Rueckfrage from "../../components/Rueckfrage.svelte";
   import AufgabeBlatt from "../../components/organizer/AufgabeBlatt.svelte";
   import TerminBlatt from "../../components/organizer/TerminBlatt.svelte";
   import GewohnheitBlatt from "../../components/organizer/GewohnheitBlatt.svelte";
@@ -86,7 +86,7 @@
     <div class="me">
       <span class="me__av" aria-hidden="true">{auth.ich?.name?.[0] ?? "?"}</span>
       <span class="me__t"><b>{auth.ich?.name}</b><small>Organizer</small></span>
-      <button class="btn btn--quiet btn--icon" title="Abmelden" aria-label="Abmelden" onclick={() => auth.abmelden()}><Icon name="logout" size={17} /></button>
+      <button class="btn btn--quiet btn--icon" title="Abmelden" aria-label="Abmelden" onclick={abmeldenFragen}><Icon name="logout" size={17} /></button>
     </div>
   </nav>
 
@@ -128,7 +128,6 @@
   {:else if blatt.offen?.art === "fokus"}<Fokus a={blatt.offen.a} onclose={() => blatt.zu()} />{/if}
 {/key}
 {#if daten.toast}<div class="toast" class:has-a={!!daten.toastAktion} class:toast--schlecht={daten.toastSchlecht} role="status" popover="manual" use:obenauf={daten.toast} in:fly={{ y: ruhig() ? 0 : 40, duration: ruhig() ? 0 : toastRein.ms, easing: toastRein.easing, opacity: 0 }} out:fade={{ duration: 180 }}><span>{daten.toast}</span>{#if daten.toastAktion}<button class="toast__a" onclick={() => { const a = daten.toastAktion; daten.toast = ""; daten.toastAktion = null; a?.fn(); }}>{daten.toastAktion.label}</button>{/if}</div>{/if}
-<Rueckfrage />
 
 <style>
   :global(:root) { --org: #8E7CFF; }
