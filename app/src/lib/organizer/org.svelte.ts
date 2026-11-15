@@ -55,7 +55,7 @@ class Organizer {
       sb.from("org_gewohnheiten").select("*").order("position").order("erstellt"),
       sb.from("org_gewohnheit_log").select("gewohnheit_id,tag").gte("tag", tagKey(plusTage(Date.now(), -120))),
       sb.from("org_kalender").select("*").order("erstellt"),
-      sb.from("org_einstellungen").select("tag_start,tag_ende,puffer_min,tag_max_min,wochenende,fahrzeit_min").maybeSingle(),
+      sb.from("org_einstellungen").select("tag_start,tag_ende,puffer_min,tag_max_min,wochenende,fahrzeit_min,fahrt_regeln").maybeSingle(),
       sb.from("org_routine").select("*").order("start"),
     ]);
     const fehler = [f, t, a, g, l, k, e].find((x) => x.error)?.error;
@@ -284,26 +284,40 @@ class Organizer {
     const j = this.jetzt - TAG;
     return [...this.termine.filter((t) => !t.ganztag && Date.parse(t.ende) > j).map((t) => [Date.parse(t.start), Date.parse(t.ende)] as Iv), ...this.fahrten(j).map((f) => [f.von, f.bis] as Iv)];
   }
-  /** Braucht der Termin einen Weg? Von Hand gesetzt, sonst: Vorlesungen und Prüfungen vor Ort (nicht Zoom/online) */
-  brauchtFahrt(t: Termin) {
-    if (t.ganztag) return false;
-    if (t.fahrt != null) return t.fahrt;
-    return (t.art === "vorlesung" || t.art === "klausur") && !/zoom|online|teams|webex|meet\b|digital/i.test(t.ort ?? "") && !/\(online/i.test(t.titel);
+  /** Braucht der Termin einen Weg – wohin und wie lange (eine Richtung)? Von Hand gesetzt, Fahrtregel (Stichwort im Titel/Ort),
+   *  sonst Vorlesungen und Prüfungen vor Ort (nicht Zoom/online) mit der Fahrzeit zur Uni */
+  wegFuer(t: Termin): { ziel: string; min: number } | null {
+    if (t.ganztag || t.fahrt === false) return null;
+    // erst im Titel suchen („Unterricht Billstedt“ in einer Kirche), dann im Ort
+    const regeln = (this.einst.fahrt_regeln ?? []).filter((r) => r.muster.trim());
+    const regel = regeln.find((r) => norm(t.titel).includes(norm(r.muster))) ?? regeln.find((r) => norm(t.ort ?? "").includes(norm(r.muster)));
+    if (regel) return regel.min > 0 ? { ziel: regel.muster.trim(), min: regel.min } : null;
+    const uni = (t.art === "vorlesung" || t.art === "klausur") && !/zoom|online|teams|webex|meet\b|digital/i.test(t.ort ?? "") && !/\(online/i.test(t.titel);
+    return uni || t.fahrt ? { ziel: "Uni", min: this.einst.fahrzeit_min ?? 45 } : null;
   }
-  /** Hin- und Rückwege (je Fahrzeit) um zusammenhängende Termine vor Ort; liegen zwei nah beieinander, bleibt man dort */
-  fahrten(ab = this.jetzt - TAG, bis = Infinity): { von: number; bis: number; hin: boolean; ziel: string }[] {
-    const f = (this.einst.fahrzeit_min ?? 45) * MIN; if (!f) return [];
-    const vorOrt = this.termine.filter((t) => this.brauchtFahrt(t) && Date.parse(t.ende) > ab && Date.parse(t.start) < bis).sort((a, b) => a.start.localeCompare(b.start));
-    const out: { von: number; bis: number; hin: boolean; ziel: string }[] = [];
-    let g: { s: number; e: number; ort: string } | null = null;
-    const zu = () => { if (g) { out.push({ von: g.s - f, bis: g.s, hin: true, ziel: g.ort }, { von: g.e, bis: g.e + f, hin: false, ziel: g.ort }); } };
-    for (const t of vorOrt) {
-      const s = Date.parse(t.start), e = Date.parse(t.ende);
-      if (g && s - g.e < 2 * f && tagKey(s) === tagKey(g.e)) g.e = Math.max(g.e, e);
-      else { zu(); g = { s, e, ort: t.ort || "Uni" }; }
+  brauchtFahrt = (t: Termin) => !!this.wegFuer(t);
+  /** Wege um Termine außer Haus. Mehrere Termine am selben Ort kurz hintereinander: man bleibt dort.
+   *  Zwei Orte direkt nacheinander (z. B. Kirche → Billstedt): ein Weg dazwischen statt nach Hause und wieder hin. */
+  fahrten(ab = this.jetzt - TAG, bis = Infinity): { von: number; bis: number; hin: boolean; ziel: string; von_ziel?: string }[] {
+    const vorOrt = this.termine.map((t) => ({ t, w: this.wegFuer(t) })).filter((x) => x.w && x.w.min > 0 && Date.parse(x.t.ende) > ab - TAG && Date.parse(x.t.start) < bis + TAG)
+      .sort((a, b) => a.t.start.localeCompare(b.t.start));
+    // zusammenhängende Termine am selben Ziel zu Gruppen
+    const gruppen: { s: number; e: number; ziel: string; min: number }[] = [];
+    for (const { t, w } of vorOrt) {
+      const s = Date.parse(t.start), e = Date.parse(t.ende), g = gruppen[gruppen.length - 1], m = w!.min * MIN;
+      if (g && g.ziel === w!.ziel && s - g.e < 2 * m && tagKey(s) === tagKey(g.e)) g.e = Math.max(g.e, e);
+      else gruppen.push({ s, e, ziel: w!.ziel, min: w!.min });
     }
-    zu();
-    return out;
+    const out: { von: number; bis: number; hin: boolean; ziel: string; von_ziel?: string }[] = [];
+    for (let i = 0; i < gruppen.length; i++) {
+      const g = gruppen[i], vor = gruppen[i - 1], nach = gruppen[i + 1], m = g.min * MIN;
+      // direkt vom vorigen Ort hierher? (zu knapp, um zwischendurch nach Hause zu fahren)
+      if (vor && tagKey(vor.e) === tagKey(g.s) && g.s - vor.e < vor.min * MIN + m) {
+        if (g.s > vor.e) out.push({ von: Math.max(vor.e, g.s - m), bis: g.s, hin: true, ziel: g.ziel, von_ziel: vor.ziel });
+      } else out.push({ von: g.s - m, bis: g.s, hin: true, ziel: g.ziel });
+      if (!(nach && tagKey(nach.s) === tagKey(g.e) && nach.s - g.e < m + nach.min * MIN)) out.push({ von: g.e, bis: g.e + m, hin: false, ziel: g.ziel });
+    }
+    return out.filter((f) => f.bis > ab && f.von < bis);
   }
   /** Niveau, das eine Aufgabe braucht: wichtig = 1, unwichtig = 3, sonst das Niveau des Fachs */
   niveauVon = (a: Aufgabe) => (a.prio === 1 ? 1 : a.prio === 3 ? 3 : this.fach(a.fach_id)?.niveau ?? 2);
@@ -365,7 +379,7 @@ class Organizer {
     // Wege zur Uni
     for (const f of this.fahrten(d0 - TAG, d1)) {
       if (f.bis <= d0 || f.von >= d1) continue;
-      out.push({ art: "fahrt", id: "fahrt" + f.von, titel: f.hin ? "Weg zur Uni" : "Rückweg", start: new Date(f.von), ende: new Date(f.bis), farbe: "#8B98AD", unter: f.hin ? f.ziel : "nach Hause" });
+      out.push({ art: "fahrt", id: "fahrt" + f.von, titel: f.hin ? (f.von_ziel ? `Weg ${f.von_ziel} → ${f.ziel}` : f.ziel === "Uni" ? "Weg zur Uni" : `Weg → ${f.ziel}`) : "Rückweg", start: new Date(f.von), ende: new Date(f.bis), farbe: "#8B98AD", unter: f.hin ? undefined : "nach Hause" });
     }
     // Tagesroutine: fällt aus, wo ein Termin oder ein Weg liegt; Fokusblöcke nur, wenn noch nichts drin ist
     const belegtHeute = out.filter((b) => !b.ganztag && (b.art === "termin" || b.art === "fahrt")).map((b) => [b.start.getTime(), b.ende.getTime()] as Iv);
@@ -380,6 +394,18 @@ class Organizer {
       out.push({ art: "routine", id: "r" + r.id + key, titel: r.titel, start: s, ende: e, farbe: r.art === "block" ? "#8E7CFF" : "#5A6880", routine: r, leer: r.art === "block" });
     }
     return out.sort((a, b) => Number(!!b.ganztag) - Number(!!a.ganztag) || a.start.getTime() - b.start.getTime() || a.ende.getTime() - b.ende.getTime());
+  }
+
+  /** Überschneidungen der nächsten Tage: Gewohnheit oder feste Aufgabe gegen Termin oder Weg */
+  konflikte(tage = 7) {
+    const out: { tag: Date; a: Block; b: Block }[] = [];
+    for (let i = 0; i < tage; i++) {
+      const tag = plusTage(tagBeginn(this.jetzt), i), bl = this.bloecke(tag).filter((x) => !x.ganztag);
+      const fest = bl.filter((x) => (x.art === "gewohnheit" && !x.erledigt) || (x.art === "aufgabe" && x.aufgabe?.fixiert && !x.erledigt));
+      const hart = bl.filter((x) => x.art === "termin" || x.art === "fahrt");
+      for (const a of fest) { const b = hart.find((h) => h.start < a.ende && h.ende > a.start); if (b && a.ende.getTime() > this.jetzt) out.push({ tag, a, b }); }
+    }
+    return out;
   }
 
   // ---------- Tagesroutine

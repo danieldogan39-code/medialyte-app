@@ -16,11 +16,11 @@ export type Gewohnheit = {
 };
 export type Log = { gewohnheit_id: string; tag: string };
 export type Kalender = { id: string; name: string; url: string; art: "ism" | "google" | "sonstige"; farbe: string; fach_id: string | null; zuletzt: string | null; fehler: string | null };
-export type Einstellungen = { tag_start: string; tag_ende: string; puffer_min: number; tag_max_min: number; wochenende: boolean; fahrzeit_min: number };
+export type Einstellungen = { tag_start: string; tag_ende: string; puffer_min: number; tag_max_min: number; wochenende: boolean; fahrzeit_min: number; fahrt_regeln: { muster: string; min: number }[] };
 export type Routine = { id: string; titel: string; start: string; dauer_min: number; tage: number[]; art: "block" | "fix" | "flex"; niveau: number | null; aktiv: boolean };
 export const NIVEAU: Record<number, string> = { 1: "höchstes Niveau", 2: "mittleres Niveau", 3: "niedriges Niveau" };
 
-export const EINST_STANDARD: Einstellungen = { tag_start: "09:00", tag_ende: "18:00", puffer_min: 15, tag_max_min: 360, wochenende: true, fahrzeit_min: 45 };
+export const EINST_STANDARD: Einstellungen = { tag_start: "09:00", tag_ende: "18:00", puffer_min: 15, tag_max_min: 360, wochenende: true, fahrzeit_min: 45, fahrt_regeln: [] };
 
 export const TERMIN_ART: Record<TerminArt, { name: string; icon: string }> = {
   termin: { name: "Termin", icon: "calendar" }, vorlesung: { name: "Vorlesung", icon: "briefcase" }, klausur: { name: "Klausur", icon: "star" },

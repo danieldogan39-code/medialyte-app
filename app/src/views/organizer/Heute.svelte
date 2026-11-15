@@ -5,7 +5,7 @@
   import { auth } from "../../lib/auth.svelte";
   import { org } from "../../lib/organizer/org.svelte";
   import { blatt } from "../../lib/organizer/blatt.svelte";
-  import { MIN, countdown, dauer, gruss, plusTage, tageBis, tagKey, tagLang, uhr, wt } from "../../lib/organizer/zeit";
+  import { MIN, countdown, dauer, gruss, plusTage, relativTag, tageBis, tagKey, tagLang, uhr, wt } from "../../lib/organizer/zeit";
 
   const heute = $derived(new Date(org.jetzt));
   const bloecke = $derived(org.bloecke(heute));
@@ -49,6 +49,12 @@
     <a class="hw card" href="#/o/pruefungen" style="--f: {org.farbe(p.fach_id, '#F24A4A')}">
       <span class="hw__z num">{n <= 0 ? "!" : n}</span>
       <span><small>{p.art === "abgabe" ? "Abgabe" : "Klausur"} · {countdown(n)}</small><b>{p.titel}</b></span>
+    </a>
+  {/each}
+  {#each org.konflikte().slice(0, 3) as k (k.a.id + k.b.id)}
+    <a class="hw card warn" href="#/o/woche">
+      <span class="hw__i"><Icon name="clock" size={18} /></span>
+      <span><small>Überschneidung · {relativTag(k.tag)}</small><b>{k.a.titel} ↔ {k.b.titel}</b></span>
     </a>
   {/each}
   {#if liegen.length}

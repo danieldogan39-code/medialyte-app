@@ -10,8 +10,8 @@
   import type { Kalender } from "../../lib/organizer/typen";
 
   // Planung
-  let e = $state({ ...org.einst });
-  $effect(() => { e = { ...org.einst }; });
+  let e = $state({ ...org.einst, fahrt_regeln: (org.einst.fahrt_regeln ?? []).map((r) => ({ ...r })) });
+  $effect(() => { e = { ...org.einst, fahrt_regeln: (org.einst.fahrt_regeln ?? []).map((r) => ({ ...r })) }; });
   const geaendert = $derived(JSON.stringify(e) !== JSON.stringify(org.einst));
 
   let passt = $state(false);
@@ -134,6 +134,14 @@
       <label class="field"><span>Weg zur Uni, eine Richtung (Min.)</span><input class="input" type="number" min="0" max="180" step="5" bind:value={e.fahrzeit_min}></label>
       <label class="field"><span>Höchstens pro Tag (Std.)</span><input class="input" type="number" min="1" max="12" step="0.5" value={e.tag_max_min / 60} oninput={(ev) => (e.tag_max_min = Math.round(Number((ev.currentTarget as HTMLInputElement).value) * 60) || 360)}></label>
     </div>
+    <div class="field"><span>Weitere Wege (Stichwort in Titel oder Ort → Minuten pro Richtung)</span>
+      <div class="regeln">
+        {#each e.fahrt_regeln ?? [] as r, i}
+          <div class="regel"><input class="input" bind:value={r.muster} placeholder="z. B. Billstedt"><input class="input min" type="number" min="0" max="180" step="5" bind:value={r.min}><button class="btn btn--quiet btn--icon" aria-label="Entfernen" onclick={() => (e.fahrt_regeln = e.fahrt_regeln.filter((_, j) => j !== i))}><Icon name="x" size={15} /></button></div>
+        {/each}
+        <button class="btn btn--s" onclick={() => (e.fahrt_regeln = [...(e.fahrt_regeln ?? []), { muster: "", min: 30 }])}><Icon name="plus" size={14} />Weg hinzufügen</button>
+      </div>
+    </div>
     <div class="schalter"><span>Auch am Wochenende planen</span><Schalter an={e.wochenende} label="Wochenende" onchange={(v) => (e.wochenende = v)} /></div>
     <div class="aktion">
       <button class="btn btn--primary org-primary" disabled={!geaendert || e.tag_ende <= e.tag_start} onclick={async () => { if (await org.einstSpeichern(e)) { daten.melden("Gespeichert"); org.planen(undefined, true); } }}>Speichern</button>
@@ -185,6 +193,9 @@
   .kal small { color: var(--steel); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; }
   .fehler { color: #FF8080 !important; }
   .datei { justify-self: start; cursor: pointer; }
+  .regeln { display: grid; gap: 6px; justify-items: start; }
+  .regel { display: grid; grid-template-columns: minmax(0, 1fr) 80px auto; gap: 6px; width: 100%; }
+  .regel .input { min-height: 36px; }
   .rt { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 520px; overflow: auto; }
   .rt li { display: grid; grid-template-columns: 92px 64px minmax(120px, 1fr) 150px auto auto; gap: 6px; align-items: center; padding: 4px; border-radius: 10px; }
   .rt li.block { background: rgba(142, 124, 255, .08); }
