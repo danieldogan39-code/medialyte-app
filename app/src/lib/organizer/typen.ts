@@ -8,7 +8,7 @@ export type Termin = {
 };
 export type Aufgabe = {
   id: string; titel: string; notiz: string | null; fach_id: string | null; dauer_min: number; frist: string | null;
-  prio: 1 | 2 | 3; geplant: string | null; fixiert: boolean; erledigt: string | null; position: number; erstellt: string; ab?: string | null; lektion?: string | null;
+  prio: 1 | 2 | 3; geplant: string | null; fixiert: boolean; erledigt: string | null; position: number; erstellt: string; ab?: string | null; lektion?: string | null; arbeit_id?: string | null;
 };
 export type Gewohnheit = {
   id: string; name: string; icon: string; farbe: string; pro_woche: number; dauer_min: number; uhrzeit: string | null;

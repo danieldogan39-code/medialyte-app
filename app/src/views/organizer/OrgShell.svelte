@@ -98,6 +98,7 @@
           {:else if seite === "ziele"}<Ziele />
           {:else if seite === "pruefungen"}<Pruefungen />
           {:else if seite === "faecher"}{#key router.teile[2]}<Faecher id={router.teile[2] ?? ""} />{/key}
+          {:else if seite === "arbeiten"}{#await import("./arbeiten/Arbeiten.svelte") then m}<m.default />{/await}
           {:else if seite === "lernen"}{#await import("./lernen/Lernen.svelte") then m}<m.default />{/await}
           {:else if seite === "einstellungen"}<OrgEinstellungen />
           {:else}<Heute />{/if}
