@@ -2,6 +2,7 @@
   // Rahmen des Organizers: eigene Navigation, eigene Farbe, eigene Fenster – ein eigenständiger Teil der App.
   import Icon from "../../components/Icon.svelte";
   import OrgZeichen from "../../components/organizer/OrgZeichen.svelte";
+  import OrgIntro from "../../components/organizer/OrgIntro.svelte";
   import Rueckfrage from "../../components/Rueckfrage.svelte";
   import AufgabeBlatt from "../../components/organizer/AufgabeBlatt.svelte";
   import TerminBlatt from "../../components/organizer/TerminBlatt.svelte";
@@ -59,6 +60,8 @@
     z(); return { update: z };
   }
 </script>
+
+<OrgIntro />
 
 <div class="os" style="--org: {ORG_FARBE}; --bereich: {b.farbe}">
   <div class="fensterleiste" data-tauri-drag-region aria-hidden="true"></div>

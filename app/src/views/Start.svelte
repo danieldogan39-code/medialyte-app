@@ -19,6 +19,8 @@
   const naechster = $derived(heute.find((b) => b.ende.getTime() > org.jetzt));
   const pruefung = $derived(org.pruefungen[0]);
   const anfragen = $derived(daten.neueAnfragen);
+  const nachfassen = $derived(auth.darf("akquise") ? daten.nachfassHeute : 0);
+  const agentLaeuft = $derived(Object.keys(daten.laufend ?? {}).length > 0);
 
   function waehlen(z: "medialyte" | "organizer") {
     if (geht) return;
@@ -41,12 +43,19 @@
   <div class="karten">
     <button class="karte ml" class:gewaehlt={geht === "medialyte"} class:weg={geht === "organizer"} onclick={() => waehlen("medialyte")} aria-keyshortcuts="1">
       <span class="licht" aria-hidden="true"></span>
-      <span class="kopf"><span class="zeichen"><img src="./mono.svg" alt="" width="30" height="23"></span><span class="pfeil"><Icon name="right" size={20} /></span></span>
-      <span class="name"><img src="./wordmark.svg" alt="Medialyte" width="128" height="24"></span>
-      <span class="text">Akquise, Anfragen, Kunden, Rechnungen und Social Media – die Agentur.</span>
+      <!-- Radar im Hintergrund: das Bild des Agenten, der neue Kunden findet -->
+      <span class="radar" aria-hidden="true"><i class="ringe"></i><i class="sweep"></i><b style="--x: 62%; --y: 30%; --d: 1.1s"></b><b style="--x: 28%; --y: 46%; --d: 4.4s"></b><b style="--x: 70%; --y: 66%; --d: 2.5s"></b></span>
+      <span class="kopf">
+        <span class="zeichen"><span class="welle"></span><span class="welle w2"></span><img src="./mono.svg" alt="" width="28" height="21"></span>
+        <span class="pfeil"><Icon name="right" size={20} /></span>
+      </span>
+      <span class="name"><img src="./wordmark.svg" alt="Medialyte" width="150" height="29"></span>
+      <span class="text">Akquise, Anfragen, Kunden, Rechnungen und Social Media – deine Agentur.</span>
       <span class="info">
-        {#if auth.darf("anfragen") && anfragen}<span class="pill pill--rot">{anfragen} {anfragen === 1 ? "neue Anfrage" : "neue Anfragen"}</span>
-        {:else}<span class="pill pill--grau">Backend</span>{/if}
+        {#if auth.darf("anfragen") && anfragen}<span class="pill pill--rot">{anfragen} {anfragen === 1 ? "neue Anfrage" : "neue Anfragen"}</span>{/if}
+        {#if nachfassen}<span class="pill pill--gelb">{nachfassen} heute nachfassen</span>{/if}
+        {#if agentLaeuft}<span class="pill pill--blau live">Agent sucht gerade</span>{/if}
+        {#if !(auth.darf("anfragen") && anfragen) && !nachfassen && !agentLaeuft}<span class="pill pill--grau">Alles ruhig</span>{/if}
       </span>
     </button>
 
@@ -84,14 +93,37 @@
     transition: transform .55s var(--feder-schnell), border-color .3s ease, box-shadow .4s ease, opacity .35s ease, filter .35s ease; }
   .karte.og { animation-delay: 90ms; }
   .karte .licht { position: absolute; inset: -40% -30% auto auto; width: 120%; height: 120%; z-index: -1; opacity: .9; transition: transform 1s var(--feder-weich), opacity .4s ease; }
-  .ml .licht { background: radial-gradient(closest-side, rgba(242, 74, 74, .22), transparent 70%); }
+  .ml .licht { background: radial-gradient(closest-side, rgba(242, 74, 74, .26), rgba(111, 168, 240, .06) 55%, transparent 72%); }
+  /* feine Kante oben in den Markenfarben */
+  .karte::before { content: ""; position: absolute; left: 22px; right: 22px; top: 0; height: 1px; opacity: .8; }
+  .ml::before { background: linear-gradient(90deg, transparent, #FF6B6B 30%, #7BAFFF 75%, transparent); }
+  .og::before { background: linear-gradient(90deg, transparent, #A897FF 30%, #4FD1B5 75%, transparent); }
+  /* Radar: Ringe + langsamer Strahl, ganz zurückhaltend */
+  .radar { position: absolute; right: -110px; bottom: -130px; width: 320px; height: 320px; z-index: -1; pointer-events: none; opacity: .6;
+    -webkit-mask: radial-gradient(circle, #000 0 45%, transparent 70%); mask: radial-gradient(circle, #000 0 45%, transparent 70%); }
+  .radar i { position: absolute; inset: 0; border-radius: 50%; }
+  .ringe { background: repeating-radial-gradient(circle, transparent 0 34px, rgba(123, 175, 255, .16) 35px 36px); }
+  .sweep { background: conic-gradient(from 0deg, transparent 0 290deg, rgba(255, 107, 107, .18) 345deg, rgba(255, 140, 140, .35) 360deg); animation: sweep 7s linear infinite; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  /* Fundpunkte leuchten auf, wenn der Strahl vorbeikommt */
+  .radar b { position: absolute; left: var(--x); top: var(--y); width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #FF8A7A; opacity: 0;
+    box-shadow: 0 0 10px 2px rgba(255, 107, 107, .6); animation: blip 7s ease-out var(--d) infinite; }
+  @keyframes blip { 0% { opacity: 0; transform: scale(.4); } 4% { opacity: 1; transform: scale(1); } 40% { opacity: 0; transform: scale(.8); } 100% { opacity: 0; } }
   .og .licht { background: radial-gradient(closest-side, rgba(142, 124, 255, .3), rgba(79, 209, 181, .08) 55%, transparent 72%); }
   .kopf { display: flex; justify-content: space-between; align-items: center; }
-  .zeichen { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(160deg, #1B2A44, #0E1828); border: 1px solid var(--line-2);
-    box-shadow: 0 8px 18px rgba(242, 74, 74, .18); }
+  /* Zeichen in der Markenkachel (rot, wie das Organizer-Zeichen violett) – das Monogramm schreibt sich beim Öffnen */
+  .zeichen { position: relative; width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(150deg, #FF8A7A, #F24A4A 48%, #B42343); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), 0 10px 24px rgba(242, 74, 74, .38); }
+  .zeichen img { width: 28px; height: auto; filter: brightness(0) invert(1); clip-path: inset(0 100% 0 0); animation: schreiben .9s cubic-bezier(.65, 0, .35, 1) .3s forwards; }
+  @keyframes schreiben { to { clip-path: inset(0 0 0 0); } }
+  .welle { position: absolute; inset: 0; border-radius: 13px; border: 1.5px solid rgba(255, 120, 120, .6); opacity: 0; animation: welle 1.6s cubic-bezier(.2, .6, .3, 1) .5s both; pointer-events: none; }
+  .welle.w2 { animation-delay: .8s; }
+  @keyframes welle { 0% { transform: scale(1); opacity: 0; } 15% { opacity: .9; } 100% { transform: scale(2.1); opacity: 0; border-radius: 30px; } }
+  .live::before { animation: live 1.4s ease-in-out infinite; }
+  @keyframes live { 50% { opacity: .25; } }
   .pfeil { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line-2); color: var(--text); transition: transform .5s var(--feder-schnell), background-color .3s ease; }
-  .name { display: block; margin-top: 18px; }
-  .name img { height: 22px; width: auto; display: block; }
+  .name { display: flex; align-items: center; min-height: 40px; margin-top: 16px; }
+  .name img { height: 27px; width: auto; display: block; }
   .name b { font-size: 1.55rem; font-weight: 600; letter-spacing: -.03em; color: var(--text);
     background: linear-gradient(90deg, #C9BEFF, #8E7CFF 45%, #4FD1B5); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .text { font-size: .95rem; line-height: 1.45; }
@@ -102,6 +134,9 @@
     .karte:hover { transform: translateY(-4px); border-color: rgba(203, 215, 235, .3); box-shadow: 0 40px 80px -40px rgba(0, 0, 0, .95); }
     .karte:hover .licht { transform: translate(-6%, 8%) scale(1.08); }
     .karte:hover .pfeil { transform: translateX(3px); background: rgba(255, 255, 255, .06); }
+    .ml:hover .welle { animation: welle 1.6s cubic-bezier(.2, .6, .3, 1) both; }
+    .ml:hover .welle.w2 { animation-delay: .3s; }
+    .ml:hover .radar { opacity: .85; }
   }
   .karte:active { transform: scale(.975); transition-duration: .1s; }
   .karte:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; border-radius: 26px; }
@@ -114,8 +149,10 @@
     .start { align-content: start; gap: 22px; padding-top: calc(54px + env(safe-area-inset-top)); }
     .karten { grid-template-columns: minmax(0, 1fr); max-width: 460px; gap: 14px; }
     .karte { min-height: 0; padding: 18px; border-radius: 22px; gap: 10px; }
-    .name { margin-top: 6px; }
+    .name { margin-top: 4px; min-height: 34px; }
+    .name img { height: 24px; }
+    .radar { opacity: .4; }
     footer .muted { display: none; }
   }
-  @media (prefers-reduced-motion: reduce) { header, .karte, footer { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { header, .karte, footer, .sweep, .welle, .live::before, .radar b { animation: none; } .zeichen img { animation: none; clip-path: none; } }
 </style>
