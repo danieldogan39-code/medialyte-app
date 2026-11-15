@@ -155,7 +155,8 @@ export function lesen(ics: string, von: Date, bis: Date): Ereignis[] {
     const ds = eins(e, "DTSTART"); if (!ds) continue;
     const start = zeitLesen(ds); if (!start) continue;
     const uid = eins(e, "UID")?.wert ?? `${eins(e, "SUMMARY")?.wert}-${ds.wert}`;
-    const titel = text(eins(e, "SUMMARY")?.wert ?? "") || "(ohne Titel)";
+    // nur die erste Zeile: Kalender wie der der ISM hängen Gruppen-Kürzel an („HH_BADU 1 all“)
+    const titel = text(eins(e, "SUMMARY")?.wert ?? "").split("\n")[0].trim() || "(ohne Titel)";
     const ort = eins(e, "LOCATION") ? text(eins(e, "LOCATION")!.wert) || null : null;
     const notiz = eins(e, "DESCRIPTION") ? text(eins(e, "DESCRIPTION")!.wert).slice(0, 2000) || null : null;
     const s0 = zuDatum(start);

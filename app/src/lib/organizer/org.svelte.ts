@@ -223,7 +223,7 @@ class Organizer {
     const termine = plan.termine.map((z) => {
       const start = z.von ?? new Date(z.tag), ende = z.bis ?? new Date(start.getTime() + (z.von ? 60 : 24 * 60) * MIN);
       return { id: uuid(), titel: z.titel.slice(0, 200), start: start.toISOString(), ende: ende.toISOString(), ganztag: !z.von, art: norm(z.fach) === "klausur" ? "klausur" : "vorlesung", fach_id: fachFuer(this.faecher, z.titel)?.id ?? null, notiz: z.notiz, ort: null, kalender_id: null };
-    }).filter((t) => !schon.has(t.titel + "|" + Date.parse(t.start)));
+    }).filter((t) => !schon.has(t.titel + "|" + Date.parse(t.start)) && !this.termine.some((x) => (x.art === "vorlesung" || x.art === "klausur") && Date.parse(x.start) === Date.parse(t.start)));
     const aufgaben = plan.aufgaben.map((z, i) => ({
       id: uuid(), titel: z.titel.slice(0, 300), notiz: z.notiz, fach_id: fachName(z.fach), dauer_min: z.von && z.bis ? Math.max(5, Math.min(720, Math.round((z.bis.getTime() - z.von.getTime()) / MIN))) : 60,
       frist: tagKey(z.tag), prio: 2, geplant: z.von ? z.von.toISOString() : null, fixiert: !!z.von, erledigt: z.erledigt ? new Date().toISOString() : null, position: i,

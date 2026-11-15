@@ -33,14 +33,21 @@ async function holen(adresse: string): Promise<string> {
 }
 
 // Fach im Titel? (enthalten, oder jedes Wort des Fachs beginnt ein Wort im Titel: „wiss arbeiten“ ↔ „wissenschaftliches arbeiten“)
+const KUERZEL: Record<string, string> = { bwl: "betriebswirtschaft", vwl: "volkswirtschaft", rewe: "rechnungswesen", wiar: "wissenschaftliches arbeiten", kalk: "kalkulation" };
 function passt(fach: string, titel: string): boolean {
   if (titel.includes(fach)) return true;
+  if (KUERZEL[fach] && titel.includes(KUERZEL[fach])) return true;
   const worte = titel.split(" "), fw = fach.split(" ").filter(Boolean);
   return fw.length > 0 && fw.every((x) => x.length >= 2 && worte.some((w) => w.startsWith(x)));
 }
 const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
-function artVon(titel: string, kalenderArt: string): string {
+function artVon(titel: string, kalenderArt: string, notiz: string | null): string {
+  const art = norm((notiz ?? "").split("\n")[0]);   // ISM: erste Zeile der Beschreibung ist die Art
+  if (/^(prufung|klausur|exam)/.test(art)) return "klausur";
+  if (/^(abgabe|deadline)/.test(art)) return "abgabe";
+  if (/^(vorlesung|seminar|ubung|tutorium|lecture)/.test(art)) return "vorlesung";
+  if (/^sonstige/.test(art)) return "termin";
   const t = norm(titel);
   if (/\b(klausur|prufung|exam|nachschreib)/.test(t)) return "klausur";
   if (/\b(abgabe|deadline|einreichung)/.test(t)) return "abgabe";
@@ -80,7 +87,7 @@ Deno.serve(async (req) => {
         const n = norm(x.titel);
         const fach = handFach.get(x.uid.slice(0, 500)) ?? k.fach_id ?? fachListe.find((f) => passt(f.n, n))?.id ?? null;
         return { user_id: user, kalender_id: k.id, extern_uid: x.uid.slice(0, 500), titel: x.titel.slice(0, 200), start: x.start.toISOString(), ende: x.ende.toISOString(),
-          ganztag: x.ganztag, ort: x.ort?.slice(0, 200) ?? null, notiz: x.notiz, art: artVon(x.titel, k.art), fach_id: fach };
+          ganztag: x.ganztag, ort: x.ort?.slice(0, 200) ?? null, notiz: x.notiz, art: artVon(x.titel, k.art, x.notiz), fach_id: fach };
       });
       // Bestand im Zeitfenster ersetzen (ältere Termine bleiben als Verlauf stehen)
       const { error: delErr } = await db.from("org_termine").delete().eq("kalender_id", k.id).gte("ende", von.toISOString());
@@ -89,6 +96,10 @@ Deno.serve(async (req) => {
         const { error: insErr } = await db.from("org_termine").upsert(zeilen.slice(i, i + 500), { onConflict: "kalender_id,extern_uid" });
         if (insErr) throw new Error(insErr.message);
       }
+      // Gleiche Vorlesung/Prüfung schon von Hand (z. B. aus dem Lernplan) eingetragen? Dann gilt die aus dem Kalender.
+      const feste = zeilen.filter((z) => z.art === "vorlesung" || z.art === "klausur").map((z) => z.start);
+      for (let i = 0; i < feste.length; i += 100)
+        await db.from("org_termine").delete().eq("user_id", user).is("kalender_id", null).in("art", ["vorlesung", "klausur"]).in("start", feste.slice(i, i + 100));
       await db.from("org_kalender").update({ zuletzt: new Date().toISOString(), fehler: null }).eq("id", k.id);
       ergebnis.push({ id: k.id, name: k.name, anzahl: zeilen.length, fehler: null });
     } catch (err) {

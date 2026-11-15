@@ -10,8 +10,10 @@ const WT: Record<string, number> = { mo: 1, montag: 1, di: 2, dienstag: 2, mi: 3
 export const norm = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 
 /** Passt ein Fach zu einem Text? (enthalten, oder jedes Wort des Fachs beginnt ein Wort im Text: „Wiss. Arbeiten“ ↔ „Wissenschaftliches Arbeiten“) */
+const KUERZEL: Record<string, string> = { bwl: "betriebswirtschaft", vwl: "volkswirtschaft", rewe: "rechnungswesen", wiar: "wissenschaftliches arbeiten", kalk: "kalkulation" };
 export function fachPasst(f: Fach, text: string): boolean {
   const n = norm(text), fn = norm(f.name);
+  if (KUERZEL[fn] && n.includes(KUERZEL[fn])) return true;
   if (fn.length >= 3 && (` ${n} `).includes(` ${fn}`)) return true;
   if (fn.length >= 4 && n.includes(fn)) return true;
   const worte = n.split(" "), fw = fn.split(" ").filter(Boolean);
