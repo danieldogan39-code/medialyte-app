@@ -6,6 +6,8 @@
 // Eine Aufgabe mit „ab“ wird nicht vor diesem Tag geplant.
 // Ein Lerncheck (Abschluss eines Kapitels) beginnt nie vor dem Ende der Lektionen, die im Kurs vor ihm dran sind –
 // sonst rutscht er als kurze Aufgabe in eine frühe Lücke und läge vor seinem Kapitel.
+// Lernchecks sind Wiederholung: Sie werden erst nach allem anderen verteilt. Reicht die Zeit vor der Klausur nicht für alles,
+// bleiben zuerst Lernchecks ohne Termin – nie eine neue Lektion.
 import { MIN, TAG, beiMinute, minuten, plusTage, tagBeginn, tagKey, wochentag, keyZuDatum } from "./zeit";
 import type { Aufgabe, Einstellungen, Gewohnheit, Routine } from "./typen";
 
@@ -77,15 +79,17 @@ export function planen(opt: {
     zuPlanen.push(a);
   }
   const fristMs = (a: Aufgabe) => (a.frist ? keyZuDatum(a.frist).getTime() : Infinity);
-  // Aufgaben mit engem Zeitfenster (ab … Frist höchstens 2 Tage, z. B. Schreibplan-Etappen) zuerst – sonst füllen flexible Lernaufgaben den Tag
-  const eng = (a: Aufgabe) => (a.ab && a.frist && keyZuDatum(a.frist).getTime() - keyZuDatum(a.ab).getTime() <= 2 * TAG ? 0 : 1);
+  // Aufgaben mit festem Zeitfenster (ab … Frist, z. B. Schreibplan-Etappen) zuerst – sonst füllen flexible Lernaufgaben das Fenster,
+  // und die Etappen landen hinter ihrer Frist und in falscher Reihenfolge
+  const eng = (a: Aufgabe) => (a.ab && a.frist ? 0 : 1);
   const reihe = (a: Aufgabe, b: Aufgabe) => eng(a) - eng(b) || fristMs(a) - fristMs(b) || a.prio - b.prio || a.position - b.position || a.erstellt.localeCompare(b.erstellt);
-  zuPlanen.sort(reihe);
+  const istLerncheck = (a: Aufgabe) => !!a.lektion?.includes("/lerncheck");
+  zuPlanen.sort((a, b) => Number(istLerncheck(a)) - Number(istLerncheck(b)) || reihe(a, b));
   // Vorgänger im Kurs je Lerncheck (Prüfungssimulationen zählen nicht mit)
   const kursVon = (a: Aufgabe) => (a.lektion && !a.lektion.endsWith("/pruefung") ? a.lektion.split("/")[0] : null);
   const vorgaenger = new Map<string, Aufgabe[]>(), wirdGeplant = new Set(zuPlanen.map((a) => a.id)), endeNeu = new Map<string, number>();
   { const davor = new Map<string, Aufgabe[]>();
-    for (const a of aufgaben.filter((x) => !x.erledigt && kursVon(x)).sort(reihe)) { const k = kursVon(a)!, v = davor.get(k) ?? []; if (v.length && a.lektion!.includes("/lerncheck")) vorgaenger.set(a.id, [...v]); v.push(a); davor.set(k, v); } }
+    for (const a of aufgaben.filter((x) => !x.erledigt && kursVon(x)).sort(reihe)) { const k = kursVon(a)!, v = davor.get(k) ?? []; if (v.length && istLerncheck(a)) vorgaenger.set(a.id, [...v]); v.push(a); davor.set(k, v); } }
 
   const ws = minuten(einst.tag_start), we = minuten(einst.tag_ende);
   const mitBloecken = routine.some((r) => r.art === "block");
@@ -144,9 +148,9 @@ export function planen(opt: {
     // Lerncheck: nicht vor dem Ende der Lektionen davor; ist danach bis zur Klausur nichts mehr frei, dann so spät wie möglich davor
     const vEnde = Math.max(0, ...(vorgaenger.get(a.id) ?? []).map((v) => endeNeu.get(v.id) ?? (!wirdGeplant.has(v.id) && v.geplant ? Date.parse(v.geplant) + v.dauer_min * MIN : 0)));
     let gefunden = vEnde > start ? platz(vEnde) : null;
-    if (gefunden == null && vEnde > start) for (let i = Math.min(grenze, tagIdx(vEnde)); i >= 0 && gefunden == null; i--) gefunden = suche(a, i, i, false) ?? suche(a, i, i, true, true);
-    if (gefunden == null) gefunden = platz(0);
-    if (gefunden == null) { ohnePlatz.add(a.id); if (a.geplant && Date.parse(a.geplant) < jetzt) neu.set(a.id, null); continue; }
+    if (gefunden == null && !(vEnde > start)) gefunden = platz(0);
+    // kein Platz: die alte Zeit ist für andere freigegeben worden, also nicht behalten (sonst überschneidet sie sich)
+    if (gefunden == null) { ohnePlatz.add(a.id); if (a.geplant) neu.set(a.id, null); continue; }
     busy.push([gefunden, gefunden + dauer, 0]); addLast(gefunden, a.dauer_min); endeNeu.set(a.id, gefunden + dauer);
     // Lernaufgaben: deren Frist ist nur ein Richtwert – zu spät ist nur, was nach der Klausur läge
     if (harte != null ? gefunden + dauer > harte : a.frist && gefunden > keyZuDatum(a.frist).getTime() + TAG - 1) zuSpaet.add(a.id);

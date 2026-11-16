@@ -31,6 +31,8 @@ class Organizer {
   log = $state<Log[]>(lies("org:log", []));
   kalender = $state<Kalender[]>(lies("org:kalender", []));
   routine = $state<Routine[]>(lies("org:routine", []));
+  /** Abgabetermine der schriftlichen Arbeiten (Arbeit → Zeitpunkt) – harte Grenze für deren Schreibplan */
+  abgaben = $state<Record<string, string>>(lies("org:abgaben", {}));
   einst = $state<Einstellungen>({ ...EINST_STANDARD, ...lies("org:einst", EINST_STANDARD) });
   geladen = $state(lies("org:geladen", false));
   jetzt = $state(Date.now());           // tickt jede Minute: „Jetzt“-Linie, Countdowns
@@ -48,7 +50,7 @@ class Organizer {
   async laden() {
     const von = plusTage(tagBeginn(Date.now()), -45).toISOString(), bis = plusTage(tagBeginn(Date.now()), 240).toISOString();
     const erledigtSeit = plusTage(Date.now(), -90).toISOString();
-    const [f, t, a, g, l, k, e, r] = await Promise.all([
+    const [f, t, a, g, l, k, e, r, ar] = await Promise.all([
       sb.from("org_faecher").select("*").order("position").order("name"),
       sb.from("org_termine").select("id,titel,start,ende,ganztag,ort,art,fach_id,notiz,kalender_id,fahrt").gte("ende", von).lte("start", bis).order("start").limit(3000),
       sb.from("org_aufgaben").select("*").or(`erledigt.is.null,erledigt.gte.${erledigtSeit}`).order("position").limit(2000),
@@ -57,6 +59,7 @@ class Organizer {
       sb.from("org_kalender").select("*").order("erstellt"),
       sb.from("org_einstellungen").select("tag_start,tag_ende,puffer_min,tag_max_min,wochenende,fahrzeit_min,fahrt_regeln").maybeSingle(),
       sb.from("org_routine").select("*").order("start"),
+      sb.from("org_arbeiten").select("id,abgabe"),
     ]);
     const fehler = [f, t, a, g, l, k, e].find((x) => x.error)?.error;
     if (fehler) { if (!this.geladen) daten.melden("Organizer nicht geladen: " + fehlerText(fehler), undefined, true); return; }
@@ -68,6 +71,7 @@ class Organizer {
     this.kalender = merk("org:kalender", (k.data ?? []) as Kalender[]);
     if (!r.error) this.routine = merk("org:routine", ((r.data ?? []) as any[]).map((x) => ({ ...x, start: String(x.start).slice(0, 5) })) as Routine[]);
     if (e.data) this.einst = merk("org:einst", { ...EINST_STANDARD, ...(e.data as any), tag_start: String(e.data.tag_start).slice(0, 5), tag_ende: String(e.data.tag_ende).slice(0, 5) });
+    if (!ar.error) this.abgaben = merk("org:abgaben", Object.fromEntries(((ar.data ?? []) as any[]).filter((x) => x.abgabe).map((x) => [x.id, x.abgabe as string])));
     this.geladen = merk("org:geladen", true);
     // Kalender-Abos: höchstens alle 30 Minuten still im Hintergrund abgleichen
     const alt = this.kalender.filter((x) => !x.zuletzt || Date.now() - Date.parse(x.zuletzt) > 30 * MIN);
@@ -321,8 +325,9 @@ class Organizer {
     }
     return out.filter((f) => f.bis > ab && f.von < bis);
   }
-  /** Harte Grenze einer Lernaufgabe: Beginn der nächsten Klausur im selben Fach */
+  /** Harte Grenze: bei Lernaufgaben der Beginn der nächsten Klausur im selben Fach, bei Schreibplan-Etappen die Abgabe der Arbeit */
   spaetestens = (a: Aufgabe): number | null => {
+    if (a.arbeit_id) { const ab = this.abgaben[a.arbeit_id], t = ab ? Date.parse(ab) : NaN; return t > this.jetzt ? t : null; }
     if (!a.lektion || !a.fach_id) return null;
     const j = this.jetzt, k = this.termine.filter((t) => t.art === "klausur" && t.fach_id === a.fach_id && Date.parse(t.start) > j).map((t) => Date.parse(t.start)).sort((x, y) => x - y)[0];
     return k ?? null;
@@ -354,11 +359,14 @@ class Organizer {
         if (rest.length) { this.aufgaben = vorher; daten.melden("Planung nicht gespeichert: " + fehlerText(f), undefined, true); await this.laden(); return; }
         merk("org:aufgaben", this.aufgaben);
       }
-      if (!still || r.ohnePlatz.size || r.zuSpaet.size) {
+      // Lernchecks sind Wiederholung und dürfen ohne Termin bleiben – das ist kein Fehler
+      const checks = [...r.ohnePlatz].filter((id) => this.aufgaben.find((a) => a.id === id)?.lektion?.includes("/lerncheck")).length, ohne = r.ohnePlatz.size - checks;
+      if (!still || ohne || r.zuSpaet.size) {
         const teile = [aend.length ? `${aend.length} ${aend.length === 1 ? "Aufgabe" : "Aufgaben"} eingeplant` : "Alles passt schon"];
         if (r.zuSpaet.size) teile.push(`${r.zuSpaet.size} erst nach der Frist`);
-        if (r.ohnePlatz.size) teile.push(`${r.ohnePlatz.size} ohne Platz (zu lang oder Tage voll)`);
-        daten.melden(teile.join(" · "), undefined, r.zuSpaet.size + r.ohnePlatz.size > 0);
+        if (ohne) teile.push(`${ohne} ohne Platz (zu lang oder Tage voll)`);
+        if (checks) teile.push(`${checks} ${checks === 1 ? "Lerncheck" : "Lernchecks"} ohne Termin (vor der Klausur ist kein Platz mehr)`);
+        daten.melden(teile.join(" · "), undefined, r.zuSpaet.size + ohne > 0);
       }
       if (aend.length) haptik("erfolg");
     } finally { this.plant = false; }
