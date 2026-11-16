@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MlIntro from "../components/MlIntro.svelte";
   import { abmeldenFragen } from "../lib/abmelden";
   import Icon from "../components/Icon.svelte";
   import { auth } from "../lib/auth.svelte";
@@ -190,6 +191,8 @@
   });
   const aktiv = (p: string) => (p === "/" ? router.pfad === "/" : router.pfad.startsWith(p));
 </script>
+
+<MlIntro />
 
 <div class="shell">
   <div class="fensterleiste" data-tauri-drag-region aria-hidden="true"></div>
