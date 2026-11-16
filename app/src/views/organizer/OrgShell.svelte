@@ -68,7 +68,11 @@
   <header class="top" class:kompakt>
     <button class="wechsel" aria-label="Bereich wechseln" onclick={() => modus.auswahl()}><OrgZeichen size={28} /><Icon name="down" size={14} /></button>
     <span class="top__t">{b.name}</span>
-    <a class="btn btn--quiet btn--icon" href="#/o/einstellungen" aria-label="Einstellungen"><Icon name="settings" size={19} /></a>
+    <span class="top__r">
+      <!-- beim Lesen/Abfragen und in einer Hausarbeit gibt es nichts „Neues“ anzulegen -->
+      {#if !((seite === "lernen" || seite === "arbeiten") && router.teile[2])}<button class="btn btn--icon neu" aria-label="Neu" onclick={() => blatt.auf({ art: "schnell" })}><Icon name="plus" size={20} /></button>{/if}
+      <a class="btn btn--quiet btn--icon" href="#/o/einstellungen" aria-label="Einstellungen"><Icon name="settings" size={19} /></a>
+    </span>
   </header>
 
   <nav class="side" aria-label="Organizer">
@@ -110,8 +114,6 @@
     </div>
   </main>
 
-  <!-- beim Lesen/Abfragen und in einer Hausarbeit stört der Plus-Knopf über dem Text -->
-  {#if !((seite === "lernen" || seite === "arbeiten") && router.teile[2])}<button class="fab" aria-label="Neu" onclick={() => blatt.auf({ art: "schnell" })}><Icon name="plus" size={24} /></button>{/if}
   <nav class="tabbar" aria-label="Seiten">
     {#each REITER as x (x.pfad)}
       <a href={"#" + x.pfad} class:on={aktiv(x.pfad)} style="--f: {x.farbe}" aria-current={aktiv(x.pfad) ? "page" : undefined}>
@@ -134,7 +136,7 @@
   :global(.org-primary) { background: linear-gradient(135deg, #9A8AFF, #7C6CF5) !important; border-color: #A598FF !important; color: #fff !important; }
   :global(.org-primary:hover:not(:disabled)) { background: linear-gradient(135deg, #A597FF, #8676FA) !important; }
   .os { min-height: 100dvh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
-  .top, .tabbar, .fab { display: none; }
+  .top, .tabbar { display: none; }
   .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 18px; padding: 20px 14px 14px; border-right: 1px solid var(--line);
     background: linear-gradient(180deg, rgba(142, 124, 255, .06), transparent 40%), var(--bg-2); overflow-y: auto; }
   .marke { display: flex; align-items: center; gap: 11px; padding: 4px 6px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
@@ -184,16 +186,20 @@
     .os { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; align-content: start; }
     .side { display: none; }
     .top { display: grid; grid-template-columns: 96px 1fr 96px; align-items: center; position: sticky; top: 0; z-index: 30; height: calc(50px + env(safe-area-inset-top));
-      padding: env(safe-area-inset-top) 8px 0; background: rgba(10, 18, 32, .78); -webkit-backdrop-filter: saturate(170%) blur(20px); backdrop-filter: saturate(170%) blur(20px); border-bottom: 1px solid transparent; transition: border-color .25s ease; }
-    .top.kompakt { border-bottom-color: var(--line); }
-    .top > a { justify-self: end; }
+      padding: env(safe-area-inset-top) 8px 0; background: transparent; border-bottom: 1px solid transparent; transition: border-color .25s ease, background-color .25s ease; }
+    /* oben auf der Seite durchsichtig (kein dunkler Balken über dem Seitenlicht), erst beim Scrollen eine feste Leiste */
+    .top.kompakt { background: rgba(10, 18, 32, .93); -webkit-backdrop-filter: saturate(170%) blur(20px); backdrop-filter: saturate(170%) blur(20px); border-bottom-color: var(--line); }
+    .top__r { justify-self: end; display: inline-flex; align-items: center; gap: 2px; }
+    .neu { border: 0; color: #fff; background: linear-gradient(140deg, #A597FF, #7C6CF5 60%, #5FC9B4); box-shadow: 0 8px 18px -10px rgba(124, 108, 245, .9), inset 0 1px 0 rgba(255, 255, 255, .28); border-radius: 13px; }
+    .neu:active { transform: scale(.9); }
     .wechsel { justify-self: start; display: inline-flex; align-items: center; gap: 4px; height: 40px; padding: 0 6px; border: 0; background: none; color: var(--steel); cursor: pointer; }
     .wechsel:active { opacity: .6; }
     .top__t { text-align: center; color: var(--text); font-weight: 600; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .4s var(--feder-schnell); }
     .top.kompakt .top__t { opacity: 1; transform: none; }
-    .main { padding: 12px 16px calc(140px + env(safe-area-inset-bottom)); }
+    .main { padding: 12px 16px calc(92px + env(safe-area-inset-bottom)); background: none; }
+    .os { background: radial-gradient(1000px 470px at 0 0, color-mix(in srgb, var(--bereich) 9%, transparent), transparent 70%) no-repeat; }
     .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; inset: auto 0 0 0; z-index: 45; height: calc(58px + env(safe-area-inset-bottom));
-      padding: 4px 4px env(safe-area-inset-bottom); background: rgba(12, 21, 36, .82); -webkit-backdrop-filter: saturate(170%) blur(22px); backdrop-filter: saturate(170%) blur(22px); border-top: 1px solid var(--line); }
+      padding: 4px 4px env(safe-area-inset-bottom); background: rgba(12, 21, 36, .95); -webkit-backdrop-filter: saturate(170%) blur(22px); backdrop-filter: saturate(170%) blur(22px); border-top: 1px solid var(--line); }
     .tabbar a { display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--steel); }
     .ti { position: relative; display: grid; place-items: center; width: 52px; height: 30px; border-radius: 15px; transition: background-color .3s ease, transform .45s var(--feder-schnell); }
     .tl { font-size: .7rem; font-weight: 500; }
@@ -201,11 +207,8 @@
     .tabbar .on .ti { background: color-mix(in srgb, var(--f) 22%, transparent); color: var(--f); }
     .tabbar a:active .ti { transform: scale(.88); }
     .tb { position: absolute; top: -3px; right: 6px; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px; background: var(--org); color: #fff; font-size: .66rem; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--bg); }
-    .fab { display: grid; place-items: center; position: fixed; right: 18px; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 46; width: 56px; height: 56px; border-radius: 18px; border: 0;
-      background: linear-gradient(140deg, #A597FF, #7C6CF5 60%, #5FC9B4); color: #fff; box-shadow: 0 16px 34px -12px rgba(124, 108, 245, .8), inset 0 1px 0 rgba(255, 255, 255, .3);
-      cursor: pointer; transition: transform .45s var(--feder-schnell); animation: fab .6s .2s var(--feder) both; }
-    .fab:active { transform: scale(.9); }
-    @keyframes fab { from { transform: scale(.4); opacity: 0; } }
   }
-  :global(.android) .top, :global(.android) .tabbar { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(10, 18, 32, .97) !important; }
+  :global(.android) .top, :global(.android) .tabbar { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+  :global(.android) .top:not(.kompakt) { background: transparent !important; }
+  :global(.android) .top.kompakt, :global(.android) .tabbar { background: rgb(10, 18, 32) !important; }
 </style>

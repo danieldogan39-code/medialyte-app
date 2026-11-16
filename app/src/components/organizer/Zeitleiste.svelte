@@ -49,13 +49,22 @@
     else if (b.gewohnheit) org.abhaken(b.gewohnheit, tagKey(tag));
   }
   const key = (z: Zeile) => (z.typ === "block" ? z.b.id : z.typ === "jetzt" ? "jetzt" : z.key);
+  // Heute: was schon vorbei ist, einklappen – sonst steht abends der ganze Vormittag vor dem, was jetzt dran ist.
+  // Offene Aufgaben und Gewohnheiten bleiben sichtbar, die will man noch abhaken.
+  let alles = $state(false);
+  const vorbei = (z: Zeile) => heute && z.typ === "block" && !z.b.ganztag && z.b.ende.getTime() <= org.jetzt && (z.b.erledigt || !(z.b.aufgabe || z.b.gewohnheit));
+  const anzahlVorbei = $derived(zeilen.filter(vorbei).length);
+  const sichtbar = $derived(alles || anzahlVorbei < 3 ? zeilen : zeilen.filter((z) => !vorbei(z)));
 </script>
 
 {#if !bloecke.length}
   <div class="leer"><Icon name="sun" size={22} /><span>{leer}</span></div>
 {:else}
+  {#if anzahlVorbei >= 3}
+    <button class="vorbei" class:auf={alles} aria-expanded={alles} onclick={() => (alles = !alles)}><Icon name="down" size={14} /><span>{alles ? "Vergangenes ausblenden" : `Schon vorbei · ${anzahlVorbei} Einträge`}</span></button>
+  {/if}
   <ol class="zl">
-    {#each zeilen as z (key(z))}
+    {#each sichtbar as z (key(z))}
       <li animate:flip={{ duration: ruhig() ? 0 : fl.ms, easing: fl.easing }} in:fly={{ y: ruhig() ? 0 : 8, duration: ruhig() ? 0 : 280 }}>
         {#if z.typ === "jetzt"}
           <div class="jetzt" aria-label="Jetzt"><span>{uhr(org.jetzt)}</span><i></i></div>
@@ -99,6 +108,11 @@
 
 <style>
   .zl { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .vorbei { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 6px 12px 6px 10px; margin-bottom: 6px; border: 0; border-radius: 12px; background: rgba(139, 152, 173, .08);
+    color: var(--steel); font: inherit; font-size: .82rem; text-align: left; cursor: pointer; }
+  .vorbei:active { opacity: .7; }
+  .vorbei :global(svg) { transition: transform .3s ease; }
+  .vorbei.auf :global(svg) { transform: rotate(180deg); }
   .leer { display: flex; align-items: center; gap: 10px; padding: 18px 16px; border-radius: var(--radius); border: 1px dashed var(--line-2); color: var(--steel); }
   .zeile { display: grid; grid-template-columns: 54px 4px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 12px 10px 10px;
     border-radius: 14px; background: var(--panel); border: 1px solid var(--line); cursor: pointer; transition: transform .45s var(--feder-schnell), background-color .2s ease, border-color .2s ease, box-shadow .3s ease, opacity .3s ease; }

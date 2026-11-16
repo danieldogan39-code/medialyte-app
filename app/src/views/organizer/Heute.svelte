@@ -146,7 +146,7 @@
   .willkommen b { color: var(--text); }
   .willkommen small { color: var(--text-2); font-size: .86rem; }
   .wi { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--org); color: #fff; flex: none; }
-  .hinweise { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 16px; padding: 2px 16px; scroll-snap-type: x mandatory; }
+  .hinweise { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 16px; padding: 2px 16px; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; }
   .hinweise:empty { display: none; }
   @media (min-width: 901px) { .hinweise { flex-wrap: wrap; overflow: visible; margin: 0 0 16px; padding: 0; } }
   .hw { flex: none; scroll-snap-align: start; display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-width: 220px; border-radius: 16px; }
@@ -165,7 +165,8 @@
   .held__t h2 { font-size: 1.3rem; }
   .balken { height: 6px; border-radius: 6px; background: rgba(203, 215, 235, .12); overflow: hidden; margin-top: 6px; }
   .balken i { display: block; height: 100%; border-radius: 6px; background: var(--f); transition: width 1s ease; }
-  .held__a { display: flex; gap: 8px; }
+  .held__a { display: flex; flex-wrap: wrap; gap: 8px; }
+  @media (max-width: 700px) { .held__a { width: 100%; } .held__a > :global(*) { flex: 1 1 0; min-width: max-content; justify-content: center; } }
   .raster { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 26px; align-items: start; }
   aside { display: grid; gap: 22px; position: sticky; top: 24px; }
   section { display: grid; gap: 10px; }
