@@ -77,7 +77,8 @@ class Organizer {
   live(): () => void {
     const uid = auth.session?.user.id; if (!uid) return () => {};
     let t: number | undefined;
-    const neu = () => { clearTimeout(t); t = setTimeout(() => this.laden(), 400) as unknown as number; };
+    // während geplant wird, nicht neu laden: sonst käme ein halb gespeicherter Plan in die Ansicht
+    const neu = () => { clearTimeout(t); t = setTimeout(() => (this.plant ? neu() : this.laden()), 400) as unknown as number; };
     const ch = sb.channel("organizer-" + uid);
     for (const tab of ["org_aufgaben", "org_termine", "org_gewohnheit_log"]) ch.on("postgres_changes" as any, { event: "*", schema: "public", table: tab, filter: `user_id=eq.${uid}` }, neu);
     ch.subscribe();
@@ -338,9 +339,19 @@ class Organizer {
       if (aend.length) {
         const vorher = this.aufgaben;
         this.aufgaben = this.aufgaben.map((a) => (r.neu.has(a.id) ? { ...a, geplant: r.neu.get(a.id)!, fixiert: loesen ? false : a.fixiert } : a));
-        const res = await Promise.all(aend.map(([id, g]) => sb.from("org_aufgaben").update(loesen ? { geplant: g, fixiert: false } : { geplant: g }).eq("id", id)));
-        const f = res.find((x) => x.error)?.error;
-        if (f) { this.aufgaben = vorher; daten.melden("Planung nicht gespeichert: " + fehlerText(f), undefined, true); return; }
+        // in kleinen Paketen speichern (ein großer Plan sind über 200 Änderungen) und Fehlgeschlagenes wiederholen –
+        // sonst bliebe bei einem einzelnen Fehler ein halber Plan mit Überschneidungen zurück
+        let rest = aend, f: unknown = null;
+        for (let versuch = 0; versuch < 3 && rest.length; versuch++) {
+          const offen: typeof aend = [];
+          for (let i = 0; i < rest.length; i += 20) {
+            const teil = rest.slice(i, i + 20);
+            const res = await Promise.all(teil.map(([id, g]) => sb.from("org_aufgaben").update(loesen ? { geplant: g, fixiert: false } : { geplant: g }).eq("id", id).then((x) => x, (e) => ({ error: e }))));
+            res.forEach((x, j) => { if (x.error) { f = x.error; offen.push(teil[j]); } });
+          }
+          rest = offen;
+        }
+        if (rest.length) { this.aufgaben = vorher; daten.melden("Planung nicht gespeichert: " + fehlerText(f), undefined, true); await this.laden(); return; }
         merk("org:aufgaben", this.aufgaben);
       }
       if (!still || r.ohnePlatz.size || r.zuSpaet.size) {
