@@ -3,16 +3,21 @@
   import type { Grafik } from "../../lib/lernen/typen";
   import { mdZeile } from "../../lib/lernen/md";
   import { de } from "../../lib/lernen/pruefen";
-  import { funktion } from "../../lib/lernen/ausdruck";
-  let { g, farbe = "var(--org)" }: { g: Grafik; farbe?: string } = $props();
+  import { funktion, wert, type Werte } from "../../lib/lernen/ausdruck";
+  // werte: Reglerwerte, die in den Kurvenausdrücken vorkommen dürfen (interaktive Grafiken)
+  let { g, farbe = "var(--org)", werte }: { g: Grafik; farbe?: string; werte?: Werte } = $props();
+  const fn = (s: string) => (werte ? (x: number) => { try { return wert(s, { ...werte, x }); } catch { return NaN; } } : funktion(s));
 
   const FARBEN = ["#8E7CFF", "#4FC7D4", "#F2995A", "#4CC38A", "#E7B94A", "#F27A6A"];
   const zahl = (v: number | string) => (typeof v === "number" ? de(v) : v);
 
   // ---------- Funktionsgraph
   const W = 640, H = 380, P = { l: 52, r: 18, t: 18, b: 40 };
+  // linker Rand passend zur längsten y-Beschriftung (z. B. „20.000“), damit nichts abgeschnitten wird
+  const links = (g: Extract<Grafik, { art: "graph" }>) => Math.max(P.l, 18 + 8.4 * Math.max(...schritte(g.y[0], g.y[1]).map((v) => de(v).length)));
   function skala(g: Extract<Grafik, { art: "graph" }>) {
-    const sx = (x: number) => P.l + ((x - g.x[0]) / (g.x[1] - g.x[0])) * (W - P.l - P.r);
+    const l = links(g);
+    const sx = (x: number) => l + ((x - g.x[0]) / (g.x[1] - g.x[0])) * (W - l - P.r);
     const sy = (y: number) => H - P.b - ((y - g.y[0]) / (g.y[1] - g.y[0])) * (H - P.t - P.b);
     return { sx, sy };
   }
@@ -23,7 +28,7 @@
     return out;
   }
   function pfad(g: Extract<Grafik, { art: "graph" }>, ausdruck: string, von = g.x[0], bis = g.x[1]) {
-    const f = funktion(ausdruck), { sx, sy } = skala(g), n = 320, teile: string[] = [];
+    const f = fn(ausdruck), { sx, sy } = skala(g), n = 320, teile: string[] = [];
     let offen = false;
     const ymin = g.y[0] - (g.y[1] - g.y[0]) * 0.5, ymax = g.y[1] + (g.y[1] - g.y[0]) * 0.5;
     for (let i = 0; i <= n; i++) {
@@ -35,7 +40,7 @@
   }
   function flaeche(g: Extract<Grafik, { art: "graph" }>) {
     const fl = g.flaeche!; const { sx, sy } = skala(g), n = 160, o: string[] = [], u: string[] = [];
-    const f = funktion(fl.f), gg = fl.g ? funktion(fl.g) : () => 0;
+    const f = fn(fl.f), gg = fl.g ? fn(fl.g) : () => 0;
     const k = (y: number) => Math.max(g.y[0], Math.min(g.y[1], y));
     for (let i = 0; i <= n; i++) { const x = fl.von + ((fl.bis - fl.von) * i) / n; o.push(`${sx(x).toFixed(1)},${sy(k(f(x))).toFixed(1)}`); u.unshift(`${sx(x).toFixed(1)},${sy(k(gg(x))).toFixed(1)}`); }
     return `M${o.join("L")}L${u.join("L")}Z`;
@@ -56,19 +61,20 @@
 
   {#if g.art === "graph"}
     {@const { sx, sy } = skala(g)}
+    {@const L = links(g)}
     <svg viewBox="0 0 {W} {H}" role="img" aria-label={g.titel ?? "Funktionsgraph"}>
       {#each schritte(g.x[0], g.x[1]) as x}<line x1={sx(x)} x2={sx(x)} y1={P.t} y2={H - P.b} class="gitter" /><text x={sx(x)} y={H - P.b + 18} class="tick" text-anchor="middle">{de(x)}</text>{/each}
-      {#each schritte(g.y[0], g.y[1]) as y}<line x1={P.l} x2={W - P.r} y1={sy(y)} y2={sy(y)} class="gitter" /><text x={P.l - 8} y={sy(y) + 4} class="tick" text-anchor="end">{de(y)}</text>{/each}
-      {#if g.y[0] <= 0 && g.y[1] >= 0}<line x1={P.l} x2={W - P.r} y1={sy(0)} y2={sy(0)} class="achse" />{/if}
+      {#each schritte(g.y[0], g.y[1]) as y}<line x1={L} x2={W - P.r} y1={sy(y)} y2={sy(y)} class="gitter" /><text x={L - 8} y={sy(y) + 4} class="tick" text-anchor="end">{de(y)}</text>{/each}
+      {#if g.y[0] <= 0 && g.y[1] >= 0}<line x1={L} x2={W - P.r} y1={sy(0)} y2={sy(0)} class="achse" />{/if}
       {#if g.x[0] <= 0 && g.x[1] >= 0}<line x1={sx(0)} x2={sx(0)} y1={P.t} y2={H - P.b} class="achse" />{/if}
       {#if g.flaeche}<path d={flaeche(g)} class="fl" />{/if}
       {#each g.kurven as k, i}<path d={pfad(g, k.f, k.von, k.bis)} fill="none" stroke={k.farbe ?? FARBEN[i % FARBEN.length]} stroke-width="2.6" stroke-dasharray={k.gestrichelt ? "7 6" : undefined} stroke-linecap="round" />{/each}
       {#each g.punkte ?? [] as p}
         <circle cx={sx(p.x)} cy={sy(p.y)} r="5" class="pkt" />
-        {#if p.name}<text x={sx(p.x) + 9} y={sy(p.y) - 9} class="pn">{p.name}</text>{/if}
+        {#if p.name}{@const rechts = sx(p.x) > W - 150}<text x={sx(p.x) + (rechts ? -9 : 9)} y={sy(p.y) - 9} class="pn" text-anchor={rechts ? "end" : "start"}>{p.name}</text>{/if}
       {/each}
       {#if g.xName}<text x={W - P.r} y={H - 6} class="an" text-anchor="end">{g.xName}</text>{/if}
-      {#if g.yName}<text x={P.l} y={P.t - 4} class="an">{g.yName}</text>{/if}
+      {#if g.yName}<text x={L} y={P.t - 4} class="an">{g.yName}</text>{/if}
     </svg>
     <div class="leg">{#each g.kurven as k, i}<span><i style="background:{k.farbe ?? FARBEN[i % FARBEN.length]}"></i>{@html mdZeile(k.name)}</span>{/each}</div>
 

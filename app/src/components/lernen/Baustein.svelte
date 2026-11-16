@@ -2,11 +2,15 @@
   // Ein Baustein einer Lektion: Text, Merksatz, Formel, Rechenbeispiel, typischer Fehler, Klausurtipp, Tabelle, Grafik, Begriffe
   import Icon from "../Icon.svelte";
   import Grafik from "./Grafik.svelte";
+  import Regler from "./Regler.svelte";
   import { md, mdZeile, tex } from "../../lib/lernen/md";
   import type { Baustein } from "../../lib/lernen/typen";
   // loesung: Grafik direkt nach einem Beispiel gehört zur Lösung und bleibt bis „Lösung zeigen“ verborgen
   let { b, farbe, loesung }: { b: Baustein; farbe: string; loesung?: Extract<Baustein, { t: "grafik" }> } = $props();
   let offen = $state(false);
+  // Beispiele mit Aufgabe: Lösung Schritt für Schritt aufdecken (sz = Anzahl gezeigter Schritte)
+  let sz = $state(0);
+  const alle = $derived(b.t === "beispiel" ? b.schritte.length : 0);
 </script>
 
 {#if b.t === "text"}
@@ -23,12 +27,21 @@
   <section class="box bsp">
     <span class="kopf"><Icon name="stift" size={15} />{@html mdZeile(b.titel)}</span>
     {#if b.aufgabe}<div class="md">{@html md(b.aufgabe)}</div>{/if}
-    {#if offen || !b.aufgabe}
+    {#if !b.aufgabe || (offen && sz >= alle)}
       <ol class="schritte">{#each b.schritte as s}<li class="md">{@html md(s)}</li>{/each}</ol>
       {#if b.ergebnis}<div class="erg md">{@html md(b.ergebnis)}</div>{/if}
       {#if loesung}<Grafik g={loesung.g} {farbe} />{#if loesung.unter}<div class="md unter">{@html md(loesung.unter)}</div>{/if}{/if}
+    {:else if offen}
+      <ol class="schritte">{#each b.schritte.slice(0, sz) as s}<li class="md neu">{@html md(s)}</li>{/each}</ol>
+      <div class="sk">
+        <button class="btn btn--s btn--primary org-primary" onclick={() => sz++}>Nächster Schritt ({sz + 1}/{alle})</button>
+        <button class="btn btn--s btn--quiet" onclick={() => (sz = alle)}>Alles zeigen</button>
+      </div>
     {:else}
-      <button class="btn btn--s" onclick={() => (offen = true)}>Erst selbst probieren – dann Lösung zeigen</button>
+      <div class="sk">
+        <button class="btn btn--s" onclick={() => { offen = true; sz = 1; }}>Schritt für Schritt lösen</button>
+        <button class="btn btn--s btn--quiet" onclick={() => { offen = true; sz = alle; }}>Ganze Lösung zeigen</button>
+      </div>
     {/if}
   </section>
 {:else if b.t === "fehler"}
@@ -45,6 +58,15 @@
   <div class="gw"><Grafik g={b.g} {farbe} />{#if b.unter}<div class="md unter">{@html md(b.unter)}</div>{/if}</div>
 {:else if b.t === "begriffe"}
   <dl class="begr">{#each b.liste as [w, e]}<div><dt>{@html mdZeile(w)}</dt><dd class="md">{@html md(e)}</dd></div>{/each}</dl>
+{:else if b.t === "regler"}
+  <Regler {b} {farbe} />
+{:else if b.t === "aufdecken"}
+  <section class="box auf">
+    <span class="kopf"><Icon name="sparkles" size={15} />Kurz überlegen</span>
+    <div class="md">{@html md(b.frage)}</div>
+    {#if offen}<div class="md antw">{@html md(b.antwort)}</div>
+    {:else}<button class="btn btn--s" onclick={() => (offen = true)}>Antwort aufdecken</button>{/if}
+  </section>
 {:else if b.t === "quelle"}
   <p class="quelle">{@html mdZeile(b.md)}</p>
 {/if}
@@ -71,6 +93,13 @@
   .erg { padding: 10px 12px; border-radius: 10px; background: rgba(76, 195, 138, .1); border: 1px solid rgba(76, 195, 138, .3); }
   .erg :global(b) { color: var(--ok); }
   .bsp .btn { justify-self: start; }
+  .sk { display: flex; flex-wrap: wrap; gap: 8px; }
+  .neu:last-child { animation: neu .45s cubic-bezier(.16, 1, .3, 1); }
+  @keyframes neu { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .auf { border-color: rgba(142, 124, 255, .35); background: rgba(142, 124, 255, .06); }
+  .auf .kopf { color: #CDB8FF; }
+  .auf .btn { justify-self: start; }
+  .antw { padding: 10px 12px; border-radius: 10px; background: rgba(142, 124, 255, .1); animation: neu .45s cubic-bezier(.16, 1, .3, 1); }
   .formel { display: grid; gap: 6px; padding: 14px 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line-2); }
   .formel .kopf { color: var(--steel); }
   .f { overflow-x: auto; font-size: 1.12rem; color: var(--text); }

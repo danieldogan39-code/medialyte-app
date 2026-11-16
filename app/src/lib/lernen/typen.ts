@@ -26,7 +26,17 @@ export type Baustein =
   | { t: "tabelle"; kopf: string[]; zeilen: (string | number)[][]; titel?: string }
   | { t: "grafik"; g: Grafik; unter?: Md }
   | { t: "begriffe"; liste: [string, Md][] }
-  | { t: "quelle"; md: Md };
+  | { t: "quelle"; md: Md }
+  // Interaktiv: mit Reglern Größen verändern und live sehen, was passiert (Werte, Graph, Balken).
+  // Ausdrücke wie bei Generatoren (ausdruck.ts); Regler-IDs und hilfs-Namen sind darin als Variablen nutzbar, im Graph zusätzlich x.
+  | { t: "regler"; titel: string; md?: Md; regler: Regler[]; hilfs?: [string, string][];
+      werte?: { name: string; f: string; stellen?: number; einheit?: string; hervor?: boolean }[];
+      graph?: { x: [number, number]; y: [number, number]; kurven: { f: string; name: string; farbe?: string; gestrichelt?: boolean; von?: number; bis?: number }[];
+        punkte?: { x: string; y: string; name?: string }[]; flaeche?: { f: string; g?: string; von: string; bis: string }; xName?: string; yName?: string };
+      balken?: { name: string; f: string; farbe?: string }[]; einheit?: string; unter?: Md }
+  // Erst selbst überlegen, dann aufdecken (Denkanstoß mitten in der Erklärung)
+  | { t: "aufdecken"; frage: Md; antwort: Md };
+export type Regler = { id: string; name: string; von: number; bis: number; schritt?: number; start: number; einheit?: string };
 
 type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number };
 export type Frage = Basis & (
