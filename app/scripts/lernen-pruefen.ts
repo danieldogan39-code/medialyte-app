@@ -62,6 +62,10 @@ function baustein(o: string, b: Baustein) {
     case "tabelle": b.zeilen.forEach((z, i) => { if (z.length !== b.kopf.length) F(o, `Tabelle Zeile ${i + 1}: ${z.length} statt ${b.kopf.length} Spalten`); z.forEach((c) => typeof c === "string" && formeln(o, c)); }); break;
     case "grafik": grafik(o, b.g); formeln(o, b.unter); break;
     case "begriffe": b.liste.forEach(([, e]) => formeln(o, e)); break;
+    case "aufdecken": formeln(o, b.frage); formeln(o, b.antwort); if (!b.frage.trim() || !b.antwort.trim()) F(o, "aufdecken ohne Frage/Antwort"); break;
+    case "regler": formeln(o, b.titel); formeln(o, b.md); formeln(o, b.unter); b.regler.forEach((r) => formeln(o, r.name)); (b.werte ?? []).forEach((w) => formeln(o, w.name)); break;
+    case "aktuell": formeln(o, b.skript); formeln(o, b.aktuell); formeln(o, b.quelle); if (!b.skript.trim() || !b.aktuell.trim() || !b.quelle.trim() || !b.stand.trim()) F(o, "aktuell: skript, aktuell, quelle und stand sind Pflicht"); break;
+    default: F(o, "unbekannter Baustein " + (b as any).t);
   }
 }
 

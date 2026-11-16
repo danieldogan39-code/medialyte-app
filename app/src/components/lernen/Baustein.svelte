@@ -67,6 +67,15 @@
     {#if offen}<div class="md antw">{@html md(b.antwort)}</div>
     {:else}<button class="btn btn--s" onclick={() => (offen = true)}>Antwort aufdecken</button>{/if}
   </section>
+{:else if b.t === "aktuell"}
+  <aside class="akt">
+    <span class="kopf"><Icon name="refresh" size={15} />{@html mdZeile(b.titel ?? "Aktueller Stand")}<small>Stand {b.stand}</small></span>
+    <div class="zeilen">
+      <span class="lab">Im Skript</span><div class="md">{@html md(b.skript)}</div>
+      <span class="lab neu">Heute</span><div class="md">{@html md(b.aktuell)}</div>
+    </div>
+    <p class="qu">{@html mdZeile(b.quelle)}</p>
+  </aside>
 {:else if b.t === "quelle"}
   <p class="quelle">{@html mdZeile(b.md)}</p>
 {/if}
@@ -133,4 +142,14 @@
   .begr dd { margin: 0; font-size: .92rem; }
   .quelle { margin: 0; font-size: .8rem; color: var(--steel); }
   @media (max-width: 560px) { .begr div { grid-template-columns: 1fr; gap: 2px; } }
+  .akt { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(111, 168, 240, .35); background: rgba(111, 168, 240, .07); font-size: .9rem; }
+  .akt .kopf { display: flex; align-items: center; gap: 6px; color: #9CC4F5; font-weight: 600; }
+  .akt .kopf small { margin-left: auto; color: var(--steel); font-weight: 500; font-size: .74rem; }
+  .akt .zeilen { display: grid; grid-template-columns: 74px 1fr; gap: 6px 10px; align-items: start; }
+  .akt .lab { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--steel); padding-top: 3px; }
+  .akt .lab.neu { color: #9CC4F5; }
+  .akt .md { color: var(--text-2); line-height: 1.5; }
+  .akt .md :global(p) { margin: 0; }
+  .akt .qu { margin: 0; font-size: .76rem; color: var(--steel); }
+  .akt .qu :global(a) { color: #9CC4F5; }
 </style>

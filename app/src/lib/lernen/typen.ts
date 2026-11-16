@@ -35,7 +35,10 @@ export type Baustein =
         punkte?: { x: string; y: string; name?: string }[]; flaeche?: { f: string; g?: string; von: string; bis: string }; xName?: string; yName?: string };
       balken?: { name: string; f: string; farbe?: string }[]; einheit?: string; unter?: Md }
   // Erst selbst überlegen, dann aufdecken (Denkanstoß mitten in der Erklärung)
-  | { t: "aufdecken"; frage: Md; antwort: Md };
+  | { t: "aufdecken"; frage: Md; antwort: Md }
+  // Aktueller Stand: wenn eine Angabe im Skript veraltet ist (Kennzahl, Grenzwert, Rang, Mitgliederzahl …).
+  // skript = was im Skript steht (gilt für die Klausur, solange der Dozent nichts anderes sagt), aktuell = heutiger Stand, quelle = Beleg mit Datum
+  | { t: "aktuell"; titel?: string; skript: Md; aktuell: Md; quelle: Md; stand: string };
 export type Regler = { id: string; name: string; von: number; bis: number; schritt?: number; start: number; einheit?: string };
 
 type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number };
