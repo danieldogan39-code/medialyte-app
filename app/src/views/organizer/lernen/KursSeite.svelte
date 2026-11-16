@@ -64,7 +64,7 @@
             <li class:fertig={g && w >= 0.75} class:halb={g && w < 0.75}>
               <a href={`#/o/lernen/${id}/${l.id}`}>
                 <span class="knoten">{#if g && w >= 0.75}<Icon name="check" size={14} />{:else if g}<i style="--w:{w}"></i>{/if}</span>
-                <span class="lt"><b>{l.titel}</b><small>{l.dauer_min} Min. · {l.fragen.length} Fragen{l.generatoren?.length ? " · Rechentraining" : ""}{p?.geplant && !g ? ` · geplant ${tagKurz(p.geplant)}, ${uhr(p.geplant)}` : ""}</small></span>
+                <span class="lt"><b>{#if l.art === "lerncheck"}<em class="lc">Lerncheck</em>{/if}{l.titel}</b><small>{l.dauer_min} Min. · {l.fragen.length} Fragen{l.generatoren?.length ? " · Rechentraining" : ""}{p?.geplant && !g ? ` · geplant ${tagKurz(p.geplant)}, ${uhr(p.geplant)}` : ""}</small></span>
                 <span class="lw num">{g ? Math.round(w * 100) + " %" : "neu"}</span>
               </a>
             </li>
@@ -116,4 +116,6 @@
   .lw { color: var(--text-2); font-size: .84rem; }
   .fertig .lw { color: var(--f); }
   @media (max-width: 560px) { .kh { flex-direction: column; align-items: flex-start; } h1 { font-size: 1.35rem; } }
+  .lc { display: inline-block; margin-right: 8px; padding: 2px 8px; border-radius: 999px; font-style: normal; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; vertical-align: 2px;
+    color: #9BE7C4; background: rgba(76, 195, 138, .14); border: 1px solid rgba(76, 195, 138, .35); }
 </style>

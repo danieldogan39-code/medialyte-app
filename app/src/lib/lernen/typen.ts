@@ -73,6 +73,8 @@ export type Lektion = {
   inhalt: Baustein[];
   fragen: Frage[];
   generatoren?: Generator[];
+  /** „lerncheck“: Selbstkontrolle am Kapitelende mit den Kontrollfragen aus dem Skript */
+  art?: "lerncheck";
 };
 export type Kapitel = { id: string; titel: string; lektionen: Lektion[] };
 export type Kurs = {
