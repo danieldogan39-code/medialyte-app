@@ -31,10 +31,12 @@
   const heuteMin = $derived(heuteOffen.reduce((n, x) => n + x.a.dauer_min, 0));
 
   const ungeplant = $derived(KURSE.reduce((n, k) => n + lernen.ungeplant(k.id), 0));
+  const veraltet = $derived(KURSE.reduce((n, k) => n + lernen.veraltet(k.id).length, 0));
+  const hatPlan = $derived(org.aufgaben.some((a) => a.lektion && !a.lektion.endsWith("/pruefung")));
   let plant = $state(false);
   async function planLegen() {
     if (plant) return; plant = true;
-    try { const n = await lernen.planAnlegen(KURSE.map((k) => k.id)); daten.melden(n ? `${n} Lerneinheiten in deinen Kalender geplant` : "Alles ist schon eingeplant"); }
+    try { const r = await lernen.planAnlegen(KURSE.map((k) => k.id)); daten.melden(r.neu ? `${r.neu} ${r.neu === 1 ? "Lerneinheit" : "Lerneinheiten"} in deinen Kalender geplant` : r.angepasst ? "Lernplan an die aktualisierten Lektionen angepasst" : "Alles ist schon eingeplant"); }
     finally { plant = false; }
   }
   const laeufeVon = (id: string) => lernen.laeufe.filter((l) => l.kurs === id);
@@ -97,10 +99,16 @@
   </section>
 </div>
 
-{#if ungeplant}
+{#if ungeplant || veraltet}
   <div class="planen card">
-    <span><b>{ungeplant} {ungeplant === 1 ? "Lektion ist" : "Lektionen sind"} noch nicht in deinem Kalender</b><small>Ich verteile sie bis 3 Tage vor jeder Klausur in deine Lernzeiten – dazu je eine kurze Prüfungssimulation.</small></span>
-    <button class="btn btn--primary org-primary" disabled={plant} onclick={planLegen}><Icon name="calendar" size={15} />{plant ? "Plant …" : "Lernplan einplanen"}</button>
+    {#if ungeplant && hatPlan}
+      <span><b>{ungeplant} neue {ungeplant === 1 ? "Lektion ist" : "Lektionen sind"} noch nicht in deinem Kalender</b><small>Die Lerninhalte wurden aktualisiert. Ich hänge die neuen Lektionen hinter ihr Kapitel und verteile deinen Lernplan neu – alles bleibt vor der jeweiligen Klausur.</small></span>
+    {:else if ungeplant}
+      <span><b>{ungeplant} {ungeplant === 1 ? "Lektion ist" : "Lektionen sind"} noch nicht in deinem Kalender</b><small>Ich verteile sie bis 3 Tage vor jeder Klausur in deine Lernzeiten – dazu je eine kurze Prüfungssimulation.</small></span>
+    {:else}
+      <span><b>{veraltet} {veraltet === 1 ? "Lektion hat" : "Lektionen haben"} eine neue Lernzeit</b><small>Die Lerninhalte wurden aktualisiert. Ich übernehme die neuen Zeiten und verteile deinen Lernplan neu.</small></span>
+    {/if}
+    <button class="btn btn--primary org-primary" disabled={plant} onclick={planLegen}><Icon name="calendar" size={15} />{plant ? "Plant …" : hatPlan ? "Lernplan anpassen" : "Lernplan einplanen"}</button>
   </div>
 {/if}
 

@@ -4,6 +4,8 @@
 // höchstem Niveau, leichte in den mit niedrigem. Sonst gilt die Arbeitszeit aus den Einstellungen.
 // Termine, Fahrten zur Uni, Gewohnheiten, feste Routine-Punkte und fixierte Aufgaben bleiben frei (mit Puffer).
 // Eine Aufgabe mit „ab“ wird nicht vor diesem Tag geplant.
+// Ein Lerncheck (Abschluss eines Kapitels) beginnt nie vor dem Ende der Lektionen, die im Kurs vor ihm dran sind –
+// sonst rutscht er als kurze Aufgabe in eine frühe Lücke und läge vor seinem Kapitel.
 import { MIN, TAG, beiMinute, minuten, plusTage, tagBeginn, tagKey, wochentag, keyZuDatum } from "./zeit";
 import type { Aufgabe, Einstellungen, Gewohnheit, Routine } from "./typen";
 
@@ -77,7 +79,13 @@ export function planen(opt: {
   const fristMs = (a: Aufgabe) => (a.frist ? keyZuDatum(a.frist).getTime() : Infinity);
   // Aufgaben mit engem Zeitfenster (ab … Frist höchstens 2 Tage, z. B. Schreibplan-Etappen) zuerst – sonst füllen flexible Lernaufgaben den Tag
   const eng = (a: Aufgabe) => (a.ab && a.frist && keyZuDatum(a.frist).getTime() - keyZuDatum(a.ab).getTime() <= 2 * TAG ? 0 : 1);
-  zuPlanen.sort((a, b) => eng(a) - eng(b) || fristMs(a) - fristMs(b) || a.prio - b.prio || a.position - b.position || a.erstellt.localeCompare(b.erstellt));
+  const reihe = (a: Aufgabe, b: Aufgabe) => eng(a) - eng(b) || fristMs(a) - fristMs(b) || a.prio - b.prio || a.position - b.position || a.erstellt.localeCompare(b.erstellt);
+  zuPlanen.sort(reihe);
+  // Vorgänger im Kurs je Lerncheck (Prüfungssimulationen zählen nicht mit)
+  const kursVon = (a: Aufgabe) => (a.lektion && !a.lektion.endsWith("/pruefung") ? a.lektion.split("/")[0] : null);
+  const vorgaenger = new Map<string, Aufgabe[]>(), wirdGeplant = new Set(zuPlanen.map((a) => a.id)), endeNeu = new Map<string, number>();
+  { const davor = new Map<string, Aufgabe[]>();
+    for (const a of aufgaben.filter((x) => !x.erledigt && kursVon(x)).sort(reihe)) { const k = kursVon(a)!, v = davor.get(k) ?? []; if (v.length && a.lektion!.includes("/lerncheck")) vorgaenger.set(a.id, [...v]); v.push(a); davor.set(k, v); } }
 
   const ws = minuten(einst.tag_start), we = minuten(einst.tag_ende);
   const mitBloecken = routine.some((r) => r.art === "block");
@@ -90,8 +98,8 @@ export function planen(opt: {
     return [{ von: beiMinute(tag, ws).getTime(), bis: beiMinute(tag, we).getTime(), niveau: 2 }];
   };
   /** erste freie Zeit in einem Fenster */
-  const luecke = (f: Fenster, dauer: number): number | null => {
-    const von = Math.max(f.von, start), bis = f.bis;
+  const luecke = (f: Fenster, dauer: number, nichtVor = 0): number | null => {
+    const von = Math.max(f.von, start, nichtVor), bis = f.bis;
     if (bis - von < dauer) return null;
     const drin = busy.filter(([s, e, p]) => e + p > von && s - p < bis).map(([s, e, p]) => [s - p, e + p] as Iv).sort((x, y) => x[0] - y[0]);
     let c = hoch(von);
@@ -102,7 +110,7 @@ export function planen(opt: {
   const neu = new Map<string, string | null>(), zuSpaet = new Set<string>(), ohnePlatz = new Set<string>();
   const tagIdx = (t: number) => Math.round((tagBeginn(t).getTime() - tagBeginn(start).getTime()) / TAG);
   /** Suche in einem Tagesbereich [von, bis] (Indizes ab heute): Fokusblöcke oder (extra) die ganze freie Arbeitszeit */
-  const suche = (a: Aufgabe, von: number, bis: number, extra: boolean, ueberlast = false): number | null => {
+  const suche = (a: Aufgabe, von: number, bis: number, extra: boolean, ueberlast = false, nichtVor = 0): number | null => {
     const dauer = a.dauer_min * MIN, soll = opt.niveauVon?.(a) ?? (a.prio === 1 ? 1 : a.prio === 3 ? 3 : 2);
     for (let i = Math.max(0, von); i <= Math.min(tage, bis); i++) {
       const tag = plusTage(tagBeginn(start), i), w = wochentag(tag);
@@ -112,7 +120,7 @@ export function planen(opt: {
       if (extra && !ueberlast && mitBloecken && fensterVon(tag).length < 3) continue;
       const fenster = extra ? [{ von: beiMinute(tag, ws).getTime(), bis: beiMinute(tag, we).getTime(), niveau: 2 }]
         : fensterVon(tag).sort((x, y) => Math.abs(x.niveau - soll) - Math.abs(y.niveau - soll) || x.von - y.von);
-      for (const f of fenster) { const c = luecke(f, dauer); if (c != null) return c; }
+      for (const f of fenster) { const c = luecke(f, dauer, nichtVor); if (c != null) return c; }
     }
     return null;
   };
@@ -124,13 +132,22 @@ export function planen(opt: {
     const frist = Math.min(a.frist ? tagIdx(keyZuDatum(a.frist).getTime()) : tage, grenze);
     // 1. Fokusblöcke ab „ab“ bis zur Frist, 2. sonstige freie Zeit, 3. notfalls früher als „ab“, 4. nach der Frist (aber nie nach der harten Grenze),
     // 5. bei harter Grenze notfalls über das Tageslimit hinaus – lieber ein voller Tag als eine Lektion nach der Klausur
-    let gefunden = suche(a, ab, frist, false);
-    if (gefunden == null && mitBloecken) gefunden = suche(a, ab, frist, true);
-    if (gefunden == null && ab > 0) gefunden = suche(a, 0, ab - 1, false) ?? (mitBloecken ? suche(a, 0, ab - 1, true) : null);
-    if (gefunden == null && frist < grenze) gefunden = suche(a, frist + 1, grenze, false) ?? (mitBloecken ? suche(a, frist + 1, grenze, true) : null);
-    if (gefunden == null && harte != null) gefunden = suche(a, 0, grenze, true, true);
+    const platz = (nichtVor: number): number | null => {
+      const t0 = nichtVor ? Math.max(0, tagIdx(nichtVor)) : 0, von = Math.max(ab, t0);
+      let g = suche(a, von, frist, false, false, nichtVor);
+      if (g == null && mitBloecken) g = suche(a, von, frist, true, false, nichtVor);
+      if (g == null && ab > t0) g = suche(a, t0, ab - 1, false, false, nichtVor) ?? (mitBloecken ? suche(a, t0, ab - 1, true, false, nichtVor) : null);
+      if (g == null && frist < grenze) g = suche(a, Math.max(frist + 1, t0), grenze, false, false, nichtVor) ?? (mitBloecken ? suche(a, Math.max(frist + 1, t0), grenze, true, false, nichtVor) : null);
+      if (g == null && harte != null) g = suche(a, t0, grenze, true, true, nichtVor);
+      return g;
+    };
+    // Lerncheck: nicht vor dem Ende der Lektionen davor; ist danach bis zur Klausur nichts mehr frei, dann so spät wie möglich davor
+    const vEnde = Math.max(0, ...(vorgaenger.get(a.id) ?? []).map((v) => endeNeu.get(v.id) ?? (!wirdGeplant.has(v.id) && v.geplant ? Date.parse(v.geplant) + v.dauer_min * MIN : 0)));
+    let gefunden = vEnde > start ? platz(vEnde) : null;
+    if (gefunden == null && vEnde > start) for (let i = Math.min(grenze, tagIdx(vEnde)); i >= 0 && gefunden == null; i--) gefunden = suche(a, i, i, false) ?? suche(a, i, i, true, true);
+    if (gefunden == null) gefunden = platz(0);
     if (gefunden == null) { ohnePlatz.add(a.id); if (a.geplant && Date.parse(a.geplant) < jetzt) neu.set(a.id, null); continue; }
-    busy.push([gefunden, gefunden + dauer, 0]); addLast(gefunden, a.dauer_min);
+    busy.push([gefunden, gefunden + dauer, 0]); addLast(gefunden, a.dauer_min); endeNeu.set(a.id, gefunden + dauer);
     // Lernaufgaben: deren Frist ist nur ein Richtwert – zu spät ist nur, was nach der Klausur läge
     if (harte != null ? gefunden + dauer > harte : a.frist && gefunden > keyZuDatum(a.frist).getTime() + TAG - 1) zuSpaet.add(a.id);
     const iso = new Date(gefunden).toISOString();

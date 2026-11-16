@@ -130,22 +130,43 @@ class Lernen {
     return null;
   }
 
+  /** Offene Lektions-Aufgaben, deren Dauer nicht mehr zur (inzwischen aktualisierten) Lektion passt */
+  veraltet(id: KursId) {
+    const k = this.kurse[id]; if (!k) return [];
+    const m = new Map<string, Lektion>(k.kapitel.flatMap((c) => c.lektionen).map((l) => [`${id}/${l.id}`, l]));
+    return org.aufgaben.filter((a) => !a.erledigt && a.lektion && m.has(a.lektion) && lektionsDauer(m.get(a.lektion)!) !== a.dauer_min);
+  }
+
   // ---------- Lernplan im Organizer: je Lektion eine Aufgabe (mit Link), Fristen gestaffelt bis 3 Tage vor der Klausur,
   // dazu zwei Prüfungssimulationen. Danach plant der Organizer alles in freie Lernzeit.
+  // Gibt es schon einen Plan und die Lerninhalte wurden aktualisiert, wird er nachgezogen: neue Lektionen (z. B. Lernchecks)
+  // kommen direkt hinter die Lektion davor im selben Kapitel, geänderte Lernzeiten werden übernommen, dann wird alles neu verteilt.
   async planAnlegen(ids: KursId[]) {
-    const neu = new Set<string>(); let n = 0;
+    const neu = new Set<string>(); let n = 0, angepasst = 0, nachtrag = false;
     for (const id of ids) {
       const k = await this.kurs(id); if (!k) continue;
       const kopf = KURSE.find((x) => x.id === id)!, fach = this.fach(kopf);
-      const vorhanden = new Set(org.aufgaben.filter((a) => a.lektion?.startsWith(id + "/")).map((a) => a.lektion!));
+      for (const a of this.veraltet(id)) {
+        const l = k.kapitel.flatMap((c) => c.lektionen).find((x) => `${id}/${x.id}` === a.lektion); if (!l) continue;
+        if (await org.aufgabeSpeichern({ ...a, dauer_min: lektionsDauer(l) }, false)) { angepasst++; nachtrag = true; }
+      }
+      const meine = org.aufgaben.filter((a) => a.lektion?.startsWith(id + "/"));
+      const vorhanden = new Set(meine.map((a) => a.lektion!)), hatPlan = meine.some((a) => !a.lektion!.endsWith("/pruefung"));
       const lek = k.kapitel.flatMap((c) => c.lektionen).filter((l) => !vorhanden.has(`${id}/${l.id}`) && !this.gelesen(id, l.id));
       const heute = tagBeginn(org.jetzt), klausur = tagBeginn(new Date(this.klausur(kopf)));
       const ende = plusTage(klausur, -3), spanne = Math.max(1, Math.round((ende.getTime() - heute.getTime()) / 86_400_000));
       for (let i = 0; i < lek.length; i++) {
-        const l = lek[i], frist = tagKey(plusTage(heute, Math.max(0, Math.ceil(((i + 1) / lek.length) * spanne) - 1)));
+        const l = lek[i]; let frist = tagKey(plusTage(heute, Math.max(0, Math.ceil(((i + 1) / lek.length) * spanne) - 1))), position = Date.now() / 1e6 + n++;
+        if (hatPlan) {
+          const kap = k.kapitel.find((c) => c.lektionen.includes(l))!;
+          const davor = kap.lektionen.slice(0, kap.lektionen.indexOf(l)).map((x) => meine.find((a) => !a.erledigt && a.lektion === `${id}/${x.id}`)).filter((a) => !!a).pop();
+          if (davor) { frist = davor.frist ?? frist; position = davor.position + 0.5; }
+          else frist = tagKey(plusTage(heute, Math.min(2, spanne)));   // Kapitel schon durch: bald nachholen
+          nachtrag = true;
+        }
         const dauer = lektionsDauer(l);
-        const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: ${l.titel}`.slice(0, 300), fach_id: fach?.id ?? null, dauer_min: dauer, frist, prio: 2, lektion: `${id}/${l.id}`, position: Date.now() / 1e6 + n++ }, false);
-        if (r) neu.add(r.id);
+        const r = await org.aufgabeSpeichern({ titel: `${kopf.titel}: ${l.titel}`.slice(0, 300), fach_id: fach?.id ?? null, dauer_min: dauer, frist, prio: 2, lektion: `${id}/${l.id}`, position }, false);
+        if (r) { neu.add(r.id); meine.push(r); }
       }
       // eine Prüfungssimulation in den letzten Tagen vor der Klausur (wichtig: vor den letzten Lektionen eingeplant)
       if (!vorhanden.has(`${id}/pruefung`)) {
@@ -156,8 +177,9 @@ class Lernen {
         }
       }
     }
-    if (neu.size) await org.planen(neu, true);
-    return neu.size;
+    if (nachtrag) await org.planen(undefined, true);   // der bestehende Plan hat sich geändert: alles neu verteilen, damit die Reihenfolge stimmt
+    else if (neu.size) await org.planen(neu, true);
+    return { neu: neu.size, angepasst };
   }
 
   /** Original-Skript öffnen, auf Wunsch an einer Folie */
