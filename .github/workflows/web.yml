@@ -39,7 +39,11 @@ jobs:
           npm run build
           cp ../deploy/web/.htaccess dist/.htaccess
           for d in tischbuch-ansicht tischbuch-beispiel; do cp ../deploy/web/tischbuch.htaccess "dist/$d/.htaccess"; done
+      # Schlägt das Hochladen fehl (z. B. geändertes SFTP-Passwort), soll die Android-App ihre neue Oberfläche trotzdem bekommen.
+      # Der Lauf wird am Ende dennoch als fehlgeschlagen markiert, damit der Fehler auffällt.
       - name: Hochladen (nur wenn der IONOS-Zugang hinterlegt ist)
+        id: hochladen
+        continue-on-error: true
         env:
           HOST: ${{ secrets.IONOS_SFTP_HOST }}
           USER: ${{ secrets.IONOS_SFTP_USER }}
@@ -52,3 +56,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash tools/update/oberflaeche_veroeffentlichen.sh
+      - name: Hochladen fehlgeschlagen?
+        if: steps.hochladen.outcome == 'failure'
+        run: |
+          echo "::error::Die Web-App wurde nicht hochgeladen (IONOS-SFTP: Anmeldung oder Verbindung fehlgeschlagen). Die Android-Oberfläche wurde trotzdem bereitgestellt."
+          exit 1
