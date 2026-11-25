@@ -16,7 +16,14 @@ export type Grafik =
   | { art: "baum"; titel?: string; wurzel: string; aeste: { t: string; blaetter?: string[] }[] }
   | { art: "zyklus"; titel?: string; phasen: { t: string; d?: string }[]; kurve?: number[] };
 
-export type Baustein =
+/** Markierung aus dem Skript: wie der Dozent einen Inhalt für die Klausur gekennzeichnet hat.
+ *  stern = besonders klausurrelevant (IM: grüner Stern oben rechts), gelb/orange/grau = farbige Folien (IM: Übung, Rechnen, Aktuelles),
+ *  exkurs = als Exkurs überschrieben, uebersicht = laut Skript nur Überblick. Die Bedeutung je Kurs steht in Kurs.marken. */
+export type Marke = "stern" | "gelb" | "orange" | "grau" | "exkurs" | "uebersicht";
+export type MarkenInfo = { name: string; kurz: string; text: Md; ton: "gruen" | "gelb" | "orange" | "grau" | "blass" };
+/** marke/folien trägt marken/anwenden.py beim Bauen ein (nicht von Hand pflegen) */
+export type Baustein = BausteinArt & { marke?: Marke[]; folien?: number[] };
+type BausteinArt =
   | { t: "text"; md: Md }
   | { t: "merke"; md: Md; titel?: string }
   | { t: "formel"; tex: string; name?: string; legende?: [string, string][] }
@@ -41,7 +48,7 @@ export type Baustein =
   | { t: "aktuell"; titel?: string; skript: Md; aktuell: Md; quelle: Md; stand: string };
 export type Regler = { id: string; name: string; von: number; bis: number; schritt?: number; start: number; einheit?: string };
 
-type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number };
+type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number; marke?: Marke[] };
 export type Frage = Basis & (
   | { typ: "mc"; frage: Md; optionen: Md[]; richtig: number[] }          // eine oder mehrere richtige
   | { typ: "wahr"; frage: Md; wahr: boolean }
@@ -78,6 +85,8 @@ export type Lektion = {
   generatoren?: Generator[];
   /** „lerncheck“: Selbstkontrolle am Kapitelende mit den Kontrollfragen aus dem Skript */
   art?: "lerncheck";
+  /** markierte Folien im Seitenbereich der Lektion, z. B. { stern: [19, 21, 22], gelb: [25] } */
+  marken?: Partial<Record<Marke, number[]>>;
 };
 export type Kapitel = { id: string; titel: string; lektionen: Lektion[] };
 export type Kurs = {
@@ -89,6 +98,9 @@ export type Kurs = {
   format: Md;            // Aufbau der Klausur
   quelle: string;        // Grundlage der Inhalte
   stand: string;         // Zeitpunkt der Fassung (neue Fassung → App lädt neu)
+  /** Legende der Skript-Markierungen (fehlt, wenn das Skript nichts markiert) und ein Satz dazu, was im Skript zur Klausurrelevanz steht */
+  marken?: Partial<Record<Marke, MarkenInfo>>;
+  markenText?: Md;
   skripte?: { titel: string; datei: string }[];   // Originale im eigenen Speicher (organizer/<user>/skripte/<datei>); das erste ist das Hauptskript
   kapitel: Kapitel[];
 };

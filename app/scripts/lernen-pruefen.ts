@@ -117,6 +117,12 @@ for (const id of kurse) {
   if (!k.stand) F(id, "stand fehlt");
   if (k.id !== id) F(id, `id ist „${k.id}“`);
   formeln(id + "/format", k.format);
+  // Skript-Markierungen: jede verwendete Markierung braucht einen Eintrag in der Legende des Kurses
+  const MARKEN = ["stern", "gelb", "orange", "grau", "exkurs", "uebersicht"];
+  const marken = (o: string, m: unknown) => { if (m === undefined) return; if (!Array.isArray(m) || !m.length) return F(o, "marke muss eine nicht leere Liste sein");
+    for (const x of m) { if (!MARKEN.includes(x)) F(o, `unbekannte Markierung ${x}`); else if (!k.marken?.[x as keyof typeof k.marken]) F(o, `Markierung ${x} fehlt in der Legende des Kurses`); } };
+  for (const [m, i] of Object.entries(k.marken ?? {})) { if (!MARKEN.includes(m)) F(id + "/marken", `unbekannte Markierung ${m}`); if (!i.name?.trim() || !i.kurz?.trim() || !i.text?.trim() || !i.ton) F(id + "/marken", `${m}: name, kurz, text und ton sind Pflicht`); }
+  if (k.markenText !== undefined) formeln(id + "/markenText", k.markenText);
   const lids = new Set<string>(); let nf = 0, nl = 0, ng = 0, min = 0;
   const typen: Record<string, number> = {};
   for (const c of k.kapitel) {
@@ -127,14 +133,15 @@ for (const id of kurse) {
       if (lids.has(l.id)) F(o, "Lektions-ID doppelt"); lids.add(l.id);
       formeln(o + "/ziel", l.ziel);
       if (!l.inhalt.length) F(o, "kein Inhalt");
-      l.inhalt.forEach((b, i) => baustein(`${o}/inhalt[${i}]`, b));
+      l.inhalt.forEach((b, i) => { baustein(`${o}/inhalt[${i}]`, b); marken(`${o}/inhalt[${i}]`, b.marke); });
+      for (const m of Object.keys(l.marken ?? {})) marken(o + "/marken", [m]);
       const fids = new Set<string>();
       if (l.fragen.length < 4) W(o, `nur ${l.fragen.length} Fragen`);
       for (const f of l.fragen) {
         nf++; typen[f.typ] = (typen[f.typ] ?? 0) + 1;
         if (!/^[a-z0-9-]{1,40}$/.test(f.id)) F(`${o}/${f.id}`, "Fragen-ID ungültig");
         if (fids.has(f.id)) F(`${o}/${f.id}`, "Fragen-ID doppelt"); fids.add(f.id);
-        frage(`${o}/${f.id}`, f);
+        frage(`${o}/${f.id}`, f); marken(`${o}/${f.id}`, f.marke);
       }
       for (const g of l.generatoren ?? []) {
         ng++;

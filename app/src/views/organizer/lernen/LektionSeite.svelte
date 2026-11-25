@@ -2,6 +2,8 @@
   // Lektion: Lernziel, Erklärung mit Grafiken und Beispielen, danach Abfrage und Rechentraining
   import Icon from "../../../components/Icon.svelte";
   import Baustein from "../../../components/lernen/Baustein.svelte";
+  import Marke from "../../../components/lernen/Marke.svelte";
+  import { MARKEN } from "../../../lib/lernen/marken";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { md, mdZeile } from "../../../lib/lernen/md";
   import { router } from "../../../lib/router.svelte";
@@ -9,6 +11,8 @@
 
   let { kurs: kid, id }: { kurs: KursId; id: string } = $props();
   const kopf = KURSE.find((k) => k.id === kid)!;
+  // Mathe, BWL und Rechnungswesen zählen Folien, das IM-Skript Seiten
+  const wort = kid === "im" ? "S." : "Folie";
   const kurs = $derived(lernen.kurse[kid] ?? null);
   const x = $derived(kurs ? lernen.finde(kurs, id) : null);
   const gelesen = $derived(lernen.gelesen(kid, id));
@@ -30,6 +34,12 @@
       <small>Lektion {x.nr} von {x.gesamt} · {l.dauer_min} Min.{gelesen ? ` · ${Math.round(w * 100)} % sicher` : ""}</small>
       <h1>{l.titel}</h1>
       <div class="ziel"><b>Danach kannst du</b><div class="md">{@html md(l.ziel)}</div></div>
+      {#if l.marken && kurs.marken}
+        <a class="mks" href={`#/o/lernen/${kid}`} title="Was die Markierungen bedeuten, steht auf der Kursseite">
+          <b>Im Skript markiert</b>
+          {#each MARKEN.filter((m) => l.marken![m]?.length && kurs.marken![m]) as m (m)}<Marke marke={[m]} legende={kurs.marken} folien={l.marken[m]} {wort} />{/each}
+        </a>
+      {/if}
     </header>
 
     <article class="inhalt">
@@ -37,6 +47,7 @@
         {@const v = l.inhalt[i - 1]}
         {#if !(b.t === "grafik" && v?.t === "beispiel" && v.aufgabe)}
           {@const n = l.inhalt[i + 1]}
+          {#if b.marke && kurs.marken}<div class="mkz"><Marke marke={b.marke} legende={kurs.marken} folien={b.folien} {wort} /></div>{/if}
           <Baustein {b} farbe={kopf.farbe} loesung={b.t === "beispiel" && b.aufgabe && n?.t === "grafik" ? n : undefined} />
         {/if}
       {/each}
@@ -69,6 +80,10 @@
   header small { color: var(--f); font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
   h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; }
   .ziel { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--f) 8%, var(--panel)); border: 1px solid color-mix(in srgb, var(--f) 30%, transparent); }
+  .mks { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; padding: 9px 14px; border-radius: 14px; background: rgba(203, 215, 235, .04); border: 1px solid var(--line); }
+  .mks b { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--steel); }
+  /* Markierung sitzt rechts über dem Baustein – wie der Stern oben rechts auf der Folie */
+  .mkz { display: flex; justify-content: flex-end; margin: 14px 0 -8px; }
   .ziel b { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--f); }
   .ziel .md { color: var(--text-2); line-height: 1.55; }
   .ziel .md :global(ul) { margin: 0; padding-left: 1.2em; }

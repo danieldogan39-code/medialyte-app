@@ -3,11 +3,12 @@
   // Falsche Antworten kommen in derselben Runde nochmal (ohne zu zählen) und danach öfter, bis sie sitzen.
   import Icon from "../../../components/Icon.svelte";
   import FrageKarte from "../../../components/lernen/FrageKarte.svelte";
+  import Marke from "../../../components/lernen/Marke.svelte";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { erzeuge } from "../../../lib/lernen/generator";
   import { router } from "../../../lib/router.svelte";
   import { mdZeile } from "../../../lib/lernen/md";
-  import { KURSE, type Frage, type Kurs, type KursId, type Lektion } from "../../../lib/lernen/typen";
+  import { KURSE, type Frage, type Kurs, type KursId, type Lektion, type Marke as MarkeT } from "../../../lib/lernen/typen";
 
   let { art, kurs: kid, lektion: lid, gen }: { art: string; kurs: KursId | null; lektion: string | null; gen: string | null } = $props();
   type E = { kurs: Kurs; lektion: Lektion; frage: Frage; schluessel: string; seed: number; wieder?: boolean };
@@ -18,7 +19,9 @@
   const start = Date.now();
 
   const kurseDa = $derived(KURSE.every((k) => lernen.kurse[k.id]));
-  const titel = $derived(art === "faellig" ? "Fällige Wiederholungen" : art === "neu" ? "Neue Fragen" : art === "schwach" ? "Schwachstellen" : art === "training" ? "Rechentraining" : art === "lektion" ? "Abfrage zur Lektion" : "Abfrage");
+  // art „marke“: nur Fragen zu einer Skript-Markierung, z. B. alle Sternfolien (lektion = Name der Markierung)
+  const markeInfo = $derived(art === "marke" && kid && lid ? lernen.kurse[kid]?.marken?.[lid as MarkeT] ?? null : null);
+  const titel = $derived(art === "marke" ? (markeInfo ? `Nur: ${markeInfo.name}` : "Abfrage") : art === "faellig" ? "Fällige Wiederholungen" : art === "neu" ? "Neue Fragen" : art === "schwach" ? "Schwachstellen" : art === "training" ? "Rechentraining" : art === "lektion" ? "Abfrage zur Lektion" : "Abfrage");
   const kopf = $derived(kid ? KURSE.find((k) => k.id === kid)! : null);
 
   function mische<T>(a: T[]) { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
@@ -34,6 +37,10 @@
     } else if (art === "training" && kid && lid && gen) {
       const x = lernen.finde(lernen.kurse[kid]!, lid), g = x?.lektion.generatoren?.find((y) => y.id === gen);
       if (x && g) l = Array.from({ length: 10 }, () => { const seed = Math.floor(Math.random() * 2 ** 31); const f = erzeuge(g, seed); return { kurs: lernen.kurse[kid]!, lektion: x.lektion, frage: { ...f, id: `${g.id}-${seed}` }, schluessel: `gen:${kid}/${lid}/${g.id}`, seed }; });
+    } else if (art === "marke" && kid && lid) {
+      // unsichere und neue Fragen zuerst, sichere zuletzt – 40 je Runde
+      const rang = (e: E) => { const s = lernen.stand[e.schluessel]; return !s ? 1 : s.box <= 1 || s.falsch > s.richtig ? 0 : 2 + s.box; };
+      l = mische(alle(lernen.kurse[kid]!).filter((e) => e.frage.marke?.includes(lid as MarkeT))).sort((a, b) => rang(a) - rang(b)).slice(0, 40);
     } else if (art === "schwach") {
       l = mische(kurse.flatMap((k) => alle(k).filter((e) => { const s = lernen.stand[e.schluessel]; return s && (s.box <= 1 || s.falsch > s.richtig); }))).slice(0, 30);
     } else if (art === "neu") {
@@ -80,7 +87,7 @@
     </div>
   {:else if jetzt}
     <div class="kopf">
-      <small>{titel}{jetzt.wieder ? " · nochmal" : ""}</small>
+      <small>{titel}{jetzt.wieder ? " · nochmal" : ""} <Marke marke={jetzt.frage.marke} legende={jetzt.kurs.marken} /></small>
       <a href={`#/o/lernen/${jetzt.kurs.id}/${jetzt.lektion.id}`}>{jetzt.kurs.titel} · {jetzt.lektion.titel}</a>
     </div>
     <div class="karte card">

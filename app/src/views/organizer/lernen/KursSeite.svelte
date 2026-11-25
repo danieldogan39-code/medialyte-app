@@ -2,6 +2,8 @@
   // Kurs: Klausuraufbau, Lernpfad (Kapitel → Lektionen mit Stand und Plantermin), Abfragen, Prüfungsläufe
   import Icon from "../../../components/Icon.svelte";
   import Ring from "../../../components/organizer/Ring.svelte";
+  import Marke from "../../../components/lernen/Marke.svelte";
+  import { MARKEN, markenZahlen } from "../../../lib/lernen/marken";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { md } from "../../../lib/lernen/md";
   import { KURSE, type KursId } from "../../../lib/lernen/typen";
@@ -17,6 +19,7 @@
   const n = $derived(tageBis(lernen.klausur(kopf)));
   const schwach = $derived(kurs ? kurs.kapitel.flatMap((c) => c.lektionen.flatMap((l) => l.fragen.filter((f) => { const s = lernen.stand[lernen.key(id, l.id, f.id)]; return s && (s.box <= 1 || s.falsch > s.richtig); }))).length : 0);
   let format = $state(false);
+  const mz = $derived(kurs ? markenZahlen(kurs) : null);
 </script>
 
 <a class="zurueck" href="#/o/lernen"><Icon name="left" size={15} />Lernen</a>
@@ -42,6 +45,26 @@
 
 {#if kurs && format}<div class="format card md">{@html md(kurs.format)}<p class="quelle">{kurs.quelle}</p></div>{/if}
 
+{#if kurs?.markenText}
+  <section class="marken card" style="--f: {kopf.farbe}">
+    <h2>Was das Skript als klausurrelevant markiert</h2>
+    <div class="md">{@html md(kurs.markenText)}</div>
+    {#if kurs.marken && mz}
+      <ul>
+        {#each MARKEN.filter((m) => kurs.marken![m]) as m (m)}
+          {@const i = kurs.marken[m]!}
+          {@const z = mz.get(m)}
+          <li>
+            <span class="mk"><Marke marke={[m]} legende={kurs.marken} /></span>
+            <span class="mt"><span class="md">{@html md(i.text)}</span>{#if z}<small>{z.folien} {z.folien === 1 ? "Folie" : "Folien"} im Skript · {z.fragen} {z.fragen === 1 ? "Frage" : "Fragen"} hier im Kurs</small>{/if}</span>
+            {#if z && z.fragen >= 5}<a class="btn btn--s" href={`#/o/lernen/abfrage/marke/${id}/${m}`}><Icon name="check" size={14} />Abfragen</a>{/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+{/if}
+
 {#if laeufe.length}
   <div class="laeufe">
     {#each laeufe as l (l.id)}{@const p = l.punkte / l.max}<span class="lauf" class:gut={p >= 0.5}><b class="num">{Math.round(p * 100)} %</b><small>Note ≈ {note(p)} · {tagKurz(l.erstellt)}</small></span>{/each}
@@ -64,7 +87,7 @@
             <li class:fertig={g && w >= 0.75} class:halb={g && w < 0.75}>
               <a href={`#/o/lernen/${id}/${l.id}`}>
                 <span class="knoten">{#if g && w >= 0.75}<Icon name="check" size={14} />{:else if g}<i style="--w:{w}"></i>{/if}</span>
-                <span class="lt"><b>{#if l.art === "lerncheck"}<em class="lc">Lerncheck</em>{/if}{l.titel}</b><small>{l.dauer_min} Min. · {l.fragen.length} Fragen{l.generatoren?.length ? " · Rechentraining" : ""}{p?.geplant && !g ? ` · geplant ${tagKurz(p.geplant)}, ${uhr(p.geplant)}` : ""}</small></span>
+                <span class="lt"><b>{#if l.art === "lerncheck"}<em class="lc">Lerncheck</em>{/if}{l.titel}</b><small>{l.dauer_min} Min. · {l.fragen.length} Fragen{l.generatoren?.length ? " · Rechentraining" : ""}{p?.geplant && !g ? ` · geplant ${tagKurz(p.geplant)}, ${uhr(p.geplant)}` : ""}{#if l.marken?.stern?.length && kurs.marken?.stern} · <em class="st" title="Sternfolien in dieser Lektion">★ {l.marken.stern.length}</em>{/if}</small></span>
                 <span class="lw num">{g ? Math.round(w * 100) + " %" : "neu"}</span>
               </a>
             </li>
@@ -90,6 +113,18 @@
   .ul-liste { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; min-width: 240px; display: grid; gap: 2px; padding: 6px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
   .ul-liste button { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
   .ul-liste button:hover { background: var(--hover); }
+  .marken { margin-top: 12px; padding: 16px; }
+  .marken h2 { margin: 0 0 6px; font-size: 1rem; letter-spacing: -.01em; }
+  .marken > .md { color: var(--text-2); line-height: 1.55; font-size: .92rem; }
+  .marken > .md :global(p) { margin: 0; }
+  .marken ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 2px; }
+  .marken li { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; align-items: start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .marken .mt { display: grid; gap: 3px; }
+  .marken .mt .md { color: var(--text-2); font-size: .9rem; line-height: 1.5; }
+  .marken .mt .md :global(p) { margin: 0; }
+  .marken .mt small { color: var(--steel); font-size: .78rem; }
+  .st { font-style: normal; color: #4FD67C; font-weight: 600; white-space: nowrap; }
+  @media (max-width: 700px) { .marken li { grid-template-columns: minmax(0, 1fr); gap: 8px; } .marken li .btn { justify-self: start; } }
   .format { margin-top: 12px; padding: 16px; color: var(--text-2); line-height: 1.6; }
   .format :global(b) { color: var(--text); }
   .format :global(ul) { padding-left: 1.2em; }
