@@ -1,5 +1,5 @@
 // Antworten prüfen und Wiederholungen planen – ohne Oberfläche, damit es sich testen lässt.
-import type { Frage, Stand } from "./typen";
+import type { Frage, Stand, Zelle } from "./typen";
 
 /** „1.234,5“, „1234,5“, „1,234.5“, „-12 %“, „3/4“ → Zahl; null, wenn nicht lesbar */
 export function zahlLesen(s: string): number | null {
@@ -25,7 +25,24 @@ export type Antwort =
   | { typ: "buchung"; soll: [string, string][]; haben: [string, string][] }
   | { typ: "zuordnen"; wahl: (number | null)[] }
   | { typ: "reihe"; folge: number[] }
+  | { typ: "tabelle"; werte: string[] }          // Eingaben in Lesereihenfolge (nur die auszufüllenden Zellen)
   | { typ: "selbst"; note: 0 | 1 | 2 };          // 0 = nicht gewusst, 1 = teilweise, 2 = gewusst
+
+// ---------- Tabellen zum Selbstausfüllen
+export type TabFrage = Extract<Frage, { typ: "tabelle" }>;
+export const istEingabe = (z: Zelle): z is Exclude<Zelle, string> => typeof z !== "string";
+/** die auszufüllenden Zellen in Lesereihenfolge */
+export const eingaben = (f: TabFrage) => f.zeilen.flatMap((r, i) => r.map((z, j) => ({ z, i, j }))).filter((x) => istEingabe(x.z)) as { z: Exclude<Zelle, string>; i: number; j: number }[];
+const glatt = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss").replace(/[^a-z0-9%€+\-<>=/]/g, "");
+export function zelleRichtig(z: Exclude<Zelle, string>, wert: string): boolean {
+  const t = (wert ?? "").trim(); if (!t) return false;
+  if ("z" in z) { const k = [zahlLesen(t)]; if (/^-?\d{1,3}\.\d{3}$/.test(t)) k.push(Number(t)); return k.some((n) => n != null && Math.abs(n - z.z) <= (z.tol ?? Math.max(0.01, Math.abs(z.z) * 0.001)) + 1e-9); }
+  if ("w" in z) return glatt(t) === glatt(z.w);
+  return z.e.some((x) => glatt(x) === glatt(t));
+}
+export const zelleLoesung = (z: Exclude<Zelle, string>) => ("z" in z ? de(z.z, 4) : "w" in z ? z.w : z.e[0]);
+/** Vorrat für die Einsetz-Zellen: alle richtigen Begriffe (auch doppelte) plus die falschen aus f.vorrat */
+export const vorratVon = (f: TabFrage) => [...eingaben(f).flatMap((x) => ("w" in x.z ? [x.z.w] : [])), ...(f.vorrat ?? [])];
 
 /** Anteil richtig (0–1) */
 export function bewerten(f: Frage, a: Antwort): number {
@@ -59,6 +76,10 @@ export function bewerten(f: Frage, a: Antwort): number {
       return f.elemente.every(([, g], i) => a.wahl[i] === g) ? 1 : 0;
     }
     case "reihe": return a.typ === "reihe" && a.folge.length === f.elemente.length && a.folge.every((x, i) => x === i) ? 1 : 0;
+    case "tabelle": {
+      if (a.typ !== "tabelle") return 0;
+      const e = eingaben(f); return e.length ? e.filter((x, n) => zelleRichtig(x.z, a.werte[n] ?? "")).length / e.length : 0;
+    }
     case "karte": case "frei": return a.typ === "selbst" ? a.note / 2 : 0;
   }
 }
@@ -111,8 +132,14 @@ export function loesungText(f: Frage): string {
     case "buchung": return `${f.soll.map(([k, b]) => `${k} ${de(b)}`).join(", ")} **an** ${f.haben.map(([k, b]) => `${k} ${de(b)}`).join(", ")}`;
     case "zuordnen": return f.elemente.map(([e, g]) => `${e} → ${f.gruppen[g]}`).join(" · ");
     case "reihe": return f.elemente.map((e, i) => `${i + 1}. ${e}`).join("  ");
+    case "tabelle": return f.zeilen.map((r) => r.map((z) => (istEingabe(z) ? `**${zelleLoesung(z)}**` : z)).join(" | ")).join("  \n");
     case "karte": case "frei": return f.antwort;
   }
 }
+/** Schwierigkeit 1–3: aus der Frage, sonst nach Aufgabenart (ankreuzen leicht, selbst rechnen/buchen/ausfüllen mittel, frei schreiben schwer) */
+export const stufeVon = (f: Frage): 1 | 2 | 3 => f.stufe ?? (f.typ === "mc" || f.typ === "wahr" ? 1 : f.typ === "frei" ? 3 : 2);
+export const STUFE = ["", "Leicht", "Mittel", "Schwer"];
+/** Aufgaben zum Selbermachen: rechnen, buchen, Tabellen ausfüllen */
+export const istPraxis = (f: Frage) => f.typ === "tabelle" || f.typ === "buchung" || f.typ === "zahl";
 /** Punkte einer Frage in der Prüfungssimulation */
-export const punkteVon = (f: Frage) => f.punkte ?? ({ mc: 1, wahr: 1, zahl: 3, buchung: 3, zuordnen: 2, reihe: 2, karte: 2, frei: 6 } as const)[f.typ];
+export const punkteVon = (f: Frage) => f.punkte ?? (f.typ === "tabelle" ? Math.min(8, Math.max(2, Math.ceil(eingaben(f).length / 2))) : ({ mc: 1, wahr: 1, zahl: 3, buchung: 3, zuordnen: 2, reihe: 2, karte: 2, frei: 6 } as const)[f.typ]);

@@ -6,6 +6,7 @@
   import Marke from "../../../components/lernen/Marke.svelte";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { erzeuge } from "../../../lib/lernen/generator";
+  import { istPraxis, STUFE, stufeVon } from "../../../lib/lernen/pruefen";
   import { router } from "../../../lib/router.svelte";
   import { mdZeile } from "../../../lib/lernen/md";
   import { KURSE, type Frage, type Kurs, type KursId, type Lektion, type Marke as MarkeT } from "../../../lib/lernen/typen";
@@ -21,7 +22,7 @@
   const kurseDa = $derived(KURSE.every((k) => lernen.kurse[k.id]));
   // art „marke“: nur Fragen zu einer Skript-Markierung, z. B. alle Sternfolien (lektion = Name der Markierung)
   const markeInfo = $derived(art === "marke" && kid && lid ? lernen.kurse[kid]?.marken?.[lid as MarkeT] ?? null : null);
-  const titel = $derived(art === "marke" ? (markeInfo ? `Nur: ${markeInfo.name}` : "Abfrage") : art === "faellig" ? "Fällige Wiederholungen" : art === "neu" ? "Neue Fragen" : art === "schwach" ? "Schwachstellen" : art === "training" ? "Rechentraining" : art === "lektion" ? "Abfrage zur Lektion" : "Abfrage");
+  const titel = $derived(art === "praxis" ? "Praxis: selbst rechnen, buchen, ausfüllen" : art === "marke" ? (markeInfo ? `Nur: ${markeInfo.name}` : "Abfrage") : art === "faellig" ? "Fällige Wiederholungen" : art === "neu" ? "Neue Fragen" : art === "schwach" ? "Schwachstellen" : art === "training" ? "Rechentraining" : art === "lektion" ? "Abfrage zur Lektion" : "Abfrage");
   const kopf = $derived(kid ? KURSE.find((k) => k.id === kid)! : null);
 
   function mische<T>(a: T[]) { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; }
@@ -33,7 +34,14 @@
     let l: E[] = [];
     if (art === "lektion" && kid && lid) {
       const x = lernen.finde(lernen.kurse[kid]!, lid);
-      if (x) l = x.lektion.fragen.map((f) => ({ kurs: lernen.kurse[kid]!, lektion: x.lektion, frage: f, schluessel: lernen.key(kid, lid, f.id), seed: 1 }));
+      // von leicht nach schwer
+      if (x) l = x.lektion.fragen.map((f) => ({ kurs: lernen.kurse[kid]!, lektion: x.lektion, frage: f, schluessel: lernen.key(kid, lid, f.id), seed: 1 })).sort((a, b) => stufeVon(a.frage) - stufeVon(b.frage));
+    } else if (art === "praxis" && kid) {
+      // Learning by Doing: nur Aufgaben zum Selbermachen. Mit Lektion: alle davon, leicht → schwer.
+      // Für den ganzen Kurs: 20 je Runde – Unsicheres und Neues zuerst, Tabellen bevorzugt, innerhalb davon leicht → schwer.
+      const pool = alle(lernen.kurse[kid]!).filter((e) => istPraxis(e.frage) && (!lid || e.lektion.id === lid));
+      const rang = (e: E) => { const s = lernen.stand[e.schluessel]; return (!s ? 1 : s.box <= 1 || s.falsch > s.richtig ? 0 : 2 + s.box) * 2 + (e.frage.typ === "tabelle" ? 0 : 1); };
+      l = lid ? pool.sort((a, b) => stufeVon(a.frage) - stufeVon(b.frage)) : mische(pool).sort((a, b) => rang(a) - rang(b)).slice(0, 20).sort((a, b) => stufeVon(a.frage) - stufeVon(b.frage));
     } else if (art === "training" && kid && lid && gen) {
       const x = lernen.finde(lernen.kurse[kid]!, lid), g = x?.lektion.generatoren?.find((y) => y.id === gen);
       if (x && g) l = Array.from({ length: 10 }, () => { const seed = Math.floor(Math.random() * 2 ** 31); const f = erzeuge(g, seed); return { kurs: lernen.kurse[kid]!, lektion: x.lektion, frage: { ...f, id: `${g.id}-${seed}` }, schluessel: `gen:${kid}/${lid}/${g.id}`, seed }; });
@@ -87,7 +95,7 @@
     </div>
   {:else if jetzt}
     <div class="kopf">
-      <small>{titel}{jetzt.wieder ? " · nochmal" : ""} <Marke marke={jetzt.frage.marke} legende={jetzt.kurs.marken} /></small>
+      <small>{titel}{jetzt.wieder ? " · nochmal" : ""} · {STUFE[stufeVon(jetzt.frage)]} <Marke marke={jetzt.frage.marke} legende={jetzt.kurs.marken} /></small>
       <a href={`#/o/lernen/${jetzt.kurs.id}/${jetzt.lektion.id}`}>{jetzt.kurs.titel} · {jetzt.lektion.titel}</a>
     </div>
     <div class="karte card">

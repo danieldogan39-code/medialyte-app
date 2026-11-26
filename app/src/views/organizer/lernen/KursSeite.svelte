@@ -4,6 +4,7 @@
   import Ring from "../../../components/organizer/Ring.svelte";
   import Marke from "../../../components/lernen/Marke.svelte";
   import { MARKEN, markenZahlen } from "../../../lib/lernen/marken";
+  import { istPraxis } from "../../../lib/lernen/pruefen";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { md } from "../../../lib/lernen/md";
   import { KURSE, type KursId } from "../../../lib/lernen/typen";
@@ -20,6 +21,7 @@
   const schwach = $derived(kurs ? kurs.kapitel.flatMap((c) => c.lektionen.flatMap((l) => l.fragen.filter((f) => { const s = lernen.stand[lernen.key(id, l.id, f.id)]; return s && (s.box <= 1 || s.falsch > s.richtig); }))).length : 0);
   let format = $state(false);
   const mz = $derived(kurs ? markenZahlen(kurs) : null);
+  const praxis = $derived(kurs ? kurs.kapitel.reduce((n, c) => n + c.lektionen.reduce((m, l) => m + l.fragen.filter(istPraxis).length, 0), 0) : 0);
 </script>
 
 <a class="zurueck" href="#/o/lernen"><Icon name="left" size={15} />Lernen</a>
@@ -31,6 +33,7 @@
     {#if st}<p class="muted">{st.gelesen} von {st.lektionen} Lektionen gelesen · {st.sicher} von {st.fragen} Fragen sicher · {st.neu} noch nie beantwortet</p>{/if}
     <div class="kh__a">
       <a class="btn btn--primary org-primary" href={`#/o/lernen/abfrage/kurs/${id}`}><Icon name="check" size={15} />Abfragen</a>
+      {#if praxis}<a class="btn" href={`#/o/lernen/abfrage/praxis/${id}`} title="Nur Aufgaben zum Selbermachen: rechnen, buchen, Tabellen ausfüllen"><Icon name="stift" size={15} />Praxis ({praxis})</a>{/if}
       {#if schwach}<a class="btn" href={`#/o/lernen/abfrage/schwach/${id}`}><Icon name="flame" size={15} />Schwachstellen ({schwach})</a>{/if}
       <a class="btn" href={`#/o/lernen/pruefung/${id}`}><Icon name="target" size={15} />Prüfung simulieren</a>
       {#if kurs}<button class="btn btn--quiet" onclick={() => (format = !format)}><Icon name="note" size={15} />Klausuraufbau</button>{/if}

@@ -2,8 +2,9 @@
   // Eine Abfrage: Multiple Choice, Richtig/Falsch, Rechenaufgabe, Buchungssatz, Zuordnung, Reihenfolge, Karteikarte, Freitext.
   // modus „lernen“: sofort Rückmeldung mit Erklärung. modus „pruefung“: Antwort wird nur gespeichert.
   import Icon from "../Icon.svelte";
+  import TabelleFrage from "./TabelleFrage.svelte";
   import { md, mdZeile } from "../../lib/lernen/md";
-  import { bewerten, de, loesungText, teilpunkte, toleranz, zufall, type Antwort } from "../../lib/lernen/pruefen";
+  import { bewerten, de, eingaben, loesungText, teilpunkte, toleranz, zufall, type Antwort } from "../../lib/lernen/pruefen";
   import type { Frage } from "../../lib/lernen/typen";
   let { frage, modus = "lernen", seed = 1, onfertig }: { frage: Frage; modus?: "lernen" | "pruefung"; seed?: number; onfertig: (anteil: number, a: Antwort) => void } = $props();
 
@@ -18,11 +19,12 @@
   let zu = $state<(number | null)[]>([]);
   let folge = $state<number[]>([]);
   let aufgedeckt = $state(false), freiText = $state("");
+  let tab = $state<string[]>([]);
   let ergebnis = $state<{ anteil: number; a: Antwort } | null>(null);
   let feld = $state<HTMLInputElement>();
 
   $effect(() => {
-    frage; wahl = []; wahrWahl = null; text = ""; soll = [["", ""]]; haben = [["", ""]]; aufgedeckt = false; freiText = ""; ergebnis = null;
+    frage; tab = []; wahl = []; wahrWahl = null; text = ""; soll = [["", ""]]; haben = [["", ""]]; aufgedeckt = false; freiText = ""; ergebnis = null;
     zu = frage.typ === "zuordnen" ? frage.elemente.map(() => null) : [];
     folge = frage.typ === "reihe" ? [...ordnung] : [];
     if (frage.typ === "buchung") { soll = frage.soll.map(() => ["", ""] as [string, string]); haben = frage.haben.map(() => ["", ""] as [string, string]); }
@@ -38,6 +40,7 @@
       case "buchung": return soll.some(([k, b]) => k && b) && haben.some(([k, b]) => k && b);
       case "zuordnen": return zu.every((x) => x != null);
       case "reihe": return true;
+      case "tabelle": return tab.some((t) => t?.trim());
       default: return false;
     }
   });
@@ -50,6 +53,7 @@
       case "buchung": return { typ: "buchung", soll, haben };
       case "zuordnen": return { typ: "zuordnen", wahl: zu };
       case "reihe": return { typ: "reihe", folge };
+      case "tabelle": return { typ: "tabelle", werte: [...tab] };
       default: return { typ: "selbst", note: 0 };
     }
   }
@@ -137,6 +141,8 @@
           <span class="pf"><button aria-label="Nach oben" onclick={() => schiebe(i, -1)} disabled={i === 0 || !!ergebnis}><Icon name="left" size={14} /></button><button aria-label="Nach unten" onclick={() => schiebe(i, 1)} disabled={i === folge.length - 1 || !!ergebnis}><Icon name="right" size={14} /></button></span></li>
       {/each}
     </ol>
+  {:else if frage.typ === "tabelle"}
+    <TabelleFrage {frage} bind:werte={tab} fertig={!!ergebnis} {seed} />
   {:else if frage.typ === "karte" || frage.typ === "frei"}
     {#if frage.typ === "frei" && !aufgedeckt}<textarea class="input" rows="5" placeholder="Schreib deine Antwort wie in der Klausur – dann vergleichen." bind:value={freiText}></textarea>{/if}
     {#if !aufgedeckt}
@@ -162,7 +168,10 @@
     {:else}
       <div class="rueck" role="status">
         <b class="titel">{#if ergebnis.anteil === 1}<Icon name="check" size={18} />Richtig{:else}<Icon name="x" size={18} />Noch nicht{/if}</b>
-        {#if ergebnis.anteil < 1}<div class="md"><span class="muted">Richtig ist:</span> {@html mdZeile(richtigText)}</div>{/if}
+        {#if frage.typ === "tabelle"}
+          {@const n = eingaben(frage).length}
+          {#if ergebnis.anteil < 1}<div class="md">{Math.round(ergebnis.anteil * n)} von {n} Feldern richtig. Die richtigen Einträge stehen grün unter deinen.</div>{/if}
+        {:else if ergebnis.anteil < 1}<div class="md"><span class="muted">Richtig ist:</span> {@html mdZeile(richtigText)}</div>{/if}
         {#if frage.erkl}<div class="md erkl">{@html md(frage.erkl)}</div>{/if}
         <button class="btn btn--primary org-primary" onclick={weiter}>Weiter <Icon name="right" size={15} /></button>
       </div>

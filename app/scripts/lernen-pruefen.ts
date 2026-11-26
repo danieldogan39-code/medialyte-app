@@ -102,6 +102,19 @@ function frage(o: string, f: Frage, generiert = false) {
       for (const [e, g] of f.elemente) { if (g < 0 || g >= f.gruppen.length) F(o, `Gruppe von „${e}“ ungültig`); formeln(o, e); }
       break;
     case "reihe": if (f.elemente.length < 2) F(o, "Reihe zu kurz"); f.elemente.forEach((x) => formeln(o, x)); break;
+    case "tabelle": {
+      if (!f.kopf?.length || !f.zeilen?.length) { F(o, "Tabelle ohne Kopf oder Zeilen"); break; }
+      let ein = 0;
+      f.zeilen.forEach((r, i) => { if (r.length !== f.kopf.length) F(o, `Zeile ${i + 1}: ${r.length} Zellen bei ${f.kopf.length} Spalten`);
+        for (const z of r) { if (typeof z === "string") { formeln(o, z); continue; } ein++;
+          if ("z" in z) { if (!Number.isFinite(z.z)) F(o, "Zahl-Zelle ohne Zahl"); }
+          else if ("w" in z) { if (!z.w?.trim()) F(o, "leere Einsetz-Zelle"); else formeln(o, z.w); }
+          else if ("e" in z) { if (!z.e?.length || z.e.some((x) => !x?.trim())) F(o, "Eintipp-Zelle ohne Lösung"); }
+          else F(o, "unbekannte Zelle"); } });
+      if (ein < 2) F(o, "Tabelle braucht mindestens 2 auszufüllende Zellen");
+      f.kopf.forEach((x) => formeln(o, x)); (f.vorrat ?? []).forEach((x) => formeln(o, x)); if (f.unter) formeln(o, f.unter);
+      break;
+    }
     case "karte": case "frei": formeln(o, f.antwort); if (!f.antwort.trim()) F(o, "keine Antwort"); break;
     case "wahr": break;
     default: F(o, `unbekannter Typ ${(f as any).typ}`);
@@ -141,7 +154,7 @@ for (const id of kurse) {
         nf++; typen[f.typ] = (typen[f.typ] ?? 0) + 1;
         if (!/^[a-z0-9-]{1,40}$/.test(f.id)) F(`${o}/${f.id}`, "Fragen-ID ungültig");
         if (fids.has(f.id)) F(`${o}/${f.id}`, "Fragen-ID doppelt"); fids.add(f.id);
-        frage(`${o}/${f.id}`, f); marken(`${o}/${f.id}`, f.marke);
+        frage(`${o}/${f.id}`, f); marken(`${o}/${f.id}`, f.marke); if (f.stufe !== undefined && ![1, 2, 3].includes(f.stufe)) F(`${o}/${f.id}`, "stufe muss 1, 2 oder 3 sein");
       }
       for (const g of l.generatoren ?? []) {
         ng++;

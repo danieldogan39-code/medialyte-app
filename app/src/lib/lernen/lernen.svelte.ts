@@ -29,7 +29,8 @@ async function ausSpeicher(id: KursId): Promise<{ kurs: Kurs; text: string } | n
 }
 
 /** Zeit für eine Lektion im Plan: Lesen + Abfrage (etwa 35 Sekunden je Frage), auf 5 Minuten gerundet */
-export const lektionsDauer = (l: Lektion) => Math.max(15, Math.ceil((l.dauer_min + l.fragen.length * 0.6) / 5) * 5);
+// Tabellen zum Selbstausfüllen zählen nicht mit: Sie sind zusätzliches Praxis-Training und würden den ohnehin vollen Lernplan weiter aufblähen.
+export const lektionsDauer = (l: Lektion) => Math.max(15, Math.ceil((l.dauer_min + l.fragen.filter((f) => f.typ !== "tabelle").length * 0.6) / 5) * 5);
 export type Lauf = { id: string; kurs: KursId; punkte: number; max: number; dauer_s: number; fehler: string[]; erstellt: string };
 export type Eintrag = { kurs: Kurs; lektion: Lektion; frage: Frage; schluessel: string };
 

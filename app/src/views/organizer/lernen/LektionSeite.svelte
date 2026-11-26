@@ -4,6 +4,7 @@
   import Baustein from "../../../components/lernen/Baustein.svelte";
   import Marke from "../../../components/lernen/Marke.svelte";
   import { MARKEN } from "../../../lib/lernen/marken";
+  import { istPraxis } from "../../../lib/lernen/pruefen";
   import { lernen } from "../../../lib/lernen/lernen.svelte";
   import { md, mdZeile } from "../../../lib/lernen/md";
   import { router } from "../../../lib/router.svelte";
@@ -60,6 +61,7 @@
       <div><b>Jetzt prüfen, ob es sitzt</b><span class="muted">{l.fragen.length} Fragen zu dieser Lektion. Falsche kommen in der Abfrage gleich nochmal und danach öfter, bis sie sitzen.</span></div>
       <div class="ende__a">
         <button class="btn btn--primary org-primary" onclick={abfragen}><Icon name="check" size={15} />{gelesen ? "Nochmal abfragen" : "Gelesen – jetzt abfragen"}</button>
+        {#if l.fragen.some(istPraxis)}{@const praxis = l.fragen.filter(istPraxis).length}<a class="btn" href={`#/o/lernen/abfrage/praxis/${kid}/${id}`} title="Nur Aufgaben zum Selbermachen: rechnen, buchen, Tabellen ausfüllen"><Icon name="stift" size={15} />Praxis ({praxis})</a>{/if}
         {#each l.generatoren ?? [] as g (g.id)}<a class="btn" href={`#/o/lernen/abfrage/training/${kid}/${id}/${g.id}`}><Icon name="refresh" size={15} />{g.titel}</a>{/each}
       </div>
     </section>

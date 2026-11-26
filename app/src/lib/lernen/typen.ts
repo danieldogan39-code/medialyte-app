@@ -48,7 +48,14 @@ type BausteinArt =
   | { t: "aktuell"; titel?: string; skript: Md; aktuell: Md; quelle: Md; stand: string };
 export type Regler = { id: string; name: string; von: number; bis: number; schritt?: number; start: number; einheit?: string };
 
-type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number; marke?: Marke[] };
+/** stufe: 1 leicht (wiedererkennen), 2 mittel (selbst anwenden), 3 schwer (Klausurniveau, mehrere Schritte) */
+type Basis = { id: string; erkl?: Md; tipp?: Md; punkte?: number; marke?: Marke[]; stufe?: 1 | 2 | 3 };
+/** Zelle einer Tabelle zum Selbstausfüllen:
+ *  Text            = vorgegeben
+ *  { z: 1200 }     = Zahl eintippen (tol: erlaubte Abweichung, sonst wie bei Rechenaufgaben)
+ *  { w: "Kasse" }  = Begriff aus dem Vorrat unter der Tabelle einsetzen
+ *  { e: ["Aktivtausch"] } = Begriff eintippen (alle gültigen Schreibweisen; Groß-/Kleinschreibung und Satzzeichen egal) */
+export type Zelle = string | { z: number; tol?: number } | { w: string } | { e: string[] };
 export type Frage = Basis & (
   | { typ: "mc"; frage: Md; optionen: Md[]; richtig: number[] }          // eine oder mehrere richtige
   | { typ: "wahr"; frage: Md; wahr: boolean }
@@ -56,6 +63,8 @@ export type Frage = Basis & (
   | { typ: "buchung"; frage: Md; konten: string[]; soll: [string, number][]; haben: [string, number][] }
   | { typ: "zuordnen"; frage: Md; gruppen: string[]; elemente: [string, number][] }
   | { typ: "reihe"; frage: Md; elemente: string[] }                      // richtige Reihenfolge
+  // Tabelle selbst ausfüllen (T-Konto, Bilanz, Schema …). vorrat: zusätzliche falsche Begriffe für den Vorrat. Jede Zelle zählt einzeln.
+  | { typ: "tabelle"; frage: Md; kopf: string[]; zeilen: Zelle[][]; vorrat?: string[]; unter?: Md }
   | { typ: "karte"; frage: Md; antwort: Md }                              // selbst bewerten
   | { typ: "frei"; frage: Md; antwort: Md; punkte?: number }              // Musterlösung, selbst bewerten
 );
