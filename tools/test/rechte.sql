@@ -506,3 +506,50 @@ reset role;
 \ir ../../supabase/migrations/127_organizer_lernen.sql
 \ir ../../supabase/migrations/128_organizer_arbeiten.sql
 do $$ begin raise notice 'OK Organizer wiederholbar'; end $$;
+
+-- Steuern: Ausgaben gehören dem Firmenkonto (Buchhaltung pflegt sie, Marketing sieht nichts, ohne Zwei-Faktor nichts);
+-- die persönlichen Steuerangaben sieht nur das eigene Konto – auch der Inhaber nicht die eines anderen
+set role authenticated;
+select pg_temp.als('00000000-0000-0000-0000-0000000000f1', 'aal2');
+do $$ declare a uuid; begin
+  insert into public.ausgaben (datum, lieferant, kategorie, art, netto, ust_satz, ust, brutto) values (current_date, 'Hoster', 'software', 'inland', 100, 19, 19, 119) returning id into a;
+  if (select user_id from public.ausgaben where id = a) <> '00000000-0000-0000-0000-00000000000d' then raise exception 'Ausgabe gehört nicht dem Firmenkonto'; end if;
+  begin insert into public.ausgaben (datum, lieferant, art, netto, ust, brutto) values (current_date, 'x', 'ausland', 1, 0, 1); raise exception 'ungültige Art angenommen';
+  exception when check_violation then null; end;
+  begin insert into public.ausgaben (datum, lieferant, art, netto, ust, brutto) values (current_date, 'x', 'ohne', 1, 0.19, 1); raise exception 'Vorsteuer bei „ohne“ angenommen';
+  exception when check_violation then null; end;
+  begin insert into public.ausgaben (user_id, datum, lieferant, netto, ust, brutto) values ('00000000-0000-0000-0000-0000000000f1', current_date, 'x', 1, 0, 1); raise exception 'Ausgabe für fremdes Konto angelegt';
+  exception when insufficient_privilege then null; end;
+  insert into public.steuer_privat (daten) values ('{"andere": 30000}');
+  if (select user_id from public.steuer_privat) <> '00000000-0000-0000-0000-0000000000f1' then raise exception 'Steuerangaben nicht beim eigenen Konto'; end if;
+  begin insert into public.steuer_privat (user_id, daten) values ('00000000-0000-0000-0000-00000000000d', '{}'); raise exception 'Steuerangaben für fremdes Konto angelegt';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Ausgaben fürs Firmenkonto, Steuerangaben fürs eigene Konto';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal2');
+do $$ declare n int; begin
+  if (select count(*) from public.ausgaben) <> 1 then raise exception 'Inhaber sieht die Ausgabe nicht'; end if;
+  if exists (select 1 from public.steuer_privat) then raise exception 'Inhaber sieht fremde Steuerangaben'; end if;
+  update public.steuer_privat set daten = '{}'; get diagnostics n = row_count;
+  if n <> 0 then raise exception 'Inhaber durfte fremde Steuerangaben ändern'; end if;
+  update public.ausgaben set notiz = 'geprüft'; get diagnostics n = row_count;
+  if n <> 1 then raise exception 'Inhaber darf Ausgabe nicht ändern'; end if;
+  raise notice 'OK Steuerangaben bleiben privat';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-0000000000a1', 'aal2');
+do $$ begin
+  if exists (select 1 from public.ausgaben) then raise exception 'Marketing sieht Ausgaben'; end if;
+  begin insert into public.ausgaben (datum, lieferant, netto, ust, brutto) values (current_date, 'x', 1, 0, 1); raise exception 'Marketing durfte Ausgabe anlegen';
+  exception when insufficient_privilege then null; end;
+  begin insert into public.steuer_privat (daten) values ('{}'); raise exception 'Marketing durfte Steuerangaben anlegen';
+  exception when insufficient_privilege then null; end;
+  raise notice 'OK Ausgaben nur mit Recht „Rechnungen“';
+end $$;
+select pg_temp.als('00000000-0000-0000-0000-00000000000d', 'aal1');
+do $$ begin
+  if exists (select 1 from public.ausgaben) then raise exception 'Ausgaben ohne Zwei-Faktor sichtbar'; end if;
+  raise notice 'OK Ausgaben nur mit Zwei-Faktor';
+end $$;
+reset role;
+\ir ../../supabase/migrations/130_steuern.sql
+do $$ begin raise notice 'OK Steuern wiederholbar'; end $$;

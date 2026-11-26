@@ -66,6 +66,16 @@ und werden erst beim nächsten Start aktiv.
 - Einstellungen → „Aufbewahrung & Betriebsprüfung“: GoBD-Export für einen Zeitraum (ZIP mit CSV, index.xml im GDPdU-Format, Protokoll, alle PDFs).
 - Organisatorisch dazu: Verfahrensdokumentation, Datensicherung, Eingangsrechnungen im Originalformat aufbewahren.
 
+## Ausgaben und Steuern
+
+Unter Rechnungen gibt es die Reiter **Ausgaben** und **Steuern**.
+
+- **Ausgaben** (`ausgaben`, Migration 130): was die Firma bezahlt hat, mit Kategorie und Steuerart – Inland (Vorsteuer), EU bzw. Nicht-EU ohne Umsatzsteuer (Reverse Charge, § 13b) oder ohne Vorsteuer. Offline-fähig wie die Rechnungen. Gespeichert werden nur die Zahlen, keine Belege.
+- **Steuern** rechnet daraus und aus den Rechnungen: Umsatzsteuer je Voranmeldungszeitraum mit den Kennzahlen des ELSTER-Formulars (81, 86, 46/47, 84/85, 66, 67, 83), Gewinn nach Geldeingang (EÜR), eine Schätzung von Einkommen-, Gewerbesteuer und Soli auf den Gewinn, die Rücklage, die Fristen (Wochenenden und Hamburger Feiertage berücksichtigt) und die Grenzen (Gewerbesteuer-Freibetrag, Voranmeldungs-Rhythmus, Kleinunternehmer).
+- Einstellungen: Soll- oder Ist-Versteuerung, Rhythmus, Dauerfristverlängerung, Gewerbe und Hebesatz liegen bei den Firmeneinstellungen (`settings.company.steuer`). Die persönlichen Angaben für die Einkommensteuer (übriges Einkommen, Abzüge, Kirchensteuer) liegen in `steuer_privat` und sind nur für das eigene Konto lesbar.
+- Der Rechenkern ist `app/src/lib/rechnungen/steuer.ts` (reine Funktionen, Quellen und Rechtsstand im Kopf der Datei). Nachrechnen: `cd app && npx tsx scripts/steuer-pruefen.ts`. **Bei jedem Jahreswechsel prüfen:** Einkommensteuertarif und Soli-Freigrenze (`TARIFE`), Grenzen der Voranmeldung, Kennzahlen des Formulars.
+- Es ist eine Schätzung, keine Steuerberatung: Abschreibungen über mehrere Jahre, private Nutzung, Verlustvorträge und geleistete Vorauszahlungen sind nicht berücksichtigt.
+
 ## Social Media (Creatives)
 
 Fertige Creatives landen auf der Seite „Social Media“ (Bilder, Karussells, Videos mit Titelbild und Text).

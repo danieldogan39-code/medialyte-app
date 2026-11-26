@@ -9,6 +9,9 @@
   import Statistik from "../components/rechnungen/Statistik.svelte";
   import WuVorlage from "../components/rechnungen/WuVorlage.svelte";
   import Einstellungen from "../components/rechnungen/Einstellungen.svelte";
+  import Ausgaben from "../components/rechnungen/Ausgaben.svelte";
+  import Steuern from "../components/rechnungen/Steuern.svelte";
+  import AusgabeEditor from "../components/rechnungen/AusgabeEditor.svelte";
   import { R } from "../lib/rechnungen/daten.svelte";
   import { gleiter, federKurve, ruhig } from "../lib/bewegung";
   import { fly } from "svelte/transition";
@@ -25,7 +28,7 @@
 
   $effect(() => { R.starten(); if (A.tab === "customers") A.tab = "invoices"; });
   const darf = $derived(auth.darf("rechnungen", true));
-  const TABS = [["invoices", "Rechnungen", "receipt"], ["quotes", "Angebote", "note"], ["recurring", "Abos", "refresh"], ["settings", "Einstellungen", "settings"]] as const;
+  const TABS = [["invoices", "Rechnungen", "receipt"], ["quotes", "Angebote", "note"], ["recurring", "Abos", "refresh"], ["expenses", "Ausgaben", "shopping-bag"], ["taxes", "Steuern", "scale"], ["settings", "Einstellungen", "settings"]] as const;
   let laedt = $state(false);
   const neuLaden = () => { if (laedt) return; laedt = true; versuche(() => R.loadAll()).finally(() => (laedt = false)); };
 
@@ -94,8 +97,8 @@
   });
 
 
-  const fab = () => ({ invoices: () => neueRechnung(), quotes: () => neuesAngebot(), recurring: () => oeffneAbo(null) } as Record<string, () => void>)[A.tab]?.();
-  const FAB: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", recurring: "Abo" };
+  const fab = () => ({ invoices: () => neueRechnung(), quotes: () => neuesAngebot(), recurring: () => oeffneAbo(null), expenses: () => B.auf(AusgabeEditor, { a: null }) } as Record<string, () => void>)[A.tab]?.();
+  const FAB: Record<string, string> = { invoices: "Rechnung", quotes: "Angebot", recurring: "Abo", expenses: "Ausgabe" };
 </script>
 
 {#snippet reZeile(i: any)}
@@ -191,6 +194,12 @@
       {/each}
     </div>
   {:else}<div class="card empty"><b>Noch keine Abos</b><p>Zum Beispiel für monatliches Hosting oder Betreuung.</p></div>{/if}
+
+{:else if A.tab === "expenses"}
+  <Ausgaben />
+
+{:else if A.tab === "taxes"}
+  <Steuern />
 
 {:else}
   <Einstellungen />
