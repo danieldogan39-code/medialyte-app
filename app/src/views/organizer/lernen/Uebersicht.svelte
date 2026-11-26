@@ -179,7 +179,7 @@
   .h-t b { font-size: 1.04rem; color: var(--text); }
   .h-liste, .z-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .h-liste a, .z-liste a { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 12px; text-decoration: none; color: inherit; min-width: 0; transition: background .2s; }
-  .h-liste a:hover, .z-liste a:hover { background: var(--hover); }
+  @media (hover: hover) and (pointer: fine) { .h-liste a:hover, .z-liste a:hover { background: var(--hover); } }
   .h-zeit { width: 42px; flex: none; font-size: .84rem; color: var(--steel); }
   .h-pkt { width: 9px; height: 9px; border-radius: 50%; background: var(--f); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--f) 20%, transparent); }
   .h-lek { display: grid; flex: 1; min-width: 0; }
@@ -223,7 +223,7 @@
   .balken { display: flex; gap: 3px; }
   .balken i { flex: 1; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--f) calc(var(--w) * 100%), rgba(203, 215, 235, .1) calc(var(--w) * 100%)); }
   .weiter { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 14px; background: color-mix(in srgb, var(--f) 12%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--f) 40%, transparent); text-decoration: none; color: var(--text); min-width: 0; transition: transform .2s var(--ease), background .2s; }
-  .weiter:hover { background: color-mix(in srgb, var(--f) 18%, var(--bg-2)); }
+  @media (hover: hover) and (pointer: fine) { .weiter:hover { background: color-mix(in srgb, var(--f) 18%, var(--bg-2)); } }
   .weiter:active { transform: scale(.985); }
   .w-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--f); color: #0A1220; }
   .w-t { display: grid; flex: 1; min-width: 0; line-height: 1.25; }
@@ -232,6 +232,7 @@
   .weiter > :global(svg:last-child) { color: var(--steel); flex: none; }
   .kk__a { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .mini { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); text-decoration: none; font-size: .86rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s, color .2s; }
-  .mini:hover { background: var(--hover); color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .mini:hover { background: var(--hover); color: var(--text); } }
   @media (max-width: 860px) { .oben { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 700px) { .h-lek b, .w-t b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; } }
 </style>

@@ -11,6 +11,7 @@
 
   // Planung
   let e = $state({ ...org.einst, fahrt_regeln: (org.einst.fahrt_regeln ?? []).map((r) => ({ ...r })) });
+  let rtAuf = $state<string | null>(null);   // Handy: welcher Routine-Punkt gerade zum Bearbeiten aufgeklappt ist
   $effect(() => { e = { ...org.einst, fahrt_regeln: (org.einst.fahrt_regeln ?? []).map((r) => ({ ...r })) }; });
   const geaendert = $derived(JSON.stringify(e) !== JSON.stringify(org.einst));
 
@@ -100,7 +101,10 @@
     {#if org.routine.length}
       <ul class="rt">
         {#each org.routine as r (r.id)}
-          <li class:block={r.art === "block"} class:aus={!r.aktiv}>
+          <li class:block={r.art === "block"} class:aus={!r.aktiv} class:auf={rtAuf === r.id}>
+            <button class="rt-kopf" aria-expanded={rtAuf === r.id} onclick={() => (rtAuf = rtAuf === r.id ? null : r.id)}>
+              <span class="num">{r.start?.slice(0, 5)}</span><b>{r.titel}</b><small>{r.dauer_min} Min.{r.art === "block" ? " · Fokusblock" : ""}</small><Icon name="down" size={15} />
+            </button>
             <input class="input zeit" type="time" value={r.start} onchange={(ev) => org.routineSpeichern({ ...r, start: (ev.currentTarget as HTMLInputElement).value })} aria-label="Beginn">
             <input class="input min" type="number" min="5" max="600" step="5" value={r.dauer_min} onchange={(ev) => org.routineSpeichern({ ...r, dauer_min: Number((ev.currentTarget as HTMLInputElement).value) || r.dauer_min })} aria-label="Minuten">
             <input class="input name" value={r.titel} onchange={(ev) => org.routineSpeichern({ ...r, titel: (ev.currentTarget as HTMLInputElement).value || r.titel })} aria-label="Titel">
@@ -204,15 +208,28 @@
   .tg { display: flex; gap: 2px; }
   .tg button { width: 22px; height: 26px; border: 0; border-radius: 6px; background: var(--bg-2); color: var(--steel); font: inherit; font-size: .72rem; cursor: pointer; }
   .tg button.on { background: var(--org); color: #fff; }
+  .rt-kopf { display: none; }
+  /* Handy: jeder Punkt ist eine kompakte Zeile (Uhrzeit, Name, Dauer); Antippen klappt die Felder zum Ändern auf */
   @media (max-width: 700px) {
-    .rt { max-height: none; overflow: visible; gap: 10px; }
-    .rt li { grid-template-columns: 96px 72px minmax(0, 1fr) 40px; padding: 10px; background: var(--bg-2); }
+    .rt { max-height: none; overflow: visible; gap: 6px; }
+    .rt li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; padding: 0 10px; background: var(--bg-2); border-radius: 12px; gap: 8px; }
     .rt li.block { background: rgba(142, 124, 255, .1); }
-    .rt .input { min-height: 40px; font-size: 16px; }
-    .rt .art { grid-column: 1 / -1; }
-    .tg { grid-column: 1 / -1; gap: 4px; }
-    .tg button { flex: 1; width: auto; height: 40px; font-size: .8rem; }
-    .rt li > .btn--icon { grid-row: 1; grid-column: 4; }
+    .rt-kopf { grid-column: 1 / -1; display: grid; grid-template-columns: 46px minmax(0, 1fr) auto 18px; align-items: center; gap: 8px; min-height: 48px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+    .rt-kopf span { color: var(--text-2); font-size: .86rem; }
+    .rt-kopf b { font-weight: 600; font-size: .93rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rt-kopf small { color: var(--steel); font-size: .76rem; white-space: nowrap; }
+    .rt-kopf :global(svg) { color: var(--steel); transition: transform .3s var(--feder-schnell); }
+    .rt li.auf .rt-kopf :global(svg) { transform: rotate(180deg); }
+    .rt li:not(.auf) > :not(.rt-kopf) { display: none; }
+    .rt li.auf { padding-bottom: 10px; }
+    .rt .input { min-height: 44px; font-size: 16px; }
+    .rt .name { grid-column: 1 / 3; grid-row: 2; }
+    .rt li > .btn--icon { grid-column: 3; grid-row: 2; }
+    .rt .zeit { grid-column: 1; grid-row: 3; }
+    .rt .min { grid-column: 2 / -1; grid-row: 3; }
+    .rt .art { grid-column: 1 / -1; grid-row: 4; }
+    .tg { grid-column: 1 / -1; grid-row: 5; gap: 4px; }
+    .tg button { flex: 1; width: auto; height: 42px; font-size: .8rem; }
   }
   .faecher li { display: flex; align-items: center; gap: 8px; }
   .faecher .input { min-height: 36px; }

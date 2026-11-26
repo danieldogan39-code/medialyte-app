@@ -233,5 +233,5 @@
   .re > span:first-child { display: inline-flex; gap: 6px; align-items: center; }
   .re :global(svg) { color: var(--steel); }
   @media (hover: hover) and (pointer: fine) { a.card:hover { border-color: var(--line-2); background: var(--panel-2); } }
-  @media (max-width: 560px) { .kz { grid-template-columns: repeat(2, minmax(0, 1fr)); } .neu { flex-wrap: wrap; } .search { width: 100%; } }
+  @media (max-width: 560px) { .kz { grid-template-columns: repeat(2, minmax(0, 1fr)); } .neu { flex-direction: column; align-items: stretch; gap: 10px; } .neu__k { justify-content: space-between; } .neu__k .btn--primary { flex: 1; min-height: 42px; } .search { width: 100%; } }
 </style>

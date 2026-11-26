@@ -80,7 +80,7 @@
   .moodle { margin-bottom: 20px; }
   .m-liste { display: grid; gap: 8px; }
   .m { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; color: inherit; font: inherit; text-align: left; cursor: pointer; border-style: dashed; border-color: rgba(231, 185, 74, .45); background: rgba(231, 185, 74, .05); }
-  .m:hover { background: rgba(231, 185, 74, .1); }
+  @media (hover: hover) and (pointer: fine) { .m:hover { background: rgba(231, 185, 74, .1); } }
   .m-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: rgba(231, 185, 74, .16); color: var(--warn); flex: none; }
   .m-t { display: grid; flex: 1; min-width: 0; }
   .m-t small { color: var(--steel); font-size: .8rem; }
@@ -98,4 +98,6 @@
   .ak__s { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .84rem; color: var(--text-2); }
   .ak__s span { display: inline-flex; align-items: center; gap: 6px; }
   .rot { color: #F27A6A; } .gruen { color: var(--ok); }
+  /* Handy: Titel bekommt die ganze Breite, der Knopf steht darunter */
+  @media (max-width: 700px) { .m { flex-wrap: wrap; align-items: flex-start; } .m-t { flex: 1 1 calc(100% - 50px); } .m .btn { margin-left: 46px; } }
 </style>

@@ -79,7 +79,7 @@
 <style>
   .kopf { display: grid; gap: 12px; margin: -4px 0 18px; }
   .zurueck { display: inline-flex; align-items: center; gap: 4px; justify-self: start; color: var(--steel); font-size: .88rem; }
-  .zurueck:hover { color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .zurueck:hover { color: var(--text); } }
   @media (max-width: 900px) { .zurueck { display: none; } }
   .kopf__z { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .logo { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: var(--fl); box-shadow: 0 12px 26px -12px var(--p), inset 0 1px 0 rgba(255, 255, 255, .3); }

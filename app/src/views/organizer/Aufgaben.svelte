@@ -142,4 +142,6 @@
   .haken.an { background: var(--f); border-color: var(--f); color: #0A1220; }
   .haken:active { transform: scale(.85); }
   .empty :global(svg) { color: var(--org); }
+  /* Handy: Titel dürfen zwei Zeilen haben, statt mitten im Wort abgeschnitten zu werden */
+  @media (max-width: 700px) { .txt b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; } .zeile { padding: 12px; } }
 </style>

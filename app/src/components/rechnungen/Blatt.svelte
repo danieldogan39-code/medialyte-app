@@ -23,7 +23,7 @@
   .bl__in { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: calc(100dvh - 32px); background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--radius); overflow: hidden; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 10px 22px; border-bottom: 1px solid var(--line); }
   header h2 { font-size: 1.15rem; }
-  .bl__b { overflow: auto; padding: 18px 22px 22px; display: grid; gap: 14px; align-content: start; }
+  .bl__b { overflow: auto; overscroll-behavior: contain; padding: 18px 22px 22px; display: grid; gap: 14px; align-content: start; }
   footer { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--bg-2); }
   @media (max-width: 640px) {
     .bl, .bl.breit { width: 100vw; max-width: 100vw; max-height: 100dvh; height: 100dvh; margin: 0; }

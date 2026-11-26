@@ -77,7 +77,7 @@
   .lek { max-width: 820px; margin: 0 auto; }
   .brot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: .84rem; color: var(--steel); margin-bottom: 14px; }
   .brot a { color: var(--steel); text-decoration: none; }
-  .brot a:hover { color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .brot a:hover { color: var(--text); } }
   header { display: grid; gap: 8px; margin-bottom: 22px; }
   header small { color: var(--f); font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .05em; }
   h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.2; }

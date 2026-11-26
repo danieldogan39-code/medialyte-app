@@ -289,4 +289,6 @@
   .sp { flex: 1; }
   .legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--text-2); margin-top: 10px; }
   .legende i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
+  /* Finger statt Maus: Filter und Karten-Knöpfe größer */
+  @media (pointer: coarse) { .tiers button { width: 42px; height: 38px; } .auf { min-height: 36px; padding: 0 12px; } .bk__a .btn { min-height: 38px; padding: 0 12px; } }
 </style>

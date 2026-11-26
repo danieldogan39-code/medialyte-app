@@ -29,7 +29,7 @@
   const kosten = $derived(summe(imJahr, (a) => (klein && a.art === "inland" ? +a.brutto : +a.netto) || 0));
   const vorsteuer = $derived(summe(imJahr, (a) => (a.art === "inland" ? +a.ust || 0 : 0)));
   const monat = $derived(summe(R.ausgaben.filter((a) => String(a.datum).startsWith(heute.slice(0, 7))), (a) => +a.brutto || 0));
-  const artKurz = (a: Ausgabe) => (a.art === "inland" ? "" : " · " + ARTEN.find((x) => x.key === a.art)!.kurz);
+  const artKurz = (a: Ausgabe) => { const k = ARTEN.find((x) => x.key === a.art)?.kurz; return !k || a.art === "inland" ? "" : " · " + k; };
 </script>
 
 <div class="seite-h"><h1>Ausgaben</h1><p class="muted">Alles, was Medialyte bezahlt hat. Daraus rechnet die App deine Vorsteuer und deinen Gewinn.</p></div>

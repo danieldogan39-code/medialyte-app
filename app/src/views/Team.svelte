@@ -87,7 +87,7 @@
   </div>
 {/if}
 
-<div class="card tw"><table class="table">
+<div class="card tw"><table class="table mitgl">
   <thead><tr><th>Name</th><th class="h-m">E-Mail</th><th>Rolle</th><th>Zugang</th>{#if darf}<th></th>{/if}</tr></thead>
   <tbody>
     {#each daten.team as m (m.user_id)}
@@ -141,5 +141,23 @@
   .lead { margin-bottom: 14px; }
   .tw { overflow-x: auto; }
   .matrix td:first-child { white-space: nowrap; color: var(--text); }
-  @media (max-width: 700px) { .h-m { display: none; } .acts { flex-wrap: nowrap; } }
+  /* Handy: Mitglieder als Karten statt als Tabelle, die rechts abgeschnitten wird; die Rechte-Tabelle wischt quer, der Bereich bleibt stehen */
+  @media (max-width: 700px) {
+    .h-m { display: none; }
+    .mitgl, .mitgl tbody { display: block; }
+    .mitgl thead { display: none; }
+    .mitgl tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+    .mitgl tr:last-child { border-bottom: 0; }
+    .mitgl td { display: block; padding: 0; border: 0; min-width: 0; }
+    .mitgl td:nth-child(n + 2) { grid-column: 1 / -1; }
+    .mitgl td.h-m { color: var(--text-3); font-size: .84rem; overflow-wrap: anywhere; margin-top: -4px; }
+    .mitgl td:nth-child(4) { grid-column: 2; grid-row: 1; }
+    .mitgl td:nth-child(3) { margin-top: 4px; }
+    .mitgl .sm { width: 100%; min-height: 44px; }
+    .mitgl .acts { justify-content: flex-start; flex-wrap: wrap; gap: 6px; margin: 4px 0 0 -8px; }
+    .mitgl .acts .h-m { display: inline; }
+    .matrix th:first-child, .matrix td:first-child { position: sticky; left: 0; z-index: 1; background: var(--panel); white-space: normal; min-width: 128px; max-width: 150px; box-shadow: 1px 0 0 var(--line); }
+    .matrix .sm { min-height: 40px; }
+    .tw { overscroll-behavior-x: contain; }
+  }
 </style>

@@ -128,7 +128,7 @@
   .naechste__k { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .naechste__k h3 { font-size: 1.05rem; font-weight: 600; }
   .naechste__k a { display: inline-flex; align-items: center; gap: 2px; color: var(--steel); font-size: .86rem; }
-  .naechste__k a:hover { color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .naechste__k a:hover { color: var(--text); } }
   .reihe { list-style: none; margin: 0; padding: 2px 2px 6px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(118px, 1fr); gap: 10px; overflow-x: auto;
     scroll-snap-type: x proximity; scrollbar-width: none; }
   .reihe::-webkit-scrollbar { display: none; }

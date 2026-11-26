@@ -206,7 +206,7 @@
 {/if}
 </div>{/key}
 
-{#if darf && FAB[A.tab] && !(A.tab === "quotes" && A.qview === "update")}<button class="btn btn--primary fab" onclick={fab}><Icon name="plus" size={18} />{FAB[A.tab]}</button>{/if}
+{#if darf && FAB[A.tab] && !(A.tab === "quotes" && A.qview === "update")}<button class="btn btn--primary fab" onclick={fab}><Icon name="plus" size={18} />{FAB[A.tab]}</button><div class="fab-platz" aria-hidden="true"></div>{/if}
 
 
 
@@ -274,6 +274,8 @@
   .klein { font-size: .86rem; margin: 0; }
   .unter { margin: 22px 0 4px; }
   .note { padding: 10px 14px; border-radius: var(--radius-s); background: rgba(111, 168, 240, .1); color: #A9C9F5; font-size: .9rem; margin-bottom: 12px; }
+  /* Platz unter der Liste, damit der schwebende Knopf den letzten Eintrag nicht verdeckt */
+  .fab-platz { height: 76px; }
   .fab { position: fixed; right: max(24px, calc((100vw - var(--side, 0px)) / 2 - 560px)); bottom: calc(24px + var(--unten, env(safe-area-inset-bottom))); z-index: 5; min-height: 52px; padding: 0 22px; font-size: 1rem;
     box-shadow: 0 16px 36px -14px rgba(242, 74, 74, .7); }
 </style>

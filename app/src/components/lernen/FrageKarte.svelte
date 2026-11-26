@@ -191,7 +191,7 @@
   .opts { display: grid; gap: 8px; }
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .opt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--panel); color: var(--text); font: inherit; text-align: left; cursor: pointer; transition: border-color .2s, background .2s, transform .2s var(--ease); }
-  .opt:hover:not(:disabled) { background: var(--panel-2); }
+  @media (hover: hover) and (pointer: fine) { .opt:hover:not(:disabled) { background: var(--panel-2); } }
   .opt:active:not(:disabled) { transform: scale(.985); }
   .opt:disabled { cursor: default; }
   .opt .md { flex: 1; color: var(--text); }

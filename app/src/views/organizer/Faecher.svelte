@@ -150,7 +150,7 @@
   .z.rot { color: #FF9A8F; }
   .neu { display: flex; align-items: center; gap: 10px; border-style: dashed; }
   .neu :global(svg) { color: var(--org); }
-  .neu input { flex: 1; min-height: 38px; border: 0; background: transparent; color: var(--text); outline: none; font-size: .95rem; }
+  .neu input { flex: 1; min-width: 0; min-height: 38px; border: 0; background: transparent; color: var(--text); outline: none; font-size: .95rem; }
   .detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
   .blk { display: grid; gap: 12px; padding: 16px; border-radius: 18px; }
   .breit { grid-column: 1 / -1; }

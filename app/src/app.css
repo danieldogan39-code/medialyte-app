@@ -72,6 +72,8 @@ input, textarea, select, [contenteditable] { -webkit-user-select: text; user-sel
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 16px; border-radius: 999px;
   border: 1px solid var(--line-2); background: rgba(255, 255, 255, .04); color: var(--text); font-weight: 500; font-size: .93rem; line-height: 1;
   white-space: nowrap; cursor: pointer; transition: background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease, transform .4s var(--feder-schnell); }
+/* Auf dem Handy bekommt jeder Link und Knopf ohne eigene Druck-Rückmeldung wenigstens eine leichte: sonst wirkt Tippen wie ins Leere */
+@media (pointer: coarse) { :where(a[href], button:not(:disabled), summary, [role="button"], [role="tab"]):active { opacity: .8; } }
 .btn:active:not(:disabled) { transform: scale(.96); transition-duration: .2s, .2s, .2s, .2s, .08s; }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 .btn--primary { background: var(--coral); border-color: #F65656; color: #fff; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .3); }
@@ -101,6 +103,16 @@ select.input { appearance: none; padding-right: 32px; background-image: url("dat
   .haken { position: relative; }
   .haken::after { content: ""; position: absolute; inset: -10px; }
   a.zurueck, .brot a { display: inline-flex; align-items: center; min-height: 40px; }
+  /* Knöpfe und Felder in Fingergröße (44 px), Suchfelder über die ganze Breite */
+  .btn:not(.btn--s):not(.btn--icon) { min-height: 44px; }
+  .input:not(.sm):not(textarea) { min-height: 44px; }
+  label.search { width: 100% !important; }
+  label.search .input { min-height: 44px !important; }
+  /* kleine Textlinks, Schalter und Farbpunkte: sichtbar gleich groß, aber mit größerer Trefferfläche */
+  .lnk, .sw, .fb, .farbe { position: relative; }
+  .lnk::after { content: ""; position: absolute; inset: -11px -6px; }
+  .sw::after { content: ""; position: absolute; inset: -9px -6px; }
+  .fb::after, .farbe::after { content: ""; position: absolute; inset: -5px; }
 }
 
 /* Flächen */

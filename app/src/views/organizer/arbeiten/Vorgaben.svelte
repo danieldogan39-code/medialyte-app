@@ -12,6 +12,8 @@
   let bearbeiten = $state(false), text = $state("");
   let filter = $state<"alle" | "offen" | "auto">("alle");
   const GRUPPEN: Regel["gruppe"][] = ["Umfang", "Aufbau", "Layout", "Zitieren", "Quellen", "Sprache", "KI", "Inhalt", "Abgabe"];
+  // Handy: Regelgruppen sind zugeklappt (sonst ist die Seite über zwanzig Bildschirme lang), am Computer offen
+  const breit = typeof innerWidth === "number" && innerWidth > 700;
   const haken = $derived((arbeit.haken ?? {}) as Record<string, boolean>);
   const regeln = $derived((rw?.regeln ?? []).filter((r) => filter === "alle" || (filter === "auto" ? r.pruefung === "auto" : r.pruefung !== "auto" && !haken[r.id])));
   const erledigt = $derived((rw?.regeln ?? []).filter((r) => r.pruefung !== "auto" && haken[r.id]).length);
@@ -74,7 +76,8 @@
       {#each GRUPPEN as g}
         {@const l = regeln.filter((r) => r.gruppe === g)}
         {#if l.length}
-          <h3>{g}</h3>
+          <details class="gr" open={breit}>
+          <summary><h3>{g}</h3><span>{l.filter((r) => r.pruefung !== "auto" && haken[r.id]).length} von {l.filter((r) => r.pruefung !== "auto").length} abgehakt · {l.length} Regeln</span></summary>
           <ul>
             {#each l as r (r.id)}
               <li class:ok={haken[r.id]}>
@@ -84,6 +87,7 @@
               </li>
             {/each}
           </ul>
+          </details>
         {/if}
       {/each}
     </section>
@@ -93,9 +97,16 @@
 <style>
   .vg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
   .auf, .regeln { grid-column: 1 / -1; }
-  .blk { display: grid; gap: 10px; padding: 16px; border-radius: 18px; }
+  .blk { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px; border-radius: 18px; }
   .kz { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   h2 { margin: 0; font-size: 1rem; }
+  .gr summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; min-height: 44px; padding: 4px 2px; cursor: pointer; list-style: none; }
+  .gr summary::-webkit-details-marker { display: none; }
+  .gr summary h3 { margin: 0; }
+  .gr summary span { color: var(--steel); font-size: .76rem; display: inline-flex; align-items: center; gap: 8px; }
+  .gr summary span::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--steel); border-bottom: 2px solid var(--steel); transform: rotate(45deg); margin-bottom: 3px; transition: transform .25s ease; }
+  .gr[open] summary span::after { transform: rotate(225deg); margin-bottom: -3px; }
+  .gr { border-top: 1px solid var(--line); }
   h3 { margin: 8px 0 0; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--steel); }
   .md { color: var(--text-2); line-height: 1.6; }
   .md :global(p) { margin: 0 0 .6em; } .md :global(ul), .md :global(ol) { padding-left: 1.3em; margin: .2em 0 .7em; } .md :global(b) { color: var(--text); }
@@ -115,9 +126,9 @@
   .seg button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--text-2); font: inherit; font-size: .82rem; cursor: pointer; }
   .seg button.an { background: rgba(231, 185, 74, .16); border-color: rgba(231, 185, 74, .5); color: var(--text); }
   .klein { font-size: .84rem; margin: 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
   li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: var(--bg-2); }
-  li > span:last-child { display: grid; gap: 2px; min-width: 0; }
+  li > span:last-child { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; min-width: 0; overflow-wrap: anywhere; }
   li small { color: var(--steel); font-size: .76rem; }
   li.ok .md { color: var(--steel); text-decoration: line-through; }
   .auto { width: 20px; height: 20px; border-radius: 6px; display: grid; place-items: center; flex: none; background: rgba(180, 140, 255, .18); color: #CDB8FF; margin-top: 1px; }

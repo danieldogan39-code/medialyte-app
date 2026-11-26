@@ -115,7 +115,7 @@
   .unterlagen summary::-webkit-details-marker { display: none; }
   .ul-liste { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; min-width: 240px; display: grid; gap: 2px; padding: 6px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line-2); box-shadow: 0 12px 30px rgba(0, 0, 0, .4); }
   .ul-liste button { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
-  .ul-liste button:hover { background: var(--hover); }
+  @media (hover: hover) and (pointer: fine) { .ul-liste button:hover { background: var(--hover); } }
   .marken { margin-top: 12px; padding: 16px; }
   .marken h2 { margin: 0 0 6px; font-size: 1rem; letter-spacing: -.01em; }
   .marken > .md { color: var(--text-2); line-height: 1.55; font-size: .92rem; }
@@ -143,7 +143,7 @@
   .kap__w { color: var(--steel); font-size: .86rem; }
   ol { list-style: none; margin: 0; padding: 0 0 0 15px; border-left: 2px solid var(--line-2); display: grid; gap: 4px; }
   li a { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 0; text-decoration: none; color: inherit; border-radius: 12px; }
-  li a:hover { background: var(--hover); }
+  @media (hover: hover) and (pointer: fine) { li a:hover { background: var(--hover); } }
   .knoten { width: 22px; height: 22px; margin-left: -27px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--bg); border: 2px solid var(--line-2); color: #fff; overflow: hidden; }
   .knoten i { width: 100%; height: 100%; background: conic-gradient(var(--f) calc(var(--w) * 360deg), transparent 0); }
   .fertig .knoten { background: var(--f); border-color: var(--f); }

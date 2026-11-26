@@ -70,7 +70,7 @@
   .f-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-2); color: var(--text-2); flex: none; }
   .f-t { display: grid; flex: 1; min-width: 0; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; padding: 0; }
   .f-t b { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .f-t:hover b { text-decoration: underline; }
+  @media (hover: hover) and (pointer: fine) { .f-t:hover b { text-decoration: underline; } }
   .f-t small { color: var(--steel); font-size: .78rem; }
   .dl select { width: auto; min-height: 32px; padding: 4px 8px; font-size: .84rem; }
   .leer { margin-top: 12px; }

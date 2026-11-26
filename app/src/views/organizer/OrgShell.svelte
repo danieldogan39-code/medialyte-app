@@ -134,7 +134,7 @@
 <style>
   :global(:root) { --org: #8E7CFF; }
   :global(.org-primary) { background: linear-gradient(135deg, #9A8AFF, #7C6CF5) !important; border-color: #A598FF !important; color: #fff !important; }
-  :global(.org-primary:hover:not(:disabled)) { background: linear-gradient(135deg, #A597FF, #8676FA) !important; }
+  @media (hover: hover) and (pointer: fine) { :global(.org-primary:hover:not(:disabled)) { background: linear-gradient(135deg, #A597FF, #8676FA) !important; } }
   .os { min-height: 100dvh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
   .top, .tabbar { display: none; }
   .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 18px; padding: 20px 14px 14px; border-right: 1px solid var(--line);

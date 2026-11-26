@@ -189,4 +189,5 @@
   .morgen .mehr { display: block; font-size: .82rem; }
   .klein { font-size: .9rem; }
   @media (max-width: 1100px) { .raster { grid-template-columns: minmax(0, 1fr); } aside { position: static; } }
+  @media (max-width: 700px) { .morgen li b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; } }
 </style>

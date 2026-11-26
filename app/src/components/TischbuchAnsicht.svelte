@@ -134,7 +134,7 @@
   .handy iframe { width: 100%; height: 100%; border: 0; display: block; }
   @media (max-width: 860px) {
     .tb { max-width: 100vw; max-height: 100dvh; height: 100dvh; margin: 0; }
-    .tb__in { grid-template-columns: minmax(0, 1fr); border-radius: 0; height: 100%; overflow: auto; padding: 14px; }
+    .tb__in { grid-template-columns: minmax(0, 1fr); border-radius: 0; height: 100%; overflow: auto; overscroll-behavior: contain; padding: 14px; }
     .handy { width: 100%; height: 75dvh; border-radius: 16px; border-width: 1px; }
   }
 </style>

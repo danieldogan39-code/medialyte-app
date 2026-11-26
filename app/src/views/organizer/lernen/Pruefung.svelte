@@ -60,11 +60,11 @@
       <span class="ic"><Icon name="target" size={26} /></span>
       <h1>Prüfungssimulation</h1>
       <p class="muted">Fragen aus allen Kapiteln, gemischt wie in der Klausur. Kein Tipp, keine Lösung zwischendurch – die Auswertung kommt am Ende, mit Notenschätzung und allen Lösungen.</p>
-      {#if kurs}<div class="format md">{@html md(kurs.format)}</div>{/if}
       <div class="wahl">
         <button class="btn" disabled={!kurs} onclick={() => starten(20, 35)}><b>Kurz</b><small>20 Aufgaben · 35 Min.</small></button>
         <button class="btn btn--primary org-primary" disabled={!kurs} onclick={() => starten(40, 90)}><b>Voll</b><small>40 Aufgaben · 90 Min.</small></button>
       </div>
+      {#if kurs}<details class="format" open={typeof innerWidth === "number" && innerWidth > 700}><summary>So läuft die echte Klausur</summary><div class="md">{@html md(kurs.format)}</div></details>{/if}
     </section>
   {:else if phase === "laeuft" && liste[pos]}
     <div class="leiste">
@@ -109,7 +109,13 @@
   .format :global(b) { color: var(--text); }
   .format :global(ul) { padding-left: 1.2em; margin: .3em 0; }
   .format :global(p) { margin: 0 0 .4em; }
-  .wahl { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+  .format summary { cursor: pointer; font-weight: 600; color: var(--text); list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 32px; }
+  .format summary::-webkit-details-marker { display: none; }
+  .format summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--steel); border-bottom: 2px solid var(--steel); transform: rotate(45deg); margin: 0 4px 4px 0; transition: transform .25s ease; }
+  .format[open] summary::after { transform: rotate(225deg); margin-bottom: -4px; }
+  .format[open] summary { margin-bottom: 8px; }
+  .wahl { display: flex; gap: 10px; margin: 6px 0 8px; flex-wrap: wrap; justify-content: center; }
+  @media (max-width: 700px) { .wahl { width: 100%; } .wahl .btn { flex: 1; padding: 0 10px; } .start { padding: 24px 16px; } }
   .wahl .btn { flex-direction: column; gap: 0; min-height: 58px; padding: 0 26px; border-radius: 16px; }
   .wahl small { font-weight: 400; font-size: .78rem; opacity: .85; }
   .leiste { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }

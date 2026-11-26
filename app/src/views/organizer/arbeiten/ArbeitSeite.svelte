@@ -131,7 +131,7 @@
   .tage.bald { color: #F27A6A; }
   .reiter { display: flex; gap: 4px; margin: 14px 0 16px; padding: 4px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
   .reiter a { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: 10px; color: var(--text-2); text-decoration: none; font-size: .9rem; font-weight: 500; white-space: nowrap; }
-  .reiter a:hover { color: var(--text); background: var(--hover); }
+  @media (hover: hover) and (pointer: fine) { .reiter a:hover { color: var(--text); background: var(--hover); } }
   .reiter a.an { background: rgba(231, 185, 74, .16); color: var(--text); font-weight: 600; }
   @media (max-width: 560px) { .reiter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; } .reiter a { justify-content: center; padding: 10px 6px; font-size: .84rem; gap: 5px; } }
   .ueb { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; }
@@ -142,6 +142,8 @@
   .f span { font-size: .76rem; color: var(--steel); font-weight: 600; }
   .zeile { display: flex; gap: 10px; flex-wrap: wrap; }
   .zeile .f { flex: 1 1 120px; }
+  /* Datum mit Uhrzeit braucht Platz: sonst schiebt es sich auf dem Handy über das Nachbarfeld */
+  .zeile .f:has(input[type="datetime-local"]) { flex-basis: 230px; }
   textarea.input { resize: vertical; font: inherit; line-height: 1.45; }
   .akt { display: flex; justify-content: space-between; gap: 8px; }
   .rot { color: #F27A6A; } .gruen { color: var(--ok); }

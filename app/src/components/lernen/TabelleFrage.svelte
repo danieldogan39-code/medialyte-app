@@ -99,5 +99,8 @@
     th:first-child, td:first-child { padding-left: 8px; } th:last-child, td:last-child { padding-right: 8px; }
     .ein { min-width: 74px; } .ein .input { min-width: 62px; padding: 0 6px; } .platz { padding: 6px 7px; font-size: .82rem; }
     .breit td:first-child { max-width: 118px; }
+    /* schmale Tabellen sollen ganz aufs Handy passen: lange Wörter (Personengesellschaft …) dürfen mit Trennstrich umbrechen, statt die Tabelle aus dem Bild zu schieben */
+    .tf:not(.breit) td, .tf:not(.breit) th { overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; }
+    .platz i { white-space: nowrap; hyphens: manual; -webkit-hyphens: manual; }
   }
 </style>
